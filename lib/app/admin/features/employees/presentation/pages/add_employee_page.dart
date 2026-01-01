@@ -75,7 +75,7 @@ class _AddEmployeePageState extends ConsumerState<AddEmployeePage> {
     final isMobile = width < 700;
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      // backgroundColor: Colors.transparent,
       body: SingleChildScrollView(
         child: Container(
           padding: EdgeInsets.all(isMobile ? 12.0 : 16.0),

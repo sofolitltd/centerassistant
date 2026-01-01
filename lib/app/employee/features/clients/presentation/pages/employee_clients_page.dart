@@ -26,7 +26,7 @@ class EmployeeClientsPage extends ConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      // backgroundColor: Colors.transparent,
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(

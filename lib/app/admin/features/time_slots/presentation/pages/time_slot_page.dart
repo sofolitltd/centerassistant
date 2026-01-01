@@ -27,183 +27,192 @@ class TimeSlotPage extends ConsumerWidget {
 
     final bool isMobile = width < 600;
 
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      child: Container(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Time Slots',
-                        style: Theme.of(context).textTheme.headlineMedium!
-                            .copyWith(fontWeight: FontWeight.bold, height: 1.2),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          InkWell(
-                            onTap: () => context.go('/admin/layout'),
-                            child: Text(
-                              'Admin',
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(color: Colors.grey),
+    return Scaffold(
+      body: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Container(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Time Slots',
+                          style: Theme.of(context).textTheme.headlineMedium!
+                              .copyWith(
+                                fontWeight: FontWeight.bold,
+                                height: 1.2,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            InkWell(
+                              onTap: () => context.go('/admin/layout'),
+                              child: Text(
+                                'Admin',
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(color: Colors.grey),
+                              ),
                             ),
-                          ),
-                          const Icon(
-                            Icons.chevron_right,
-                            size: 16,
-                            color: Colors.grey,
-                          ),
-                          Text(
-                            'Time Slots',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                if (!isMobile)
-                  ElevatedButton.icon(
-                    onPressed: () => context.go('/admin/time-slots/add'),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Time Slot'),
-                  ),
-              ],
-            ),
-            if (isMobile) ...[
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () => context.go('/admin/time-slots/add'),
-                icon: const Icon(Icons.add),
-                label: const Text('Add Time Slot'),
-              ),
-            ],
-            const SizedBox(height: 24),
-            timeSlotsAsync.when(
-              data: (timeSlots) {
-                if (timeSlots.isEmpty) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.only(top: 40),
-                      child: Text('No time slots found. Add one!'),
+                            const Icon(
+                              Icons.chevron_right,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                            Text(
+                              'Time Slots',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  );
-                }
-                return MasonryGridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: crossAxisCount,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  itemCount: timeSlots.length,
-                  itemBuilder: (context, index) {
-                    final timeSlot = timeSlots[index];
-                    return Card(
-                      margin: EdgeInsets.zero,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.access_time,
-                                  size: 40,
-                                  color: Colors.blueGrey,
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  timeSlot.label,
-                                  style: Theme.of(context).textTheme.titleMedium
-                                      ?.copyWith(fontWeight: FontWeight.bold),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${timeSlot.startTime} - ${timeSlot.endTime}',
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(color: Colors.grey.shade600),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: PopupMenuButton<String>(
-                              color: Colors.white,
-                              icon: const Icon(Icons.more_vert, size: 20),
-                              onSelected: (value) {
-                                if (value == 'edit') {
-                                  _showEditTimeSlotDialog(
-                                    context,
-                                    ref,
-                                    timeSlot,
-                                  );
-                                } else if (value == 'delete') {
-                                  _showDeleteConfirmDialog(
-                                    context,
-                                    ref,
-                                    timeSlot,
-                                  );
-                                }
-                              },
-                              itemBuilder: (context) => [
-                                const PopupMenuItem(
-                                  value: 'edit',
-                                  child: ListTile(
-                                    leading: Icon(Icons.edit, size: 18),
-                                    title: Text('Edit'),
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                ),
-                                const PopupMenuItem(
-                                  value: 'delete',
-                                  child: ListTile(
-                                    leading: Icon(
-                                      Icons.delete,
-                                      size: 18,
-                                      color: Colors.red,
-                                    ),
-                                    title: Text(
-                                      'Delete',
-                                      style: TextStyle(color: Colors.red),
-                                    ),
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                  ),
+                  if (!isMobile)
+                    ElevatedButton.icon(
+                      onPressed: () => context.go('/admin/time-slots/add'),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Time Slot'),
+                    ),
+                ],
+              ),
+              if (isMobile) ...[
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () => context.go('/admin/time-slots/add'),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Time Slot'),
+                ),
+              ],
+              const SizedBox(height: 24),
+              timeSlotsAsync.when(
+                data: (timeSlots) {
+                  if (timeSlots.isEmpty) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.only(top: 40),
+                        child: Text('No time slots found. Add one!'),
                       ),
                     );
-                  },
-                );
-              },
-              loading: () => const Center(
-                child: Padding(
-                  padding: EdgeInsets.only(top: 40),
-                  child: CircularProgressIndicator(),
+                  }
+                  return MasonryGridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    itemCount: timeSlots.length,
+                    itemBuilder: (context, index) {
+                      final timeSlot = timeSlots[index];
+                      return Card(
+                        margin: EdgeInsets.zero,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  const Icon(
+                                    Icons.access_time,
+                                    size: 40,
+                                    color: Colors.blueGrey,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    timeSlot.label,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.bold),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${timeSlot.startTime} - ${timeSlot.endTime}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(color: Colors.grey.shade600),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: PopupMenuButton<String>(
+                                color: Colors.white,
+                                icon: const Icon(Icons.more_vert, size: 20),
+                                onSelected: (value) {
+                                  if (value == 'edit') {
+                                    _showEditTimeSlotDialog(
+                                      context,
+                                      ref,
+                                      timeSlot,
+                                    );
+                                  } else if (value == 'delete') {
+                                    _showDeleteConfirmDialog(
+                                      context,
+                                      ref,
+                                      timeSlot,
+                                    );
+                                  }
+                                },
+                                itemBuilder: (context) => [
+                                  const PopupMenuItem(
+                                    value: 'edit',
+                                    child: ListTile(
+                                      leading: Icon(Icons.edit, size: 18),
+                                      title: Text('Edit'),
+                                      contentPadding: EdgeInsets.zero,
+                                    ),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: 'delete',
+                                    child: ListTile(
+                                      leading: Icon(
+                                        Icons.delete,
+                                        size: 18,
+                                        color: Colors.red,
+                                      ),
+                                      title: Text(
+                                        'Delete',
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                      contentPadding: EdgeInsets.zero,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+                loading: () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 40),
+                    child: CircularProgressIndicator(),
+                  ),
                 ),
+                error: (err, stack) => Center(child: Text('Error: $err')),
               ),
-              error: (err, stack) => Center(child: Text('Error: $err')),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

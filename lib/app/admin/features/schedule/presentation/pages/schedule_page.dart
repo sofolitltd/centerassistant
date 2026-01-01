@@ -33,154 +33,159 @@ class SchedulePage extends ConsumerWidget {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
 
-    return SingleChildScrollView(
-      child: Container(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Schedules',
-              style: Theme.of(context).textTheme.headlineMedium!.copyWith(
-                fontWeight: FontWeight.bold,
-                height: 1.2,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                InkWell(
-                  onTap: () => context.go('/admin/layout'),
-                  child: Text(
-                    'Admin',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-                  ),
-                ),
-                const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
-                Text('Schedule', style: Theme.of(context).textTheme.bodyMedium),
-              ],
-            ),
-            const SizedBox(height: 24),
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.white,
-                border: Border.all(
-                  color: Colors.grey.withValues(alpha: 0.2),
-                  width: 1,
+    return Scaffold(
+      body: SingleChildScrollView(
+        child: Container(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Schedules',
+                style: Theme.of(context).textTheme.headlineMedium!.copyWith(
+                  fontWeight: FontWeight.bold,
+                  height: 1.2,
                 ),
               ),
-              padding: const EdgeInsets.all(12),
-              child: Flex(
-                direction: isMobile ? Axis.vertical : Axis.horizontal,
-                crossAxisAlignment: isMobile
-                    ? CrossAxisAlignment.start
-                    : CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              const SizedBox(height: 8),
+              Row(
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        DateFormat('EEEE').format(selectedDate),
-                        style: Theme.of(context).textTheme.titleMedium!
-                            .copyWith(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                            ),
-                      ),
-                      Text(
-                        DateFormat('d MMMM, yyyy').format(selectedDate),
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ],
+                  InkWell(
+                    onTap: () => context.go('/admin/layout'),
+                    child: Text(
+                      'Admin',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                    ),
                   ),
-                  if (isMobile) const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(
-                          Icons.arrow_back_ios_rounded,
-                          size: 18,
+                  const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+                  Text(
+                    'Schedule',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.white,
+                  border: Border.all(
+                    color: Colors.grey.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
+                ),
+                padding: const EdgeInsets.all(12),
+                child: Flex(
+                  direction: isMobile ? Axis.vertical : Axis.horizontal,
+                  crossAxisAlignment: isMobile
+                      ? CrossAxisAlignment.start
+                      : CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          DateFormat('EEEE').format(selectedDate),
+                          style: Theme.of(context).textTheme.titleMedium!
+                              .copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
                         ),
-                        onPressed: () {
-                          final newDate = selectedDate.subtract(
-                            const Duration(days: 1),
-                          );
-                          ref
-                              .read(selectedDateProvider.notifier)
-                              .setDate(newDate);
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.date_range),
-                        onPressed: () async {
-                          final pickedDate = await showDatePicker(
-                            context: context,
-                            initialDate: selectedDate,
-                            firstDate: DateTime.now().subtract(
-                              const Duration(days: 365),
-                            ),
-                            lastDate: DateTime.now().add(
-                              const Duration(days: 365),
-                            ),
-                          );
-                          if (pickedDate != null) {
+                        Text(
+                          DateFormat('d MMMM, yyyy').format(selectedDate),
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ],
+                    ),
+                    if (isMobile) const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(
+                            Icons.arrow_back_ios_rounded,
+                            size: 18,
+                          ),
+                          onPressed: () {
+                            final newDate = selectedDate.subtract(
+                              const Duration(days: 1),
+                            );
                             ref
                                 .read(selectedDateProvider.notifier)
-                                .setDate(pickedDate);
-                          }
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 18,
+                                .setDate(newDate);
+                          },
                         ),
-                        onPressed: () {
-                          final newDate = selectedDate.add(
-                            const Duration(days: 1),
-                          );
-                          ref
-                              .read(selectedDateProvider.notifier)
-                              .setDate(newDate);
-                        },
-                      ),
-                    ],
-                  ),
-                ],
+                        IconButton(
+                          icon: const Icon(Icons.date_range),
+                          onPressed: () async {
+                            final pickedDate = await showDatePicker(
+                              context: context,
+                              initialDate: selectedDate,
+                              firstDate: DateTime.now().subtract(
+                                const Duration(days: 365),
+                              ),
+                              lastDate: DateTime.now().add(
+                                const Duration(days: 365),
+                              ),
+                            );
+                            if (pickedDate != null) {
+                              ref
+                                  .read(selectedDateProvider.notifier)
+                                  .setDate(pickedDate);
+                            }
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 18,
+                          ),
+                          onPressed: () {
+                            final newDate = selectedDate.add(
+                              const Duration(days: 1),
+                            );
+                            ref
+                                .read(selectedDateProvider.notifier)
+                                .setDate(newDate);
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-              child: Row(
-                children: [
-                  _ViewToggleButton(
-                    label: 'All Sessions',
-                    isSelected: viewType == ScheduleViewType.all,
-                    onTap: () => ref
-                        .read(scheduleViewTypeProvider.notifier)
-                        .set(ScheduleViewType.all),
-                  ),
-                  const SizedBox(width: 12),
-                  _ViewToggleButton(
-                    label: 'Employee View',
-                    isSelected: viewType == ScheduleViewType.employee,
-                    onTap: () => ref
-                        .read(scheduleViewTypeProvider.notifier)
-                        .set(ScheduleViewType.employee),
-                  ),
-                ],
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                child: Row(
+                  children: [
+                    _ViewToggleButton(
+                      label: 'All Sessions',
+                      isSelected: viewType == ScheduleViewType.all,
+                      onTap: () => ref
+                          .read(scheduleViewTypeProvider.notifier)
+                          .set(ScheduleViewType.all),
+                    ),
+                    const SizedBox(width: 12),
+                    _ViewToggleButton(
+                      label: 'Employee View',
+                      isSelected: viewType == ScheduleViewType.employee,
+                      onTap: () => ref
+                          .read(scheduleViewTypeProvider.notifier)
+                          .set(ScheduleViewType.employee),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-            viewType == ScheduleViewType.all
-                ? const _AllSessionsView()
-                : const _EmployeeView(),
-          ],
+              const SizedBox(height: 24),
+              viewType == ScheduleViewType.all
+                  ? const _AllSessionsView()
+                  : const _EmployeeView(),
+            ],
+          ),
         ),
       ),
     );
@@ -374,7 +379,7 @@ class _AllSessionsView extends ConsumerWidget {
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 20),
                         child: Text(
-                          'No sessions',
+                          'No schedule',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Colors.grey, fontSize: 13),
                         ),

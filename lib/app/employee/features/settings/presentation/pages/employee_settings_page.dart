@@ -102,7 +102,7 @@ class _EmployeeSettingsPageState extends ConsumerState<EmployeeSettingsPage> {
         : const AsyncValue.data(null);
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      // backgroundColor: Colors.transparent,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Align(

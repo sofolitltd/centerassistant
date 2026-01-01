@@ -67,163 +67,166 @@ class _AddTimeSlotPageState extends ConsumerState<AddTimeSlotPage> {
     final width = MediaQuery.of(context).size.width;
     final isMobile = width < 700;
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Add New Time Slot',
-            style: Theme.of(context).textTheme.headlineMedium!.copyWith(
-              fontWeight: FontWeight.bold,
-              height: 1.2,
+    return Scaffold(
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Add New Time Slot',
+              style: Theme.of(context).textTheme.headlineMedium!.copyWith(
+                fontWeight: FontWeight.bold,
+                height: 1.2,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              InkWell(
-                onTap: () => context.go('/admin/layout'),
-                child: Text(
-                  'Admin',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                InkWell(
+                  onTap: () => context.go('/admin/layout'),
+                  child: Text(
+                    'Admin',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                  ),
                 ),
-              ),
-              const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
-              InkWell(
-                onTap: () => context.go('/admin/time-slots'),
-                child: Text(
-                  'Time Slots',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+                InkWell(
+                  onTap: () => context.go('/admin/time-slots'),
+                  child: Text(
+                    'Time Slots',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                  ),
                 ),
-              ),
-              const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
-              Text(
-                'Add Time Slot',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Card(
-            child: Padding(
-              padding: EdgeInsets.all(isMobile ? 16.0 : 24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildFieldTitle('Label (e.g., Morning)'),
-                    TextFormField(
-                      controller: _labelController,
-                      decoration: const InputDecoration(
-                        hintText: 'Enter label',
+                const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+                Text(
+                  'Add Time Slot',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Card(
+              child: Padding(
+                padding: EdgeInsets.all(isMobile ? 16.0 : 24.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildFieldTitle('Label (e.g., Morning)'),
+                      TextFormField(
+                        controller: _labelController,
+                        decoration: const InputDecoration(
+                          hintText: 'Enter label',
+                        ),
+                        validator: (value) =>
+                            value!.isEmpty ? 'Please enter a label' : null,
                       ),
-                      validator: (value) =>
-                          value!.isEmpty ? 'Please enter a label' : null,
-                    ),
-                    const SizedBox(height: 20),
-                    _buildResponsiveRow(
-                      isMobile: isMobile,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildFieldTitle('Start Time'),
-                            InkWell(
-                              onTap: () async {
-                                final pickedTime = await showTimePicker(
-                                  context: context,
-                                  initialTime: TimeOfDay.now(),
-                                );
-                                if (pickedTime != null) {
-                                  setState(() => _startTime = pickedTime);
-                                }
-                              },
-                              child: InputDecorator(
-                                decoration: const InputDecoration(),
-                                child: Text(
-                                  _startTime == null
-                                      ? 'Select Start Time'
-                                      : _startTime!.format(context),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildFieldTitle('End Time'),
-                            InkWell(
-                              onTap: () async {
-                                final pickedTime = await showTimePicker(
-                                  context: context,
-                                  initialTime: TimeOfDay.now(),
-                                );
-                                if (pickedTime != null) {
-                                  setState(() => _endTime = pickedTime);
-                                }
-                              },
-                              child: InputDecorator(
-                                decoration: const InputDecoration(),
-                                child: Text(
-                                  _endTime == null
-                                      ? 'Select End Time'
-                                      : _endTime!.format(context),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => context.go('/admin/time-slots'),
-                          child: const Text('Cancel'),
-                        ),
-                        const SizedBox(width: 16),
-                        ElevatedButton(
-                          onPressed: () {
-                            if (_formKey.currentState!.validate() &&
-                                _startTime != null &&
-                                _endTime != null) {
-                              ref
-                                  .read(timeSlotServiceProvider)
-                                  .addTimeSlot(
-                                    label: _labelController.text,
-                                    startTime: _startTime!.format(context),
-                                    endTime: _endTime!.format(context),
+                      const SizedBox(height: 20),
+                      _buildResponsiveRow(
+                        isMobile: isMobile,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildFieldTitle('Start Time'),
+                              InkWell(
+                                onTap: () async {
+                                  final pickedTime = await showTimePicker(
+                                    context: context,
+                                    initialTime: TimeOfDay.now(),
                                   );
-                              context.go('/admin/time-slots');
-                            } else if (_startTime == null || _endTime == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Please select start and end times',
+                                  if (pickedTime != null) {
+                                    setState(() => _startTime = pickedTime);
+                                  }
+                                },
+                                child: InputDecorator(
+                                  decoration: const InputDecoration(),
+                                  child: Text(
+                                    _startTime == null
+                                        ? 'Select Start Time'
+                                        : _startTime!.format(context),
                                   ),
                                 ),
-                              );
-                            }
-                          },
-                          child: const Text('Add Time Slot'),
-                        ),
-                      ],
-                    ),
-                  ],
+                              ),
+                            ],
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildFieldTitle('End Time'),
+                              InkWell(
+                                onTap: () async {
+                                  final pickedTime = await showTimePicker(
+                                    context: context,
+                                    initialTime: TimeOfDay.now(),
+                                  );
+                                  if (pickedTime != null) {
+                                    setState(() => _endTime = pickedTime);
+                                  }
+                                },
+                                child: InputDecorator(
+                                  decoration: const InputDecoration(),
+                                  child: Text(
+                                    _endTime == null
+                                        ? 'Select End Time'
+                                        : _endTime!.format(context),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 32),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => context.go('/admin/time-slots'),
+                            child: const Text('Cancel'),
+                          ),
+                          const SizedBox(width: 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              if (_formKey.currentState!.validate() &&
+                                  _startTime != null &&
+                                  _endTime != null) {
+                                ref
+                                    .read(timeSlotServiceProvider)
+                                    .addTimeSlot(
+                                      label: _labelController.text,
+                                      startTime: _startTime!.format(context),
+                                      endTime: _endTime!.format(context),
+                                    );
+                                context.go('/admin/time-slots');
+                              } else if (_startTime == null ||
+                                  _endTime == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Please select start and end times',
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            child: const Text('Add Time Slot'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

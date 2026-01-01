@@ -13,7 +13,7 @@ import '/app/admin/features/employees/presentation/pages/employee_page.dart';
 import '/app/admin/features/employees/presentation/pages/employee_schedule_page.dart';
 import '/app/admin/features/layout/presentation/pages/admin_layout_page.dart';
 import '/app/admin/features/leave/presentation/pages/leave_management_page.dart';
-import '/app/admin/features/sessions/presentation/pages/schedule_page.dart';
+import '/app/admin/features/schedule/presentation/pages/schedule_page.dart';
 import '/app/admin/features/time_slots/presentation/pages/add_time_slot_page.dart';
 import '/app/admin/features/time_slots/presentation/pages/time_slot_page.dart';
 import '/core/models/leave.dart';

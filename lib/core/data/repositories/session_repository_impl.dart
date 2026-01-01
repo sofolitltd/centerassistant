@@ -11,21 +11,21 @@ class SessionRepositoryImpl implements ISessionRepository {
   @override
   Future<void> createSessionException(Session session) async {
     await _firestore
-        .collection('sessions')
+        .collection('schedule')
         .doc(session.id)
         .set(session.toJson());
   }
 
   @override
   Future<void> deleteSessionException(String sessionId) async {
-    await _firestore.collection('sessions').doc(sessionId).delete();
+    await _firestore.collection('schedule').doc(sessionId).delete();
   }
 
   @override
   Future<List<Session>> getSessionsByDate(DateTime date) async {
     final startOfDay = DateTime(date.year, date.month, date.day);
     final snapshot = await _firestore
-        .collection('sessions')
+        .collection('schedule')
         .where('date', isEqualTo: Timestamp.fromDate(startOfDay))
         .get();
 

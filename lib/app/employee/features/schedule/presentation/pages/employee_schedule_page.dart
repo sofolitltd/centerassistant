@@ -44,7 +44,7 @@ class EmployeePortalSchedulePage extends ConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      // backgroundColor: Colors.transparent,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -250,7 +250,7 @@ class _DailyView extends ConsumerWidget {
             context,
             LucideIcons.calendarX,
             'You are on leave',
-            'No sessions scheduled for this date.',
+            'No schedule scheduled for this date.',
             Colors.red,
           );
         }
@@ -380,7 +380,7 @@ class _DailyView extends ConsumerWidget {
                 ? const Padding(
                     padding: EdgeInsets.symmetric(vertical: 20),
                     child: Text(
-                      'No sessions',
+                      'No schedule',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.grey, fontSize: 12),
                     ),

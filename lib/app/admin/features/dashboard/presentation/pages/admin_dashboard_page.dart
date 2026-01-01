@@ -20,7 +20,7 @@ class AdminDashboardPage extends ConsumerWidget {
     final leavesAsync = ref.watch(allLeavesProvider);
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      // backgroundColor: Colors.transparent,
       body: SingleChildScrollView(
         child: Container(
           padding: const EdgeInsets.all(16.0),

@@ -75,7 +75,7 @@ class _EmployeeDashboardContent extends ConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      // backgroundColor: Colors.transparent,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -473,7 +473,7 @@ class _EmployeeDashboardContent extends ConsumerWidget {
                     padding: EdgeInsets.symmetric(vertical: 20),
                     child: Center(
                       child: Text(
-                        'No sessions scheduled for today.',
+                        'No schedule scheduled for today.',
                         style: TextStyle(color: Colors.grey),
                       ),
                     ),

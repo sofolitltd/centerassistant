@@ -279,7 +279,6 @@ class _ApplyLeavePageState extends ConsumerState<ApplyLeavePage> {
     final sortedDates = _entryMap.keys.toList()..sort();
 
     return Scaffold(
-      backgroundColor: Colors.black12.withValues(alpha: .03),
       body: existingLeavesAsync.when(
         data: (existingLeaves) => SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),

@@ -52,7 +52,7 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
     final leavesAsync = ref.watch(leavesByEntityProvider(widget.entityId));
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      // backgroundColor: Colors.transparent,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Center(

@@ -30,7 +30,7 @@ class EmployeeContactPage extends ConsumerWidget {
     final employeesAsync = ref.watch(employeesProvider);
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      // backgroundColor: Colors.transparent,
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(

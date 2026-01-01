@@ -29,6 +29,7 @@ ThemeData buildTheme(ColorScheme colorScheme) {
   return ThemeData(
     colorScheme: colorScheme,
     useMaterial3: true,
+    scaffoldBackgroundColor: colorScheme.primaryContainer,
     textTheme: GoogleFonts.latoTextTheme(
       ThemeData(brightness: colorScheme.brightness).textTheme,
     ),

@@ -28,7 +28,7 @@ class EmployeeLeavePage extends ConsumerWidget {
     final double width = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      // backgroundColor: Colors.transparent,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(

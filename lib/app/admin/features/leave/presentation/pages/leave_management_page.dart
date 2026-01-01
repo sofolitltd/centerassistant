@@ -12,7 +12,8 @@ class LeaveManagementPage extends ConsumerStatefulWidget {
   const LeaveManagementPage({super.key});
 
   @override
-  ConsumerState<LeaveManagementPage> createState() => _LeaveManagementPageState();
+  ConsumerState<LeaveManagementPage> createState() =>
+      _LeaveManagementPageState();
 }
 
 class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
@@ -26,7 +27,7 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
     final employeesAsync = ref.watch(employeesProvider);
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      // backgroundColor: Colors.transparent,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -43,15 +44,22 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
             // Calendar View
             allLeavesAsync.when(
               data: (leaves) => _buildCalendarCard(theme, leaves),
-              loading: () => const SizedBox(height: 300, child: Center(child: CircularProgressIndicator())),
+              loading: () => const SizedBox(
+                height: 300,
+                child: Center(child: CircularProgressIndicator()),
+              ),
               error: (e, _) => Text('Error loading calendar: $e'),
             ),
 
             const SizedBox(height: 32),
 
             Text(
-              _selectedDay == null ? 'All Requests' : 'Requests for ${DateFormat('MMM dd, yyyy').format(_selectedDay!)}',
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              _selectedDay == null
+                  ? 'All Requests'
+                  : 'Requests for ${DateFormat('MMM dd, yyyy').format(_selectedDay!)}',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 16),
 
@@ -59,23 +67,30 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
               data: (leaves) => employeesAsync.when(
                 data: (employees) {
                   final employeeMap = {for (var e in employees) e.id: e};
-                  
+
                   // Filter by selected day if applicable
                   var filteredLeaves = leaves;
                   if (_selectedDay != null) {
-                    filteredLeaves = leaves.where((l) => 
-                      l.date.year == _selectedDay!.year &&
-                      l.date.month == _selectedDay!.month &&
-                      l.date.day == _selectedDay!.day
-                    ).toList();
+                    filteredLeaves = leaves
+                        .where(
+                          (l) =>
+                              l.date.year == _selectedDay!.year &&
+                              l.date.month == _selectedDay!.month &&
+                              l.date.day == _selectedDay!.day,
+                        )
+                        .toList();
                   }
 
                   // Sort by pending and cancel_requested first, then by date
                   final sortedLeaves = List<Leave>.from(filteredLeaves)
                     ..sort((a, b) {
-                      bool aUrgent = a.status == LeaveStatus.pending || a.status == LeaveStatus.cancel_requested;
-                      bool bUrgent = b.status == LeaveStatus.pending || b.status == LeaveStatus.cancel_requested;
-                      
+                      bool aUrgent =
+                          a.status == LeaveStatus.pending ||
+                          a.status == LeaveStatus.cancel_requested;
+                      bool bUrgent =
+                          b.status == LeaveStatus.pending ||
+                          b.status == LeaveStatus.cancel_requested;
+
                       if (aUrgent && !bUrgent) return -1;
                       if (!aUrgent && bUrgent) return 1;
                       return b.date.compareTo(a.date);
@@ -91,7 +106,11 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
                       ),
                       child: const Padding(
                         padding: EdgeInsets.all(40),
-                        child: Center(child: Text('No leave requests found for this selection.')),
+                        child: Center(
+                          child: Text(
+                            'No leave requests found for this selection.',
+                          ),
+                        ),
                       ),
                     );
                   }
@@ -183,13 +202,19 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
             });
           },
           calendarFormat: CalendarFormat.month,
-          headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
+          headerStyle: const HeaderStyle(
+            formatButtonVisible: false,
+            titleCentered: true,
+          ),
           eventLoader: (day) {
-            return leaves.where((l) => 
-              l.date.year == day.year && 
-              l.date.month == day.month && 
-              l.date.day == day.day
-            ).toList();
+            return leaves
+                .where(
+                  (l) =>
+                      l.date.year == day.year &&
+                      l.date.month == day.month &&
+                      l.date.day == day.day,
+                )
+                .toList();
           },
           calendarStyle: CalendarStyle(
             markerDecoration: BoxDecoration(
@@ -217,12 +242,14 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            onPressed: () => _updateStatus(context, ref, leave.id, LeaveStatus.approved),
+            onPressed: () =>
+                _updateStatus(context, ref, leave.id, LeaveStatus.approved),
             icon: const Icon(LucideIcons.checkCircle, color: Colors.green),
             tooltip: 'Approve Request',
           ),
           IconButton(
-            onPressed: () => _updateStatus(context, ref, leave.id, LeaveStatus.rejected),
+            onPressed: () =>
+                _updateStatus(context, ref, leave.id, LeaveStatus.rejected),
             icon: const Icon(LucideIcons.xCircle, color: Colors.red),
             tooltip: 'Reject Request',
           ),
@@ -237,12 +264,14 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
           _buildStatusBadge(leave.status),
           const SizedBox(width: 8),
           IconButton(
-            onPressed: () => _updateStatus(context, ref, leave.id, LeaveStatus.cancelled),
+            onPressed: () =>
+                _updateStatus(context, ref, leave.id, LeaveStatus.cancelled),
             icon: const Icon(LucideIcons.check, color: Colors.orange),
             tooltip: 'Approve Cancellation',
           ),
           IconButton(
-            onPressed: () => _updateStatus(context, ref, leave.id, LeaveStatus.approved),
+            onPressed: () =>
+                _updateStatus(context, ref, leave.id, LeaveStatus.approved),
             icon: const Icon(LucideIcons.x, color: Colors.grey),
             tooltip: 'Deny Cancellation (Keep Approved)',
           ),
@@ -262,7 +291,8 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
     String actionLabel = 'process';
     if (status == LeaveStatus.approved) actionLabel = 'approve';
     if (status == LeaveStatus.rejected) actionLabel = 'reject';
-    if (status == LeaveStatus.cancelled) actionLabel = 'confirm cancellation of';
+    if (status == LeaveStatus.cancelled)
+      actionLabel = 'confirm cancellation of';
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -278,7 +308,9 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: (status == LeaveStatus.approved || status == LeaveStatus.cancelled)
+              backgroundColor:
+                  (status == LeaveStatus.approved ||
+                      status == LeaveStatus.cancelled)
                   ? Colors.green
                   : Colors.red,
               foregroundColor: Colors.white,
