@@ -107,32 +107,32 @@ class AdminLayoutPage extends ConsumerWidget {
                         'Management',
                         style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
-                      const Divider(),
+                      // const Divider(),
                     ],
                   ),
                 ),
-                PopupMenuItem(
-                  value: 1,
-                  height: 40,
-                  child: Row(
-                    children: const [
-                      Icon(LucideIcons.user, size: 18),
-                      SizedBox(width: 12),
-                      Text('My Profile'),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 2,
-                  height: 40,
-                  child: Row(
-                    children: const [
-                      Icon(LucideIcons.settings, size: 18),
-                      SizedBox(width: 12),
-                      Text('Settings'),
-                    ],
-                  ),
-                ),
+                // PopupMenuItem(
+                //   value: 1,
+                //   height: 40,
+                //   child: Row(
+                //     children: const [
+                //       Icon(LucideIcons.user, size: 18),
+                //       SizedBox(width: 12),
+                //       Text('Profile'),
+                //     ],
+                //   ),
+                // ),
+                // PopupMenuItem(
+                //   value: 2,
+                //   height: 40,
+                //   child: Row(
+                //     children: const [
+                //       Icon(LucideIcons.settings, size: 18),
+                //       SizedBox(width: 12),
+                //       Text('Settings'),
+                //     ],
+                //   ),
+                // ),
                 ...[
                   const PopupMenuDivider(),
                   PopupMenuItem(

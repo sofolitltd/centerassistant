@@ -106,7 +106,7 @@ class _EmployeeSettingsPageState extends ConsumerState<EmployeeSettingsPage> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Align(
-          alignment: .centerLeft,
+          alignment: Alignment.topLeft,
           child: Container(
             constraints: const BoxConstraints(maxWidth: 800),
             child: Column(
@@ -116,7 +116,7 @@ class _EmployeeSettingsPageState extends ConsumerState<EmployeeSettingsPage> {
                 Row(
                   children: [
                     InkWell(
-                      onTap: () => context.go('/employee/layout'),
+                      onTap: () => context.go('/employee/dashboard'),
                       child: Text(
                         'Overview',
                         style: theme.textTheme.bodyMedium?.copyWith(
@@ -157,7 +157,6 @@ class _EmployeeSettingsPageState extends ConsumerState<EmployeeSettingsPage> {
                       );
                     }
 
-                    // Initialize selected option if not set
                     _selectedEmailOption ??= employee.email;
 
                     final hasOfficial = employee.officialEmail.isNotEmpty;
@@ -165,11 +164,9 @@ class _EmployeeSettingsPageState extends ConsumerState<EmployeeSettingsPage> {
 
                     return Column(
                       children: [
-                        // Change Email Section
                         _buildSettingsCard(
                           title: 'Login Email',
-                          subtitle:
-                              'Choose which email to use for portal login',
+                          subtitle: 'Choose which email to use for login',
                           icon: LucideIcons.mail,
                           form: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,73 +186,48 @@ class _EmployeeSettingsPageState extends ConsumerState<EmployeeSettingsPage> {
                               ),
                               const SizedBox(height: 20),
 
-                              // Wrap the selection area in RadioGroup
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // 1. Migrated Grouped Radio Selection
-                                  RadioGroup<String>(
-                                    groupValue: _selectedEmailOption,
-                                    onChanged: (String? value) {
-                                      // Validation check: Only update if the specific email is available
-                                      bool isOfficial =
-                                          value == employee.officialEmail;
-                                      if ((isOfficial && hasOfficial) ||
-                                          (!isOfficial && hasPersonal)) {
-                                        setState(() {
-                                          _selectedEmailOption = value;
-                                        });
-                                      }
-                                    },
-                                    child: Column(
-                                      children: [
-                                        // Simplified Radio per your reference
-                                        Radio<String>(
-                                          value: employee.officialEmail,
-                                        ),
-                                        Radio<String>(
-                                          value: employee.personalEmail,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                              if (hasOfficial)
+                                _buildEmailOption(
+                                  label: 'Official Email',
+                                  email: employee.officialEmail,
+                                  theme: theme,
+                                ),
+                              if (hasPersonal)
+                                _buildEmailOption(
+                                  label: 'Personal Email',
+                                  email: employee.personalEmail,
+                                  theme: theme,
+                                ),
 
-                                  const SizedBox(height: 24),
-
-                                  // 2. Action Button
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton(
-                                      onPressed:
-                                          (_isEmailLoading ||
-                                              _selectedEmailOption ==
-                                                  employee.email ||
-                                              _selectedEmailOption == null ||
-                                              _selectedEmailOption!.isEmpty)
-                                          ? null
-                                          : () => _handleUpdateEmail(
-                                              employee.id,
-                                              _selectedEmailOption!,
-                                            ),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor:
-                                            theme.colorScheme.primary,
-                                        foregroundColor:
-                                            theme.colorScheme.onPrimary,
-                                      ),
-                                      child: _isEmailLoading
-                                          ? const SizedBox(
-                                              height: 20,
-                                              width: 20,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                color: Colors.white,
-                                              ),
-                                            )
-                                          : const Text('Set as Login Email'),
-                                    ),
+                              const SizedBox(height: 24),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed:
+                                      (_isEmailLoading ||
+                                          _selectedEmailOption ==
+                                              employee.email)
+                                      ? null
+                                      : () => _handleUpdateEmail(
+                                          employee.id,
+                                          _selectedEmailOption!,
+                                        ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: theme.colorScheme.primary,
+                                    foregroundColor:
+                                        theme.colorScheme.onPrimary,
                                   ),
-                                ],
+                                  child: _isEmailLoading
+                                      ? const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Text('Update Login Email'),
+                                ),
                               ),
                             ],
                           ),
@@ -263,7 +235,6 @@ class _EmployeeSettingsPageState extends ConsumerState<EmployeeSettingsPage> {
 
                         const SizedBox(height: 32),
 
-                        // Change Password Section
                         _buildSettingsCard(
                           title: 'Security',
                           subtitle: 'Update your portal password',
@@ -271,7 +242,6 @@ class _EmployeeSettingsPageState extends ConsumerState<EmployeeSettingsPage> {
                           form: Form(
                             key: _passwordFormKey,
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 _buildPasswordField(
                                   label: 'Current Password',
@@ -299,12 +269,10 @@ class _EmployeeSettingsPageState extends ConsumerState<EmployeeSettingsPage> {
                                     () => _obscureConfirm = !_obscureConfirm,
                                   ),
                                   validator: (v) {
-                                    if (v == null || v.isEmpty) {
+                                    if (v == null || v.isEmpty)
                                       return 'Required';
-                                    }
-                                    if (v != _newPasswordController.text) {
+                                    if (v != _newPasswordController.text)
                                       return 'Passwords do not match';
-                                    }
                                     return null;
                                   },
                                 ),
@@ -345,13 +313,36 @@ class _EmployeeSettingsPageState extends ConsumerState<EmployeeSettingsPage> {
                   },
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
-                  error: (e, s) => Center(child: Text('Error: $e')),
+                  error: (err, stack) => Center(child: Text('Error: $err')),
                 ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildEmailOption({
+    required String label,
+    required String email,
+    required ThemeData theme,
+  }) {
+    return RadioListTile<String>(
+      value: email,
+      groupValue: _selectedEmailOption,
+      onChanged: (v) => setState(() => _selectedEmailOption = v),
+      title: Text(
+        label,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+      ),
+      subtitle: Text(
+        email,
+        style: const TextStyle(fontSize: 13, color: Colors.grey),
+      ),
+      contentPadding: EdgeInsets.zero,
+      dense: true,
+      activeColor: theme.colorScheme.primary,
     );
   }
 
@@ -363,7 +354,7 @@ class _EmployeeSettingsPageState extends ConsumerState<EmployeeSettingsPage> {
   }) {
     return Card(
       elevation: 0,
-      margin: .zero,
+      color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: Colors.grey.shade200),
@@ -375,11 +366,7 @@ class _EmployeeSettingsPageState extends ConsumerState<EmployeeSettingsPage> {
           children: [
             Row(
               children: [
-                Icon(
-                  icon,
-                  size: 20,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+                Icon(icon, size: 20, color: Colors.grey),
                 const SizedBox(width: 12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -393,19 +380,13 @@ class _EmployeeSettingsPageState extends ConsumerState<EmployeeSettingsPage> {
                     ),
                     Text(
                       subtitle,
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 12,
-                      ),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],
                 ),
               ],
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: Divider(),
-            ),
+            const Divider(height: 40),
             form,
           ],
         ),
@@ -425,26 +406,34 @@ class _EmployeeSettingsPageState extends ConsumerState<EmployeeSettingsPage> {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey,
+          ),
         ),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
           obscureText: obscure,
+          style: const TextStyle(fontSize: 14),
           decoration: InputDecoration(
             prefixIcon: const Icon(LucideIcons.lock, size: 18),
             suffixIcon: IconButton(
               icon: Icon(
-                obscure ? LucideIcons.eye : LucideIcons.eyeOff,
+                obscure ? LucideIcons.eyeOff : LucideIcons.eye,
                 size: 18,
               ),
               onPressed: onToggle,
             ),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
           ),
           validator:
-              validator ??
-              (v) => v != null && v.length >= 6 ? null : 'Min 6 characters',
+              validator ?? (v) => v == null || v.isEmpty ? 'Required' : null,
         ),
       ],
     );

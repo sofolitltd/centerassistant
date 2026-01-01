@@ -214,7 +214,7 @@ class EmployeeLayoutPage extends ConsumerWidget {
                     } else if (value == 2) {
                       context.go('/employee/settings');
                     } else if (value == 3) {
-                      context.go('/employee/help-support');
+                      context.go('/employee/support');
                     } else if (value == 4) {
                       context.go('/admin/dashboard');
                     } else if (value == 0) {
@@ -451,8 +451,9 @@ class _EmployeeSideMenuState extends State<_EmployeeSideMenu> {
                   color: isAnySubSelected
                       ? theme.colorScheme.secondary
                       : theme.colorScheme.onSurface.withValues(alpha: 0.8),
-                  fontWeight:
-                      isAnySubSelected ? FontWeight.bold : FontWeight.normal,
+                  fontWeight: isAnySubSelected
+                      ? FontWeight.bold
+                      : FontWeight.normal,
                 ),
               ),
             ),

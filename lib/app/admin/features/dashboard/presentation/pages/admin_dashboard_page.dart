@@ -139,7 +139,8 @@ class AdminDashboardPage extends ConsumerWidget {
   }) {
     return Card(
       margin: EdgeInsets.zero,
-      child: GestureDetector(
+      child: InkWell(
+        hoverColor: Colors.transparent,
         onTap: onTap,
         // borderRadius: BorderRadius.circular(8),
         child: Padding(

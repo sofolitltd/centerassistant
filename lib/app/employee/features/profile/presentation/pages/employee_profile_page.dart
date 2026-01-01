@@ -106,14 +106,17 @@ class _EmployeeProfilePageState extends ConsumerState<EmployeeProfilePage> {
         ? ref.watch(employeeByIdProvider(authState.employeeId!))
         : const AsyncValue<Employee?>.data(null);
 
+    final double width = MediaQuery.of(context).size.width;
+    final bool isMobile = width < 700;
+
     return Scaffold(
       // backgroundColor: Colors.transparent,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Align(
-          alignment: .centerLeft,
+          alignment: Alignment.topLeft,
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 800),
+            constraints: const BoxConstraints(maxWidth: 900),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -121,7 +124,7 @@ class _EmployeeProfilePageState extends ConsumerState<EmployeeProfilePage> {
                 Row(
                   children: [
                     InkWell(
-                      onTap: () => context.go('/employee/layout'),
+                      onTap: () => context.go('/employee/dashboard'),
                       child: Text(
                         'Overview',
                         style: theme.textTheme.bodyMedium?.copyWith(
@@ -142,10 +145,9 @@ class _EmployeeProfilePageState extends ConsumerState<EmployeeProfilePage> {
                 employeeAsync.when(
                   data: (employee) {
                     if (employee == null) {
-                      return const Center(child: Text('Not found'));
+                      return const Center(child: Text('Profile not found'));
                     }
 
-                    // Only init fields once when not editing or when employee data changes
                     if (!_isEditing) {
                       _initFields(employee);
                     }
@@ -155,274 +157,13 @@ class _EmployeeProfilePageState extends ConsumerState<EmployeeProfilePage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'My Profile',
-                                style: theme.textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              if (!_isEditing)
-                                ElevatedButton.icon(
-                                  onPressed: () =>
-                                      setState(() => _isEditing = true),
-                                  icon: const Icon(LucideIcons.edit3, size: 18),
-                                  label: const Text('Edit Profile'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        theme.colorScheme.secondary,
-                                    foregroundColor:
-                                        theme.colorScheme.onSecondary,
-                                  ),
-                                )
-                              else
-                                Row(
-                                  children: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          setState(() => _isEditing = false),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    ElevatedButton.icon(
-                                      onPressed: _isLoading
-                                          ? null
-                                          : () => _handleSave(employee),
-                                      icon: _isLoading
-                                          ? const SizedBox(
-                                              width: 18,
-                                              height: 18,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                              ),
-                                            )
-                                          : const Icon(
-                                              LucideIcons.save,
-                                              size: 18,
-                                            ),
-                                      label: const Text('Save Changes'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor:
-                                            theme.colorScheme.primary,
-                                        foregroundColor:
-                                            theme.colorScheme.onPrimary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                            ],
-                          ),
+                          _buildHeader(theme, isMobile, employee),
                           const SizedBox(height: 32),
-
-                          Center(
-                            child: Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.grey.shade200),
-                              ),
-                              padding: const EdgeInsets.all(24),
-                              child: Row(
-                                spacing: 16,
-                                children: [
-                                  Stack(
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 60,
-                                        backgroundColor: Colors.grey.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        backgroundImage:
-                                            employee.image.isNotEmpty
-                                            ? NetworkImage(employee.image)
-                                            : null,
-                                        child: employee.image.isEmpty
-                                            ? const Icon(
-                                                LucideIcons.user,
-                                                size: 50,
-                                              )
-                                            : null,
-                                      ),
-                                      if (_isEditing)
-                                        Positioned(
-                                          bottom: 0,
-                                          right: 0,
-                                          child: CircleAvatar(
-                                            backgroundColor:
-                                                theme.colorScheme.primary,
-                                            radius: 18,
-                                            child: IconButton(
-                                              icon: const Icon(
-                                                LucideIcons.camera,
-                                                size: 18,
-                                                color: Colors.white,
-                                              ),
-                                              onPressed: () {
-                                                // Implement image upload
-                                              },
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Column(
-                                    crossAxisAlignment: .start,
-                                    spacing: 8,
-                                    children: [
-                                      Text(
-                                        employee.name,
-                                        style: theme.textTheme.titleLarge
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                      ),
-                                      Text(
-                                        employee.department,
-                                        style: theme.textTheme.bodyMedium
-                                            ?.copyWith(color: Colors.grey),
-                                      ),
-                                      const SizedBox(),
-                                      //id
-                                      Text(
-                                        'ID: ${employee.id.toUpperCase()}',
-                                        style: theme.textTheme.bodyMedium
-                                            ?.copyWith(color: Colors.grey),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 40),
-
-                          _buildSectionTitle(context, 'Basic Information'),
-                          const SizedBox(height: 16),
-
-                          Container(
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              children: [
-                                _buildTextField(
-                                  label: 'Full Name',
-                                  controller: _nameController,
-                                  enabled: _isEditing,
-                                  prefixIcon: LucideIcons.user,
-                                  isRequired: true,
-                                ),
-                              ],
-                            ),
-                          ),
-
+                          _buildProfileCard(theme, isMobile, employee),
                           const SizedBox(height: 32),
-
-                          _buildSectionTitle(context, 'Contact Information'),
-                          const SizedBox(height: 16),
-
-                          Container(
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildTextField(
-                                        label: 'Personal Phone',
-                                        controller: _pPhoneController,
-                                        enabled: _isEditing,
-                                        prefixIcon: LucideIcons.phone,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: _buildTextField(
-                                        label: 'Official Phone',
-                                        controller: _oPhoneController,
-                                        enabled: _isEditing,
-                                        prefixIcon: LucideIcons.phoneCall,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-
-                                const SizedBox(height: 24),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildTextField(
-                                        label: 'Personal Email',
-                                        controller: _pEmailController,
-                                        enabled: _isEditing,
-                                        prefixIcon: LucideIcons.mail,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: _buildTextField(
-                                        label: 'Official Email',
-                                        controller: _oEmailController,
-                                        enabled: _isEditing,
-                                        prefixIcon: LucideIcons.briefcase,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-
+                          _buildInfoSection(theme, isMobile),
                           const SizedBox(height: 32),
-                          _buildSectionTitle(context, 'Account Status'),
-                          const SizedBox(height: 16),
-                          Container(
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceAround,
-                                children: [
-                                  _buildInfoBadge(
-                                    'Joined',
-                                    employee.joinDate.toString().split(' ')[0],
-                                    LucideIcons.calendar,
-                                  ),
-                                  _buildInfoBadge(
-                                    'Role',
-                                    employee.role.toUpperCase(),
-                                    LucideIcons.shield,
-                                  ),
-                                  _buildInfoBadge(
-                                    'Status',
-                                    employee.isActive ? 'ACTIVE' : 'INACTIVE',
-                                    LucideIcons.checkCircle,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                          _buildAccountStatus(theme, isMobile, employee),
                         ],
                       ),
                     );
@@ -439,12 +180,296 @@ class _EmployeeProfilePageState extends ConsumerState<EmployeeProfilePage> {
     );
   }
 
-  Widget _buildSectionTitle(BuildContext context, String title) {
+  Widget _buildHeader(ThemeData theme, bool isMobile, Employee employee) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          'My Profile',
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        if (!_isEditing)
+          ElevatedButton.icon(
+            onPressed: () => setState(() => _isEditing = true),
+            icon: const Icon(LucideIcons.edit3, size: 18),
+            label: const Text('Edit Profile'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: theme.colorScheme.secondary,
+              foregroundColor: theme.colorScheme.onSecondary,
+            ),
+          )
+        else
+          Row(
+            children: [
+              TextButton(
+                onPressed: () => setState(() => _isEditing = false),
+                child: const Text('Cancel'),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: _isLoading ? null : () => _handleSave(employee),
+                icon: _isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(LucideIcons.save, size: 18),
+                label: const Text('Save'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                ),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildProfileCard(ThemeData theme, bool isMobile, Employee employee) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: isMobile
+            ? Column(
+                children: [
+                  _buildAvatar(theme, employee),
+                  const SizedBox(height: 20),
+                  _buildBasicInfo(theme, employee, textAlign: TextAlign.center),
+                ],
+              )
+            : Row(
+                children: [
+                  _buildAvatar(theme, employee),
+                  const SizedBox(width: 32),
+                  Expanded(child: _buildBasicInfo(theme, employee)),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildAvatar(ThemeData theme, Employee employee) {
+    return Stack(
+      children: [
+        CircleAvatar(
+          radius: 60,
+          backgroundColor: Colors.grey.withValues(alpha: 0.1),
+          backgroundImage: employee.image.isNotEmpty
+              ? NetworkImage(employee.image)
+              : null,
+          child: employee.image.isEmpty
+              ? const Icon(LucideIcons.user, size: 50, color: Colors.grey)
+              : null,
+        ),
+        if (_isEditing)
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: CircleAvatar(
+              backgroundColor: theme.colorScheme.primary,
+              radius: 18,
+              child: IconButton(
+                icon: const Icon(
+                  LucideIcons.camera,
+                  size: 18,
+                  color: Colors.white,
+                ),
+                onPressed: () {}, // Image upload logic
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildBasicInfo(
+    ThemeData theme,
+    Employee employee, {
+    TextAlign textAlign = TextAlign.start,
+  }) {
+    return Column(
+      crossAxisAlignment: textAlign == TextAlign.center
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.start,
+      children: [
+        Text(
+          employee.name,
+          textAlign: textAlign,
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          employee.department,
+          textAlign: textAlign,
+          style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            'ID: ${employee.id.toUpperCase()}',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoSection(ThemeData theme, bool isMobile) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle(theme, 'Basic Information'),
+        const SizedBox(height: 12),
+        _buildResponsiveGrid(
+          children: [
+            _buildTextField(
+              label: 'Full Name',
+              controller: _nameController,
+              enabled: _isEditing,
+              prefixIcon: LucideIcons.user,
+              isRequired: true,
+            ),
+          ],
+        ),
+        const SizedBox(height: 32),
+        _buildSectionTitle(theme, 'Contact Information'),
+        const SizedBox(height: 12),
+        _buildResponsiveGrid(
+          isMobile: isMobile,
+          children: [
+            _buildTextField(
+              label: 'Personal Phone',
+              controller: _pPhoneController,
+              enabled: _isEditing,
+              prefixIcon: LucideIcons.phone,
+            ),
+            _buildTextField(
+              label: 'Official Phone',
+              controller: _oPhoneController,
+              enabled: _isEditing,
+              prefixIcon: LucideIcons.phoneCall,
+            ),
+            _buildTextField(
+              label: 'Personal Email',
+              controller: _pEmailController,
+              enabled: _isEditing,
+              prefixIcon: LucideIcons.mail,
+            ),
+            _buildTextField(
+              label: 'Official Email',
+              controller: _oEmailController,
+              enabled: _isEditing,
+              prefixIcon: LucideIcons.briefcase,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildResponsiveGrid({
+    required List<Widget> children,
+    bool isMobile = false,
+  }) {
+    if (isMobile) {
+      return Column(
+        children: children
+            .map(
+              (child) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: child,
+              ),
+            )
+            .toList(),
+      );
+    }
+
+    return Wrap(
+      spacing: 24,
+      runSpacing: 24,
+      children: children
+          .map(
+            (child) => SizedBox(
+              width: (900 - 48 - 24) / 2, // Max width - padding - spacing
+              child: child,
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Widget _buildAccountStatus(
+    ThemeData theme,
+    bool isMobile,
+    Employee employee,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle(theme, 'Employment Details'),
+        const SizedBox(height: 12),
+        Card(
+          elevation: 0,
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.grey.shade200),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildInfoBadge(
+                  'Joined Date',
+                  employee.joinDate.toString().split(' ')[0],
+                  LucideIcons.calendar,
+                ),
+                _buildInfoBadge(
+                  'System Role',
+                  employee.role.toUpperCase(),
+                  LucideIcons.shieldCheck,
+                ),
+                _buildInfoBadge(
+                  'Account',
+                  employee.isActive ? 'ACTIVE' : 'INACTIVE',
+                  LucideIcons.activity,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionTitle(ThemeData theme, String title) {
     return Text(
       title,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+      style: theme.textTheme.titleMedium?.copyWith(
         fontWeight: FontWeight.bold,
-        color: Theme.of(context).colorScheme.primary,
+        color: theme.colorScheme.primary,
       ),
     );
   }
@@ -479,7 +504,7 @@ class _EmployeeProfilePageState extends ConsumerState<EmployeeProfilePage> {
             fillColor: enabled ? null : Colors.grey.withValues(alpha: 0.05),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 12,
-              vertical: 12,
+              vertical: 14,
             ),
           ),
           validator: isRequired
@@ -491,16 +516,27 @@ class _EmployeeProfilePageState extends ConsumerState<EmployeeProfilePage> {
   }
 
   Widget _buildInfoBadge(String label, String value, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, size: 20, color: Colors.grey),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        ),
-      ],
+    return Expanded(
+      child: Column(
+        children: [
+          Icon(icon, size: 24, color: Colors.grey.shade400),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 10,
+              color: Colors.grey,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 }
