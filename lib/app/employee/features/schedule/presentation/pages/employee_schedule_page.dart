@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '/core/models/leave.dart';
 import '/core/models/schedule_template.dart';
 import '/core/models/time_slot.dart';
 import '/core/providers/auth_providers.dart';
@@ -53,7 +54,7 @@ class EmployeePortalSchedulePage extends ConsumerWidget {
             Row(
               children: [
                 InkWell(
-                  onTap: () => context.go('/employee/layout'),
+                  onTap: () => context.go('/employee/dashboard'),
                   child: Text(
                     'Overview',
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -236,14 +237,15 @@ class _DailyView extends ConsumerWidget {
 
     return leavesAsync.when(
       data: (leaves) {
-        final isOnLeave = leaves.any(
+        final isApprovedOnLeave = leaves.any(
           (l) =>
+              l.status == LeaveStatus.approved &&
               l.date.year == selectedDate.year &&
               l.date.month == selectedDate.month &&
               l.date.day == selectedDate.day,
         );
 
-        if (isOnLeave) {
+        if (isApprovedOnLeave) {
           return _buildCenteredMessage(
             context,
             LucideIcons.calendarX,

@@ -16,6 +16,8 @@ class Employee {
   final DateTime joinDate;
   final DateTime createdAt;
   final String image;
+  final int carriedForwardLeaves; // Leaves from previous year
+  final String? fcmToken;
 
   Employee({
     required this.id,
@@ -33,6 +35,8 @@ class Employee {
     required this.joinDate,
     required this.createdAt,
     this.image = '',
+    this.carriedForwardLeaves = 0,
+    this.fcmToken,
   });
 
   // Helper getter to check if employee has portal access
@@ -55,6 +59,8 @@ class Employee {
       'joinDate': Timestamp.fromDate(joinDate),
       'createdAt': Timestamp.fromDate(createdAt),
       'image': image,
+      'carriedForwardLeaves': carriedForwardLeaves,
+      'fcmToken': fcmToken,
     };
   }
 
@@ -80,6 +86,8 @@ class Employee {
       joinDate: (data['joinDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       image: data['image'] as String? ?? '',
+      carriedForwardLeaves: data['carriedForwardLeaves'] as int? ?? 0,
+      fcmToken: data['fcmToken'] as String?,
     );
   }
 }

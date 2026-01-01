@@ -2,12 +2,22 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum LeaveEntityType { employee, client }
 
+enum LeaveType { annual, sick, causal, unpaid }
+
+enum LeaveDuration { full, half }
+
+enum LeaveStatus { pending, approved, rejected, cancelled, cancel_requested }
+
 class Leave {
   final String id;
   final String entityId; // employeeId or clientId
   final LeaveEntityType entityType;
   final DateTime date;
   final String? reason;
+  final LeaveType leaveType;
+  final LeaveDuration duration;
+  final LeaveStatus status;
+  final String? approvedBy; // adminId
 
   Leave({
     required this.id,
@@ -15,6 +25,10 @@ class Leave {
     required this.entityType,
     required this.date,
     this.reason,
+    this.leaveType = LeaveType.annual,
+    this.duration = LeaveDuration.full,
+    this.status = LeaveStatus.pending,
+    this.approvedBy,
   });
 
   Map<String, dynamic> toJson() {
@@ -23,6 +37,10 @@ class Leave {
       'entityType': entityType.name,
       'date': Timestamp.fromDate(date),
       'reason': reason,
+      'leaveType': leaveType.name,
+      'duration': duration.name,
+      'status': status.name,
+      'approvedBy': approvedBy,
     };
   }
 
@@ -36,6 +54,33 @@ class Leave {
       ),
       date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
       reason: data['reason'] as String?,
+      leaveType: LeaveType.values.byName(
+        data['leaveType'] as String? ?? 'annual',
+      ),
+      duration: LeaveDuration.values.byName(
+        data['duration'] as String? ?? 'full',
+      ),
+      status: LeaveStatus.values.byName(
+        data['status'] as String? ?? 'pending',
+      ),
+      approvedBy: data['approvedBy'] as String?,
+    );
+  }
+
+  Leave copyWith({
+    LeaveStatus? status,
+    String? approvedBy,
+  }) {
+    return Leave(
+      id: id,
+      entityId: entityId,
+      entityType: entityType,
+      date: date,
+      reason: reason,
+      leaveType: leaveType,
+      duration: duration,
+      status: status ?? this.status,
+      approvedBy: approvedBy ?? this.approvedBy,
     );
   }
 }

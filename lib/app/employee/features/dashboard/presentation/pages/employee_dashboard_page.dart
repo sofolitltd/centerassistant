@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '/core/models/leave.dart';
 import '/core/models/schedule_template.dart';
 import '/core/models/time_slot.dart';
 import '/core/providers/auth_providers.dart';
@@ -135,8 +136,10 @@ class _EmployeeDashboardContent extends ConsumerWidget {
                             final todayName = DateFormat('EEEE').format(today);
                             final slotMap = {for (var s in timeSlots) s.id: s};
 
-                            final isOnLeaveToday = leaves.any(
+                            // BUG FIX: Only block schedule if leave is APPROVED
+                            final isApprovedOnLeaveToday = leaves.any(
                               (l) =>
+                                  l.status == LeaveStatus.approved &&
                                   l.date.year == today.year &&
                                   l.date.month == today.month &&
                                   l.date.day == today.day,
@@ -182,7 +185,7 @@ class _EmployeeDashboardContent extends ConsumerWidget {
                               ).compareTo(timeToMinutes(slotB?.startTime));
                             });
 
-                            final todaySessionsCount = isOnLeaveToday
+                            final todaySessionsCount = isApprovedOnLeaveToday
                                 ? 0
                                 : todaySessions.length;
 
@@ -191,7 +194,8 @@ class _EmployeeDashboardContent extends ConsumerWidget {
                             IconData sessionStatusIcon =
                                 LucideIcons.arrowRightCircle;
 
-                            if (todaySessions.isNotEmpty && !isOnLeaveToday) {
+                            if (todaySessions.isNotEmpty &&
+                                !isApprovedOnLeaveToday) {
                               final currentMinutes =
                                   today.hour * 60 + today.minute;
 
@@ -203,7 +207,6 @@ class _EmployeeDashboardContent extends ConsumerWidget {
                                 if (slot != null) {
                                   final start = timeToMinutes(slot.startTime);
                                   final end = timeToMinutes(slot.endTime);
-                                  // Buffer of 5 minutes before/after for "Active" state
                                   if (currentMinutes >= start &&
                                       currentMinutes < end) {
                                     sessionStatusText = 'Running Now';
@@ -272,11 +275,13 @@ class _EmployeeDashboardContent extends ConsumerWidget {
                                   return _buildStatCard(
                                     context,
                                     'Today\'s Workload',
-                                    isOnLeaveToday
+                                    isApprovedOnLeaveToday
                                         ? 'ON LEAVE'
                                         : todaySessionsCount.toString(),
                                     LucideIcons.clock,
-                                    isOnLeaveToday ? Colors.red : Colors.orange,
+                                    isApprovedOnLeaveToday
+                                        ? Colors.red
+                                        : Colors.orange,
                                     onTap: () =>
                                         context.go('/employee/schedule'),
                                   );
@@ -284,11 +289,13 @@ class _EmployeeDashboardContent extends ConsumerWidget {
                                 return _buildStatCard(
                                   context,
                                   'Next Session',
-                                  isOnLeaveToday ? 'NONE' : sessionStatusText,
-                                  isOnLeaveToday
+                                  isApprovedOnLeaveToday
+                                      ? 'NONE'
+                                      : sessionStatusText,
+                                  isApprovedOnLeaveToday
                                       ? LucideIcons.calendarX
                                       : sessionStatusIcon,
-                                  isOnLeaveToday
+                                  isApprovedOnLeaveToday
                                       ? Colors.grey
                                       : sessionStatusColor,
                                   onTap: () => context.go('/employee/schedule'),
@@ -375,20 +382,20 @@ class _EmployeeDashboardContent extends ConsumerWidget {
       leavesAsync.when(
         data: (leaves) {
           final today = DateTime.now();
-          final isOnLeaveToday = leaves.any(
-            (l) =>
-                (l as dynamic).date.year == today.year &&
-                (l as dynamic).date.month == today.month &&
-                (l as dynamic).date.day == today.day,
-          );
+          // BUG FIX: Only block schedule if leave is APPROVED
+          final List<Leave> typedLeaves = List<Leave>.from(leaves);
+          final approvedLeave = typedLeaves
+              .where((l) => l.status == LeaveStatus.approved)
+              .cast<Leave?>()
+              .firstWhere(
+                (l) =>
+                    l!.date.year == today.year &&
+                    l.date.month == today.month &&
+                    l.date.day == today.day,
+                orElse: () => null,
+              );
 
-          if (isOnLeaveToday) {
-            final leave = leaves.firstWhere(
-              (l) =>
-                  (l as dynamic).date.year == today.year &&
-                  (l as dynamic).date.month == today.month &&
-                  (l as dynamic).date.day == today.day,
-            );
+          if (approvedLeave != null) {
             return Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -413,10 +420,10 @@ class _EmployeeDashboardContent extends ConsumerWidget {
                           color: Colors.red.shade900,
                         ),
                       ),
-                      if ((leave as dynamic).reason != null &&
-                          (leave as dynamic).reason!.isNotEmpty)
+                      if (approvedLeave.reason != null &&
+                          approvedLeave.reason!.isNotEmpty)
                         Text(
-                          'Reason: ${(leave as dynamic).reason}',
+                          'Reason: ${approvedLeave.reason}',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 12,

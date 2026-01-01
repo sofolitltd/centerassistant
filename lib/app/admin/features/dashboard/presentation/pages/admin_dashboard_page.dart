@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 
+import '/core/models/leave.dart';
 import '/core/providers/client_providers.dart';
 import '/core/providers/employee_providers.dart';
+import '/core/providers/leave_providers.dart';
 import '/core/providers/time_slot_providers.dart';
 
 class AdminDashboardPage extends ConsumerWidget {
@@ -15,6 +17,7 @@ class AdminDashboardPage extends ConsumerWidget {
     final employeesAsync = ref.watch(employeesProvider);
     final clientsAsync = ref.watch(clientsProvider);
     final timeSlotsAsync = ref.watch(timeSlotsProvider);
+    final leavesAsync = ref.watch(allLeavesProvider);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -56,7 +59,9 @@ class AdminDashboardPage extends ConsumerWidget {
               LayoutBuilder(
                 builder: (context, constraints) {
                   int crossAxisCount = 1;
-                  if (constraints.maxWidth > 900) {
+                  if (constraints.maxWidth > 1200) {
+                    crossAxisCount = 4;
+                  } else if (constraints.maxWidth > 900) {
                     crossAxisCount = 3;
                   } else if (constraints.maxWidth > 600) {
                     crossAxisCount = 2;
@@ -68,7 +73,7 @@ class AdminDashboardPage extends ConsumerWidget {
                     crossAxisCount: crossAxisCount,
                     mainAxisSpacing: 16,
                     crossAxisSpacing: 16,
-                    itemCount: 3,
+                    itemCount: 4,
                     itemBuilder: (context, index) {
                       //
                       switch (index) {
@@ -96,6 +101,20 @@ class AdminDashboardPage extends ConsumerWidget {
                             icon: Icons.schedule,
                             onTap: () => context.go('/admin/time-slots'),
                           );
+                        case 3:
+                          final pendingLeavesAsync = leavesAsync.whenData(
+                            (leaves) => leaves
+                                .where((l) => l.status == LeaveStatus.pending)
+                                .toList(),
+                          );
+                          return _buildSummaryCard(
+                            context: context,
+                            title: 'Pending Leaves',
+                            asyncValue: pendingLeavesAsync,
+                            icon: Icons.calendar_today,
+                            iconColor: Colors.orange,
+                            onTap: () => context.go('/admin/leave'),
+                          );
                         default:
                           return const SizedBox.shrink();
                       }
@@ -116,6 +135,7 @@ class AdminDashboardPage extends ConsumerWidget {
     required AsyncValue<List<dynamic>> asyncValue,
     required IconData icon,
     required VoidCallback onTap,
+    Color? iconColor,
   }) {
     return Card(
       margin: EdgeInsets.zero,
@@ -129,15 +149,14 @@ class AdminDashboardPage extends ConsumerWidget {
               Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.1),
+                  color: (iconColor ?? Theme.of(context).primaryColor)
+                      .withValues(alpha: 0.1),
                 ),
                 padding: const EdgeInsets.all(12),
                 child: Icon(
                   icon,
                   size: 28,
-                  color: Theme.of(context).primaryColor,
+                  color: iconColor ?? Theme.of(context).primaryColor,
                 ),
               ),
               const SizedBox(width: 20),

@@ -40,7 +40,7 @@ class EmployeeContactPage extends ConsumerWidget {
             Row(
               children: [
                 InkWell(
-                  onTap: () => context.go('/employee/layout'),
+                  onTap: () => context.go('/employee/dashboard'),
                   child: Text(
                     'Overview',
                     style: theme.textTheme.bodyMedium?.copyWith(

@@ -12,6 +12,7 @@ import '/app/admin/features/employees/presentation/pages/add_employee_page.dart'
 import '/app/admin/features/employees/presentation/pages/employee_page.dart';
 import '/app/admin/features/employees/presentation/pages/employee_schedule_page.dart';
 import '/app/admin/features/layout/presentation/pages/admin_layout_page.dart';
+import '/app/admin/features/leave/presentation/pages/leave_management_page.dart';
 import '/app/admin/features/sessions/presentation/pages/schedule_page.dart';
 import '/app/admin/features/time_slots/presentation/pages/add_time_slot_page.dart';
 import '/app/admin/features/time_slots/presentation/pages/time_slot_page.dart';
@@ -191,6 +192,16 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
               title: 'Add Time Slot | Center Assistant',
               color: Colors.black,
               child: const AddTimeSlotPage(),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/admin/leave',
+          pageBuilder: (context, state) => NoTransitionPage(
+            child: Title(
+              title: 'Leave Management | Center Assistant',
+              color: Colors.black,
+              child: const LeaveManagementPage(),
             ),
           ),
         ),

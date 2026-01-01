@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-
-import '/core/models/leave.dart';
-import '../../domain/repositories/leave_repository.dart';
+import 'package:center_assistant/core/models/leave.dart';
+import 'package:center_assistant/core/domain/repositories/leave_repository.dart';
 
 class LeaveRepositoryImpl implements ILeaveRepository {
   final FirebaseFirestore _firestore;
@@ -16,6 +15,18 @@ class LeaveRepositoryImpl implements ILeaveRepository {
   @override
   Future<void> removeLeave(String leaveId) async {
     await _firestore.collection('leaves').doc(leaveId).delete();
+  }
+
+  @override
+  Future<void> updateLeaveStatus(
+    String leaveId,
+    LeaveStatus status,
+    String adminId,
+  ) async {
+    await _firestore.collection('leaves').doc(leaveId).update({
+      'status': status.name,
+      'approvedBy': adminId,
+    });
   }
 
   @override
@@ -44,7 +55,10 @@ class LeaveRepositoryImpl implements ILeaveRepository {
           final leaves = snapshot.docs
               .map((doc) => Leave.fromFirestore(doc))
               .toList();
+          
+          // Fix: Proper descending sort (Newest date first)
           leaves.sort((a, b) => b.date.compareTo(a.date));
+          
           return leaves;
         });
   }

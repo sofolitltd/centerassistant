@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '/app/admin/features/auth/data/repositories/auth_repository_impl.dart';
 import '/app/employee/features/auth/data/repositories/employee_auth_repository.dart';
 import '/services/firebase_service.dart';
+import 'notification_providers.dart';
 
 class AuthState {
   final bool isAdminAuthenticated;
@@ -78,6 +79,18 @@ class AuthNotifier extends Notifier<AuthState> {
       mustChangePassword: mustChange,
       isLoading: false,
     );
+
+    // Update tokens if authenticated
+    if (isAdmin && state.adminId != null) {
+      ref
+          .read(notificationServiceProvider)
+          .updateToken(state.adminId!, 'admins');
+    }
+    if (isEmployee && state.employeeId != null) {
+      ref
+          .read(notificationServiceProvider)
+          .updateToken(state.employeeId!, 'employees');
+    }
   }
 
   Future<bool> login(String username, String password) async {
@@ -99,6 +112,10 @@ class AuthNotifier extends Notifier<AuthState> {
           isLoading: false,
           adminId: userId,
         );
+
+        // Save FCM Token
+        ref.read(notificationServiceProvider).updateToken(userId, 'admins');
+
         return true;
       } else {
         state = state.copyWith(
@@ -139,6 +156,10 @@ class AuthNotifier extends Notifier<AuthState> {
           employeeId: user.id,
           mustChangePassword: user.mustChangePassword,
         );
+
+        // Save FCM Token
+        ref.read(notificationServiceProvider).updateToken(user.id, 'employees');
+
         return true;
       }
       state = state.copyWith(

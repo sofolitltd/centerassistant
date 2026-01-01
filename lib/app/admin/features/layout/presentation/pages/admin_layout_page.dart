@@ -13,7 +13,6 @@ class AdminLayoutPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final authState = ref.watch(authProvider);
     final double width = MediaQuery.of(context).size.width;
     final bool isMobile = width < 700;
 
@@ -30,7 +29,6 @@ class AdminLayoutPage extends ConsumerWidget {
           : null,
       appBar: AppBar(
         surfaceTintColor: Colors.transparent,
-
         shape: Border(
           bottom: BorderSide(
             color: theme.colorScheme.outline.withValues(alpha: 0.2),
@@ -116,7 +114,6 @@ class AdminLayoutPage extends ConsumerWidget {
                 PopupMenuItem(
                   value: 1,
                   height: 40,
-
                   child: Row(
                     children: const [
                       Icon(LucideIcons.user, size: 18),
@@ -128,7 +125,6 @@ class AdminLayoutPage extends ConsumerWidget {
                 PopupMenuItem(
                   value: 2,
                   height: 40,
-
                   child: Row(
                     children: const [
                       Icon(LucideIcons.settings, size: 18),
@@ -213,7 +209,7 @@ class _SideMenuState extends State<_SideMenu> {
     return Container(
       width: widget.isDrawer ? 200 : (_isExpanded ? 200 : 60),
       color: Colors.white,
-      padding: .only(top: widget.isDrawer ? 0 : 16),
+      padding: EdgeInsets.only(top: widget.isDrawer ? 0 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -279,6 +275,13 @@ class _SideMenuState extends State<_SideMenu> {
                     selectedIndex,
                     LucideIcons.clock,
                     'Time Slots',
+                  ),
+                  const SizedBox(height: 4),
+                  _buildNavItem(
+                    5,
+                    selectedIndex,
+                    LucideIcons.calendarX,
+                    'Leave Requests',
                   ),
                 ],
               ),
@@ -379,6 +382,7 @@ class _SideMenuState extends State<_SideMenu> {
     if (location.startsWith('/admin/employees')) return 2;
     if (location.startsWith('/admin/clients')) return 3;
     if (location.startsWith('/admin/time-slots')) return 4;
+    if (location.startsWith('/admin/leave')) return 5;
     return 0;
   }
 
@@ -398,6 +402,9 @@ class _SideMenuState extends State<_SideMenu> {
         break;
       case 4:
         context.go('/admin/time-slots');
+        break;
+      case 5:
+        context.go('/admin/leave');
         break;
     }
   }

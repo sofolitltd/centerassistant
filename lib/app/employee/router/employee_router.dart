@@ -7,7 +7,9 @@ import '/app/employee/features/clients/presentation/pages/employee_clients_page.
 import '/app/employee/features/contact/presentation/pages/employee_contact_page.dart';
 import '/app/employee/features/dashboard/presentation/pages/employee_dashboard_page.dart';
 import '/app/employee/features/layout/presentation/pages/employee_layout_page.dart';
+import '/app/employee/features/leave/presentation/pages/apply_leave_page.dart';
 import '/app/employee/features/leave/presentation/pages/employee_leave_page.dart';
+import '/app/employee/features/leave/presentation/pages/leave_policy_page.dart';
 import '/app/employee/features/profile/presentation/pages/employee_profile_page.dart';
 import '/app/employee/features/schedule/presentation/pages/employee_schedule_page.dart';
 import '/app/employee/features/settings/presentation/pages/employee_settings_page.dart';
@@ -62,6 +64,16 @@ List<RouteBase> employeeRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           path: '/employee/leave',
           pageBuilder: (context, state) =>
               const NoTransitionPage(child: EmployeeLeavePage()),
+        ),
+        GoRoute(
+          path: '/employee/leave/apply',
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: ApplyLeavePage()),
+        ),
+        GoRoute(
+          path: '/employee/leave/policy',
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: LeavePolicyPage()),
         ),
         GoRoute(
           path: '/employee/support',

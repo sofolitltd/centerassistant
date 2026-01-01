@@ -45,4 +45,7 @@ app.*.map.json
 /android/app/release
 
 /lib/services/firebase_options.dart
+/android/app/google-services.json
+/web/firebase-messaging-sw.js
+/lib/services/notification_service.dart
 

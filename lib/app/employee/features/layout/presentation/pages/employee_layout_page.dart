@@ -149,29 +149,6 @@ class EmployeeLayoutPage extends ConsumerWidget {
                   ),
                   itemBuilder: (context) => [
                     PopupMenuItem(
-                      enabled: false,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            employee?.name ?? 'Employee',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                          ),
-                          Text(
-                            employee?.department ?? 'Portal Access',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          const Divider(),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
                       value: 1,
                       height: 40,
                       child: Row(
@@ -185,7 +162,6 @@ class EmployeeLayoutPage extends ConsumerWidget {
                     PopupMenuItem(
                       value: 2,
                       height: 40,
-
                       child: Row(
                         children: const [
                           Icon(LucideIcons.settings, size: 18),
@@ -197,7 +173,6 @@ class EmployeeLayoutPage extends ConsumerWidget {
                     PopupMenuItem(
                       value: 3,
                       height: 40,
-
                       child: Row(
                         children: const [
                           Icon(LucideIcons.helpCircle, size: 18),
@@ -206,12 +181,11 @@ class EmployeeLayoutPage extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    ...[
+                    if (authState.isAdminAuthenticated) ...[
                       const PopupMenuDivider(),
                       PopupMenuItem(
                         value: 4,
                         height: 40,
-
                         child: Row(
                           children: const [
                             Icon(LucideIcons.refreshCcw, size: 18),
@@ -224,7 +198,7 @@ class EmployeeLayoutPage extends ConsumerWidget {
                     const PopupMenuDivider(),
                     PopupMenuItem(
                       value: 0,
-
+                      height: 40,
                       child: Row(
                         children: const [
                           Icon(LucideIcons.logOut, size: 18, color: Colors.red),
@@ -289,17 +263,27 @@ class _EmployeeSideMenu extends StatefulWidget {
 
 class _EmployeeSideMenuState extends State<_EmployeeSideMenu> {
   bool _isExpanded = true;
+  bool _isLeaveSubmenuOpen = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Auto-expand Leave menu if we are already on a leave page
+    final location = GoRouterState.of(context).matchedLocation;
+    if (location.startsWith('/employee/leave')) {
+      _isLeaveSubmenuOpen = true;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final selectedIndex = _calculateSelectedIndex(context);
-    Theme.of(context);
+    final theme = Theme.of(context);
 
     return Container(
       width: widget.isDrawer ? 200 : (_isExpanded ? 200 : 60),
       color: Colors.white,
-      padding: .only(top: widget.isDrawer ? 0 : 16),
-
+      padding: EdgeInsets.only(top: widget.isDrawer ? 0 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -356,12 +340,51 @@ class _EmployeeSideMenuState extends State<_EmployeeSideMenu> {
                     'Contact',
                   ),
                   const SizedBox(height: 4),
-                  _buildNavItem(
-                    5,
-                    selectedIndex,
-                    LucideIcons.calendarX,
-                    'Leave',
-                  ),
+                  // Expandable Leave Menu
+                  if (widget.isDrawer || _isExpanded)
+                    Column(
+                      children: [
+                        _buildNavHeader(
+                          selectedIndex,
+                          [5, 6, 7],
+                          LucideIcons.calendarX,
+                          'Leave',
+                          isOpen: _isLeaveSubmenuOpen,
+                          onTap: () {
+                            setState(() {
+                              _isLeaveSubmenuOpen = !_isLeaveSubmenuOpen;
+                            });
+                          },
+                        ),
+                        if (_isLeaveSubmenuOpen) ...[
+                          _buildSubNavItem(
+                            6,
+                            selectedIndex,
+                            'Apply Leave',
+                            onTap: () => _onDestinationSelected(6, context),
+                          ),
+                          _buildSubNavItem(
+                            5,
+                            selectedIndex,
+                            'My Leave',
+                            onTap: () => _onDestinationSelected(5, context),
+                          ),
+                          _buildSubNavItem(
+                            7,
+                            selectedIndex,
+                            'Leave Policy',
+                            onTap: () => _onDestinationSelected(7, context),
+                          ),
+                        ],
+                      ],
+                    )
+                  else
+                    _buildNavItem(
+                      5,
+                      selectedIndex,
+                      LucideIcons.calendarX,
+                      'Leave',
+                    ),
                 ],
               ),
             ),
@@ -385,6 +408,97 @@ class _EmployeeSideMenuState extends State<_EmployeeSideMenu> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildNavHeader(
+    int selectedIndex,
+    List<int> subIndices,
+    IconData icon,
+    String label, {
+    required bool isOpen,
+    required VoidCallback onTap,
+  }) {
+    final isAnySubSelected = subIndices.contains(selectedIndex);
+    final theme = Theme.of(context);
+
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isAnySubSelected
+              ? theme.colorScheme.secondary.withValues(alpha: 0.05)
+              : Colors.transparent,
+        ),
+        child: Row(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Icon(
+                icon,
+                size: 18,
+                color: isAnySubSelected
+                    ? theme.colorScheme.secondary
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isAnySubSelected
+                      ? theme.colorScheme.secondary
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                  fontWeight:
+                      isAnySubSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Icon(
+                isOpen ? LucideIcons.chevronDown : LucideIcons.chevronRight,
+                size: 14,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubNavItem(
+    int index,
+    int selectedIndex,
+    String label, {
+    required VoidCallback onTap,
+  }) {
+    final isSelected = index == selectedIndex;
+    final theme = Theme.of(context);
+
+    return InkWell(
+      onTap: () {
+        onTap();
+        if (widget.isDrawer) {
+          Navigator.pop(context);
+        }
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(50, 10, 16, 10),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            color: isSelected
+                ? theme.colorScheme.secondary
+                : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
       ),
     );
   }
@@ -455,12 +569,14 @@ class _EmployeeSideMenuState extends State<_EmployeeSideMenu> {
   }
 
   int _calculateSelectedIndex(BuildContext context) {
-    final String location = GoRouterState.of(context).uri.toString();
+    final String location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith('/employee/dashboard')) return 0;
     if (location.startsWith('/employee/schedule')) return 1;
     if (location.startsWith('/employee/clients')) return 2;
     if (location.startsWith('/employee/contact')) return 3;
-    if (location.startsWith('/employee/leave')) return 5;
+    if (location == '/employee/leave') return 5;
+    if (location == '/employee/leave/apply') return 6;
+    if (location == '/employee/leave/policy') return 7;
     return 0;
   }
 
@@ -480,6 +596,12 @@ class _EmployeeSideMenuState extends State<_EmployeeSideMenu> {
         break;
       case 5:
         context.go('/employee/leave');
+        break;
+      case 6:
+        context.go('/employee/leave/apply');
+        break;
+      case 7:
+        context.go('/employee/leave/policy');
         break;
     }
   }
