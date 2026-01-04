@@ -6,11 +6,15 @@ abstract class IEmployeeRepository {
   Stream<List<String>> getDepartments();
   Future<void> addEmployee({
     required String name,
+    String nickName = '',
     required String personalPhone,
     required String officialPhone,
     required String personalEmail,
     required String officialEmail,
     required String department,
+    String designation = '',
+    String gender = 'male',
+    DateTime? dateOfBirth,
     required String email,
     String? password,
   });

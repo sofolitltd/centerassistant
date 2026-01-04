@@ -63,7 +63,7 @@ class _AddSessionDialogState extends ConsumerState<AddSessionDialog> {
                   .toSet();
 
               // 2. Check Leave Status (Marked as off for the day)
-              final leaveEntityIds = leaves.map((l) => l.entityId).toSet();
+              final leaveEntityIds = leaves.map((l) => l.employeeId).toSet();
 
               return SingleChildScrollView(
                 child: Column(

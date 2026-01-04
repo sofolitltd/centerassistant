@@ -1,37 +1,47 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Employee {
-  final String id;
+  final String id; // Random Document ID
+  final String employeeId; // Sequential ID (e.g., 0001)
   final String name;
+  final String nickName;
   final String personalPhone;
   final String officialPhone;
   final String personalEmail;
   final String officialEmail;
   final String department;
+  final String designation;
+  final String gender;
+  final DateTime? dateOfBirth;
   final String email;
   final String password;
   final String role;
   final bool mustChangePassword;
-  final bool isActive; // Can user login? Toggle to block/unblock instantly
+  final bool isActive;
   final DateTime joinDate;
   final DateTime createdAt;
   final String image;
-  final int carriedForwardLeaves; // Leaves from previous year
+  final int carriedForwardLeaves;
   final String? fcmToken;
 
   Employee({
     required this.id,
+    required this.employeeId,
     required this.name,
+    required this.department,
+    this.nickName = '',
     this.personalPhone = '',
     this.officialPhone = '',
     this.personalEmail = '',
     this.officialEmail = '',
-    this.department = '',
-    required this.email,
+    this.designation = '',
+    this.gender = 'male',
+    this.dateOfBirth,
+    this.email = '',
     this.password = '',
     this.role = 'employee',
     this.mustChangePassword = false,
-    this.isActive = true, // Active by default
+    this.isActive = true,
     required this.joinDate,
     required this.createdAt,
     this.image = '',
@@ -39,18 +49,24 @@ class Employee {
     this.fcmToken,
   });
 
-  // Helper getter to check if employee has portal access
   bool get hasPortalAccess =>
       email.isNotEmpty && password.isNotEmpty && isActive;
 
   Map<String, dynamic> toJson() {
     return {
+      'employeeId': employeeId,
       'name': name,
+      'nickName': nickName,
       'personalPhone': personalPhone,
       'officialPhone': officialPhone,
       'personalEmail': personalEmail,
       'officialEmail': officialEmail,
       'department': department,
+      'designation': designation,
+      'gender': gender,
+      'dateOfBirth': dateOfBirth != null
+          ? Timestamp.fromDate(dateOfBirth!)
+          : null,
       'email': email,
       'password': password,
       'role': role,
@@ -70,19 +86,22 @@ class Employee {
     final data = snapshot.data()!;
     return Employee(
       id: snapshot.id,
-      name: data['name'] as String? ?? 'Unnamed Employee',
+      employeeId: data['employeeId'] as String? ?? '',
+      name: data['name'] as String? ?? '',
+      nickName: data['nickName'] as String? ?? '',
       personalPhone: data['personalPhone'] as String? ?? '',
       officialPhone: data['officialPhone'] as String? ?? '',
       personalEmail: data['personalEmail'] as String? ?? '',
       officialEmail: data['officialEmail'] as String? ?? '',
       department: data['department'] as String? ?? '',
+      designation: data['designation'] as String? ?? '',
+      gender: data['gender'] as String? ?? 'male',
+      dateOfBirth: (data['dateOfBirth'] as Timestamp?)?.toDate(),
       email: data['email'] as String? ?? '',
       password: data['password'] as String? ?? '',
       role: data['role'] as String? ?? 'employee',
       mustChangePassword: data['mustChangePassword'] as bool? ?? false,
-      isActive:
-          data['isActive'] as bool? ??
-          true, // Default to active for backward compatibility
+      isActive: data['isActive'] as bool? ?? true,
       joinDate: (data['joinDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       image: data['image'] as String? ?? '',

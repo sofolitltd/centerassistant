@@ -78,7 +78,7 @@ final scheduleViewProvider = FutureProvider.autoDispose<ScheduleView>((
   final clientMap = {for (var c in clients) c.id: c};
   final employeeMap = {for (var t in employees) t.id: t};
 
-  final dayLeaves = {for (var l in leaves) l.entityId: l};
+  final dayLeaves = {for (var l in leaves) l.employeeId: l};
 
   final dayOfWeek = DateFormat('EEEE').format(selectedDate);
   final sessionsByTimeSlot = <String, List<SessionCardData>>{};

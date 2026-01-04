@@ -44,7 +44,7 @@ class EmployeePortalSchedulePage extends ConsumerWidget {
     }
 
     return Scaffold(
-      // backgroundColor: Colors.transparent,
+      backgroundColor: Colors.transparent,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -79,30 +79,11 @@ class EmployeePortalSchedulePage extends ConsumerWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                Row(
-                  children: [
-                    _ViewToggleButton(
-                      label: 'Daily',
-                      isSelected: viewType == EmployeeScheduleView.daily,
-                      onTap: () => ref
-                          .read(employeeScheduleViewProvider.notifier)
-                          .setView(EmployeeScheduleView.daily),
-                    ),
-                    const SizedBox(width: 8),
-                    _ViewToggleButton(
-                      label: 'Weekly',
-                      isSelected: viewType == EmployeeScheduleView.weekly,
-                      onTap: () => ref
-                          .read(employeeScheduleViewProvider.notifier)
-                          .setView(EmployeeScheduleView.weekly),
-                    ),
-                  ],
-                ),
+                _buildActionTabs(ref, viewType),
               ],
             ),
             const SizedBox(height: 24),
 
-            // Date Selector (Only for Daily View)
             if (viewType == EmployeeScheduleView.daily) ...[
               _buildDateHeader(context, ref, selectedDate),
               const SizedBox(height: 24),
@@ -113,6 +94,36 @@ class EmployeePortalSchedulePage extends ConsumerWidget {
                 : _WeeklyView(employeeId: employeeId),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildActionTabs(WidgetRef ref, EmployeeScheduleView current) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _TabButton(
+            label: 'Daily',
+            isSelected: current == EmployeeScheduleView.daily,
+            onTap: () => ref
+                .read(employeeScheduleViewProvider.notifier)
+                .setView(EmployeeScheduleView.daily),
+          ),
+          const SizedBox(width: 4),
+          _TabButton(
+            label: 'Weekly',
+            isSelected: current == EmployeeScheduleView.weekly,
+            onTap: () => ref
+                .read(employeeScheduleViewProvider.notifier)
+                .setView(EmployeeScheduleView.weekly),
+          ),
+        ],
       ),
     );
   }
@@ -183,12 +194,12 @@ class EmployeePortalSchedulePage extends ConsumerWidget {
   }
 }
 
-class _ViewToggleButton extends StatelessWidget {
+class _TabButton extends StatelessWidget {
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _ViewToggleButton({
+  const _TabButton({
     required this.label,
     required this.isSelected,
     required this.onTap,
@@ -196,25 +207,20 @@ class _ViewToggleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected
-              ? theme.colorScheme.secondary
-              : Colors.grey.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
+          color: isSelected ? const Color(0xFF3D5A45) : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected
-                ? theme.colorScheme.onSecondary
-                : theme.colorScheme.onSurface,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? Colors.white : Colors.grey.shade600,
+            fontWeight: FontWeight.bold,
             fontSize: 13,
           ),
         ),
@@ -250,7 +256,7 @@ class _DailyView extends ConsumerWidget {
             context,
             LucideIcons.calendarX,
             'You are on leave',
-            'No schedule scheduled for this date.',
+            'No sessions scheduled for this date.',
             Colors.red,
           );
         }
@@ -286,7 +292,6 @@ class _DailyView extends ConsumerWidget {
                   );
                 }
 
-                // Sorting handled by build list
                 return LayoutBuilder(
                   builder: (context, constraints) {
                     return Wrap(
@@ -380,7 +385,7 @@ class _DailyView extends ConsumerWidget {
                 ? const Padding(
                     padding: EdgeInsets.symmetric(vertical: 20),
                     child: Text(
-                      'No schedule',
+                      'No sessions',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.grey, fontSize: 12),
                     ),

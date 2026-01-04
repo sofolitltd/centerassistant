@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '/core/providers/client_providers.dart';
 
@@ -18,8 +19,10 @@ class _AddClientPageState extends ConsumerState<AddClientPage> {
   final _mobileController = TextEditingController();
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
-  String _gender = 'Male';
-  DateTime? _selectedDate;
+
+  String _selectedGender = 'Male';
+  DateTime? _selectedDob;
+  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -35,9 +38,289 @@ class _AddClientPageState extends ConsumerState<AddClientPage> {
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
+          color: Colors.black87,
+        ),
       ),
     );
+  }
+
+  InputDecoration _inputDecoration({String? hint, IconData? prefixIcon}) {
+    return InputDecoration(
+      hintText: hint,
+      prefixIcon: prefixIcon != null ? Icon(prefixIcon, size: 18) : null,
+      filled: true,
+      fillColor: Colors.grey.shade50,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: Colors.grey.shade200),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: Colors.grey.shade100),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isMobile = width < 800;
+
+    return Scaffold(
+      backgroundColor: Colors.black12.withOpacity(0.03),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(isMobile ? 16.0 : 32.0),
+        child: Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 1000),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 32),
+                Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(isMobile ? 20.0 : 32.0),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildResponsiveRow(
+                            isMobile: isMobile,
+                            children: [
+                              _buildFieldBlock(
+                                'Full Name',
+                                _nameController,
+                                hint: 'e.g. John Smith',
+                                isRequired: true,
+                              ),
+                              _buildGenderDropdown(),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                          _buildResponsiveRow(
+                            isMobile: isMobile,
+                            children: [
+                              _buildFieldBlock(
+                                'Mobile Number',
+                                _mobileController,
+                                hint: '01XXXXXXXXX',
+                                icon: LucideIcons.phone,
+                                isRequired: true,
+                              ),
+                              _buildFieldBlock(
+                                'Email Address',
+                                _emailController,
+                                hint: 'client@example.com',
+                                icon: LucideIcons.mail,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                          _buildResponsiveRow(
+                            isMobile: isMobile,
+                            children: [
+                              _buildDatePicker(),
+                              _buildFieldBlock(
+                                'Full Address',
+                                _addressController,
+                                hint: 'Enter current address',
+                                icon: LucideIcons.mapPin,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 48),
+                          _buildFooterActions(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Register New Client',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 28),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            InkWell(
+              onTap: () => context.go('/admin/dashboard'),
+              child: const Text('Admin', style: TextStyle(color: Colors.grey)),
+            ),
+            const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+            InkWell(
+              onTap: () => context.go('/admin/clients'),
+              child: const Text(
+                'Clients',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+            const Text('New Registration'),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFieldBlock(
+    String label,
+    TextEditingController controller, {
+    String? hint,
+    IconData? icon,
+    bool isRequired = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildFieldTitle(label),
+        TextFormField(
+          controller: controller,
+          decoration: _inputDecoration(hint: hint, prefixIcon: icon),
+          validator: isRequired
+              ? (v) => v!.isEmpty ? 'This field is required' : null
+              : null,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGenderDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildFieldTitle('Gender'),
+        DropdownButtonFormField<String>(
+          initialValue: _selectedGender,
+          items: const [
+            DropdownMenuItem(value: 'Male', child: Text('MALE')),
+            DropdownMenuItem(value: 'Female', child: Text('FEMALE')),
+          ],
+          onChanged: (v) => setState(() => _selectedGender = v!),
+          decoration: _inputDecoration(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDatePicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildFieldTitle('Date of Birth'),
+        InkWell(
+          onTap: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: DateTime.now().subtract(
+                const Duration(days: 365 * 10),
+              ),
+              firstDate: DateTime(1900),
+              lastDate: DateTime.now(),
+            );
+            if (picked != null) setState(() => _selectedDob = picked);
+          },
+          child: InputDecorator(
+            decoration: _inputDecoration(prefixIcon: LucideIcons.calendar),
+            child: Text(
+              _selectedDob == null
+                  ? 'Select Date'
+                  : DateFormat('MMM dd, yyyy').format(_selectedDob!),
+              style: TextStyle(
+                color: _selectedDob == null ? Colors.grey : Colors.black,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFooterActions() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        TextButton(
+          onPressed: () => context.go('/admin/clients'),
+          child: const Text('Cancel'),
+        ),
+        const SizedBox(width: 16),
+        ElevatedButton(
+          onPressed: _isSaving ? null : _handleSubmit,
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: _isSaving
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text(
+                  'Add Client',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+        ),
+      ],
+    );
+  }
+
+  void _handleSubmit() async {
+    if (_formKey.currentState!.validate() && _selectedDob != null) {
+      setState(() => _isSaving = true);
+      try {
+        await ref
+            .read(clientServiceProvider)
+            .addClient(
+              name: _nameController.text.trim(),
+              mobileNo: _mobileController.text.trim(),
+              email: _emailController.text.trim(),
+              address: _addressController.text.trim(),
+              gender: _selectedGender,
+              dateOfBirth: _selectedDob!,
+            );
+        if (mounted) context.go('/admin/clients');
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isSaving = false);
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        }
+      }
+    } else if (_selectedDob == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select Date of Birth')),
+      );
+    }
   }
 
   Widget _buildResponsiveRow({
@@ -46,259 +329,17 @@ class _AddClientPageState extends ConsumerState<AddClientPage> {
   }) {
     if (isMobile) {
       return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children:
-            children
-                .expand((widget) => [widget, const SizedBox(height: 20)])
-                .toList()
+            children.expand((w) => [w, const SizedBox(height: 20)]).toList()
               ..removeLast(),
       );
     }
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children:
           children
-              .expand(
-                (widget) => [
-                  Expanded(child: widget),
-                  const SizedBox(width: 16),
-                ],
-              )
+              .expand((w) => [Expanded(child: w), const SizedBox(width: 24)])
               .toList()
             ..removeLast(),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final isMobile = width < 700;
-
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(isMobile ? 12.0 : 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              InkWell(
-                onTap: () => context.go('/admin/layout'),
-                child: Text(
-                  'Admin',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-                ),
-              ),
-              const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
-              InkWell(
-                onTap: () => context.go('/admin/clients'),
-                child: Text(
-                  'Clients',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-                ),
-              ),
-              const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
-              Text('Add Client', style: Theme.of(context).textTheme.bodyMedium),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Add New Client',
-            style: Theme.of(context).textTheme.headlineMedium!.copyWith(
-              fontWeight: FontWeight.bold,
-              height: 1.2,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Card(
-            child: Padding(
-              padding: EdgeInsets.all(isMobile ? 16.0 : 24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildResponsiveRow(
-                      isMobile: isMobile,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildFieldTitle('Name'),
-                            TextFormField(
-                              controller: _nameController,
-                              decoration: const InputDecoration(
-                                hintText: 'Enter full name',
-                              ),
-                              validator: (value) =>
-                                  value!.isEmpty ? 'Please enter a name' : null,
-                            ),
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildFieldTitle('Gender'),
-                            ButtonTheme(
-                              alignedDropdown: true,
-                              child: DropdownButtonFormField<String>(
-                                initialValue: _gender,
-                                decoration: const InputDecoration(
-                                  hintText: 'Select Gender',
-                                ),
-                                items: ['Male', 'Female']
-                                    .map(
-                                      (label) => DropdownMenuItem(
-                                        value: label,
-                                        child: Text(label),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    setState(() => _gender = value);
-                                  }
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    _buildResponsiveRow(
-                      isMobile: isMobile,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildFieldTitle('Mobile No'),
-                            TextFormField(
-                              controller: _mobileController,
-                              decoration: const InputDecoration(
-                                hintText: 'e.g. +123456789',
-                              ),
-                            ),
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildFieldTitle('Email'),
-                            TextFormField(
-                              controller: _emailController,
-                              decoration: const InputDecoration(
-                                hintText: 'client@example.com',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    _buildResponsiveRow(
-                      isMobile: isMobile,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildFieldTitle('Date of Birth'),
-                            InkWell(
-                              onTap: () async {
-                                final pickedDate = await showDatePicker(
-                                  context: context,
-                                  initialDate: DateTime.now(),
-                                  firstDate: DateTime(1900),
-                                  lastDate: DateTime.now(),
-                                );
-                                if (pickedDate != null) {
-                                  setState(() => _selectedDate = pickedDate);
-                                }
-                              },
-                              child: InputDecorator(
-                                decoration: const InputDecoration(
-                                  hintText: 'Select DOB',
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      _selectedDate == null
-                                          ? 'Select Date'
-                                          : DateFormat(
-                                              'dd/MM/yyyy',
-                                            ).format(_selectedDate!),
-                                    ),
-                                    const Icon(Icons.calendar_today, size: 18),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildFieldTitle('Address'),
-                            TextFormField(
-                              controller: _addressController,
-                              decoration: const InputDecoration(
-                                hintText: 'Enter address',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => context.go('/admin/clients'),
-                          child: const Text('Cancel'),
-                        ),
-                        const SizedBox(width: 16),
-                        ElevatedButton(
-                          onPressed: () {
-                            if (_formKey.currentState!.validate() &&
-                                _selectedDate != null) {
-                              ref
-                                  .read(clientServiceProvider)
-                                  .addClient(
-                                    name: _nameController.text,
-                                    mobileNo: _mobileController.text,
-                                    email: _emailController.text,
-                                    address: _addressController.text,
-                                    gender: _gender,
-                                    dateOfBirth: _selectedDate!,
-                                  );
-                              context.go('/admin/clients');
-                            } else if (_selectedDate == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Please select a date of birth',
-                                  ),
-                                ),
-                              );
-                            }
-                          },
-                          child: const Text('Add Client'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

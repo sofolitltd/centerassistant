@@ -32,9 +32,9 @@ final leavesByDateProvider = StreamProvider.family<List<Leave>, DateTime>((
 
 final leavesByEntityProvider = StreamProvider.family<List<Leave>, String>((
   ref,
-  entityId,
+  employeeId,
 ) {
-  return ref.watch(leaveRepositoryProvider).getLeavesByEntity(entityId);
+  return ref.watch(leaveRepositoryProvider).getLeavesByEntity(employeeId);
 });
 
 final leaveServiceProvider = Provider((ref) => LeaveActionService(ref));
@@ -44,8 +44,7 @@ class LeaveActionService {
   LeaveActionService(this._ref);
 
   Future<void> addLeave({
-    required String entityId,
-    required LeaveEntityType entityType,
+    required String employeeId,
     required DateTime date,
     String? reason,
     LeaveType leaveType = LeaveType.annual,
@@ -54,8 +53,7 @@ class LeaveActionService {
     final firestore = _ref.read(firestoreProvider);
     final leave = Leave(
       id: firestore.collection('leaves').doc().id,
-      entityId: entityId,
-      entityType: entityType,
+      employeeId: employeeId,
       date: DateTime(date.year, date.month, date.day),
       reason: reason,
       leaveType: leaveType,
@@ -99,7 +97,7 @@ class LeaveActionService {
         _ref
             .read(notificationServiceProvider)
             .sendToUser(
-              userId: leave.entityId,
+              userId: leave.employeeId,
               collection: 'employees',
               title: 'Leave Status Updated',
               body:
@@ -117,7 +115,7 @@ class LeaveActionService {
     // Update status to cancel_requested
     await repo.updateLeaveStatus(
       leaveId,
-      LeaveStatus.cancel_requested,
+      LeaveStatus.cancelRequest,
       employeeId,
     );
     _ref.invalidate(scheduleViewProvider);

@@ -333,20 +333,13 @@ class _EmployeeSideMenuState extends State<_EmployeeSideMenu> {
                     'My Clients',
                   ),
                   const SizedBox(height: 4),
-                  _buildNavItem(
-                    3,
-                    selectedIndex,
-                    LucideIcons.bookUp,
-                    'Contact',
-                  ),
-                  const SizedBox(height: 4),
                   // Expandable Leave Menu
                   if (widget.isDrawer || _isExpanded)
                     Column(
                       children: [
                         _buildNavHeader(
                           selectedIndex,
-                          [5, 6, 7],
+                          [3, 4, 5],
                           LucideIcons.calendarX,
                           'Leave',
                           isOpen: _isLeaveSubmenuOpen,
@@ -380,11 +373,20 @@ class _EmployeeSideMenuState extends State<_EmployeeSideMenu> {
                     )
                   else
                     _buildNavItem(
-                      5,
+                      3,
                       selectedIndex,
                       LucideIcons.calendarX,
                       'Leave',
                     ),
+
+                  const SizedBox(height: 4),
+
+                  _buildNavItem(
+                    6,
+                    selectedIndex,
+                    LucideIcons.users,
+                    'Contacts',
+                  ),
                 ],
               ),
             ),
@@ -574,10 +576,10 @@ class _EmployeeSideMenuState extends State<_EmployeeSideMenu> {
     if (location.startsWith('/employee/dashboard')) return 0;
     if (location.startsWith('/employee/schedule')) return 1;
     if (location.startsWith('/employee/clients')) return 2;
-    if (location.startsWith('/employee/contact')) return 3;
-    if (location == '/employee/leave') return 5;
-    if (location == '/employee/leave/apply') return 6;
-    if (location == '/employee/leave/policy') return 7;
+    if (location == '/employee/leave') return 3;
+    if (location == '/employee/leave/apply') return 4;
+    if (location == '/employee/leave/policy') return 5;
+    if (location == '/employee/contact') return 5;
     return 0;
   }
 
@@ -593,16 +595,16 @@ class _EmployeeSideMenuState extends State<_EmployeeSideMenu> {
         context.go('/employee/clients');
         break;
       case 3:
-        context.go('/employee/contact');
-        break;
-      case 5:
         context.go('/employee/leave');
         break;
-      case 6:
+      case 4:
         context.go('/employee/leave/apply');
         break;
-      case 7:
+      case 5:
         context.go('/employee/leave/policy');
+        break;
+      case 6:
+        context.go('/employee/contact');
         break;
     }
   }

@@ -1,7 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Client {
-  final String id;
+  final String id; // Random Document ID
+  final String clientId; // Sequential ID (e.g., 0001)
   final String name;
   final String mobileNo;
   final String email;
@@ -13,6 +14,7 @@ class Client {
 
   Client({
     required this.id,
+    required this.clientId,
     required this.name,
     required this.mobileNo,
     required this.email,
@@ -25,6 +27,7 @@ class Client {
 
   Map<String, dynamic> toJson() {
     return {
+      'clientId': clientId,
       'name': name,
       'mobileNo': mobileNo,
       'email': email,
@@ -42,6 +45,7 @@ class Client {
     final data = snapshot.data()!;
     return Client(
       id: snapshot.id,
+      clientId: data['clientId'] as String? ?? snapshot.id,
       name: data['name'] as String? ?? '',
       mobileNo: data['mobileNo'] as String? ?? '',
       email: data['email'] as String? ?? '',

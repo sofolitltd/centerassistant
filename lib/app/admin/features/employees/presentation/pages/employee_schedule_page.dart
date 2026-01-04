@@ -47,7 +47,7 @@ class EmployeeSchedulePage extends ConsumerWidget {
           Row(
             children: [
               InkWell(
-                onTap: () => context.go('/admin/layout'),
+                onTap: () => context.go('/admin/dashboard'),
                 child: Text(
                   'Admin',
                   style: Theme.of(

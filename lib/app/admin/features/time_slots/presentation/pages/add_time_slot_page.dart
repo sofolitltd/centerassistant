@@ -84,7 +84,7 @@ class _AddTimeSlotPageState extends ConsumerState<AddTimeSlotPage> {
             Row(
               children: [
                 InkWell(
-                  onTap: () => context.go('/admin/layout'),
+                  onTap: () => context.go('/admin/dashboard'),
                   child: Text(
                     'Admin',
                     style: Theme.of(

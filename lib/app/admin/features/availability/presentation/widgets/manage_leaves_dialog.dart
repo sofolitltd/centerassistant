@@ -7,13 +7,11 @@ import '/core/providers/leave_providers.dart';
 
 class ManageLeavesDialog extends ConsumerStatefulWidget {
   final String entityId;
-  final LeaveEntityType entityType;
   final String entityName;
 
   const ManageLeavesDialog({
     super.key,
     required this.entityId,
-    required this.entityType,
     required this.entityName,
   });
 
@@ -104,8 +102,7 @@ class _ManageLeavesDialogState extends ConsumerState<ManageLeavesDialog> {
                           await ref
                               .read(leaveServiceProvider)
                               .addLeave(
-                                entityId: widget.entityId,
-                                entityType: widget.entityType,
+                                employeeId: widget.entityId,
                                 date: _selectedDate,
                                 reason: _reasonController.text.trim(),
                               );

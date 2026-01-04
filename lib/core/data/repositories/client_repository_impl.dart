@@ -57,12 +57,16 @@ class ClientRepositoryImpl implements IClientRepository {
         newIdNumber = (data?['count'] as int? ?? 0) + 1;
       }
 
-      final newId = 'c${newIdNumber.toString().padLeft(4, '0')}';
+      // 1. Generate random document ID
+      final newClientRef = _firestore.collection('clients').doc();
+      final docId = newClientRef.id;
 
-      final newClientRef = _firestore.collection('clients').doc(newId);
+      // 2. Generate sequential ID field (e.g. 0001)
+      final sequentialId = newIdNumber.toString().padLeft(4, '0');
 
       final newClient = Client(
-        id: newId,
+        id: docId,
+        clientId: sequentialId,
         name: name,
         mobileNo: mobileNo,
         email: email,
@@ -87,6 +91,22 @@ class ClientRepositoryImpl implements IClientRepository {
 
   @override
   Future<void> deleteClient(String id) async {
-    await _firestore.collection('clients').doc(id).delete();
+    final counterRef = _firestore.collection('counters').doc('clients');
+    final clientRef = _firestore.collection('clients').doc(id);
+
+    return _firestore.runTransaction((transaction) async {
+      final counterSnapshot = await transaction.get(counterRef);
+      
+      if (counterSnapshot.exists) {
+        final currentCount = counterSnapshot.data()?['count'] as int? ?? 0;
+        if (currentCount > 0) {
+          // Reduce the counter when a client is deleted
+          transaction.update(counterRef, {'count': currentCount - 1});
+        }
+      }
+      
+      // Perform the actual deletion
+      transaction.delete(clientRef);
+    });
   }
 }

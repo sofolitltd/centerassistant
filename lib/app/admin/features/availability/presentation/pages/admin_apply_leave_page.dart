@@ -6,7 +6,6 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '/core/models/leave.dart';
-import '/core/providers/auth_providers.dart';
 import '/core/providers/leave_providers.dart';
 
 class LeaveEntry {
@@ -21,29 +20,24 @@ class LeaveEntry {
     this.type = LeaveType.annual,
     this.reason = '',
   });
-
-  LeaveEntry copyWith({
-    LeaveDuration? duration,
-    LeaveType? type,
-    String? reason,
-  }) {
-    return LeaveEntry(
-      date: date,
-      duration: duration ?? this.duration,
-      type: type ?? this.type,
-      reason: reason ?? this.reason,
-    );
-  }
 }
 
-class ApplyLeavePage extends ConsumerStatefulWidget {
-  const ApplyLeavePage({super.key});
+class AdminApplyLeavePage extends ConsumerStatefulWidget {
+  final String entityId;
+  final String entityName;
+
+  const AdminApplyLeavePage({
+    super.key,
+    required this.entityId,
+    required this.entityName,
+  });
 
   @override
-  ConsumerState<ApplyLeavePage> createState() => _ApplyLeavePageState();
+  ConsumerState<AdminApplyLeavePage> createState() =>
+      _AdminApplyLeavePageState();
 }
 
-class _ApplyLeavePageState extends ConsumerState<ApplyLeavePage> {
+class _AdminApplyLeavePageState extends ConsumerState<AdminApplyLeavePage> {
   final Map<DateTime, LeaveEntry> _entryMap = {};
   DateTime _focusedDay = DateTime.now();
 
@@ -52,16 +46,13 @@ class _ApplyLeavePageState extends ConsumerState<ApplyLeavePage> {
     DateTime focusedDay,
     List<Leave> existingLeaves,
   ) {
-    setState(() {
-      _focusedDay = focusedDay;
-    });
+    setState(() => _focusedDay = focusedDay);
     final normalizedDay = DateTime(
       selectedDay.year,
       selectedDay.month,
       selectedDay.day,
     );
 
-    // 1. Check if date is in the current batch
     if (_entryMap.containsKey(normalizedDay)) {
       _showConfigurationDialog(
         normalizedDay,
@@ -70,8 +61,7 @@ class _ApplyLeavePageState extends ConsumerState<ApplyLeavePage> {
       return;
     }
 
-    // 2. Check if date already exists in DB (Pending or Approved)
-    final existing = existingLeaves.any(
+    final alreadyExists = existingLeaves.any(
       (l) =>
           l.date.year == normalizedDay.year &&
           l.date.month == normalizedDay.month &&
@@ -79,11 +69,11 @@ class _ApplyLeavePageState extends ConsumerState<ApplyLeavePage> {
           (l.status == LeaveStatus.approved || l.status == LeaveStatus.pending),
     );
 
-    if (existing) {
+    if (alreadyExists) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Leave already pending or approved for ${DateFormat('MMM dd').format(normalizedDay)}',
+            'Unavailability already exists for ${DateFormat('MMM dd').format(normalizedDay)}',
           ),
           backgroundColor: Colors.orange,
         ),
@@ -100,7 +90,6 @@ class _ApplyLeavePageState extends ConsumerState<ApplyLeavePage> {
   }) async {
     final theme = Theme.of(context);
     final isEditing = existingEntry != null;
-
     LeaveType selectedType = existingEntry?.type ?? LeaveType.annual;
     LeaveDuration selectedDuration =
         existingEntry?.duration ?? LeaveDuration.full;
@@ -119,7 +108,7 @@ class _ApplyLeavePageState extends ConsumerState<ApplyLeavePage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                isEditing ? 'Edit Leave Details' : 'Configure Leave',
+                isEditing ? 'Edit Details' : 'Configure Entry',
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -149,8 +138,8 @@ class _ApplyLeavePageState extends ConsumerState<ApplyLeavePage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  _buildDialogField(
-                    'Leave Type',
+                  _buildField(
+                    'Entry Type',
                     DropdownButtonFormField<LeaveType>(
                       value: selectedType,
                       isDense: true,
@@ -170,7 +159,7 @@ class _ApplyLeavePageState extends ConsumerState<ApplyLeavePage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _buildDialogField(
+                  _buildField(
                     'Duration',
                     DropdownButtonFormField<LeaveDuration>(
                       value: selectedDuration,
@@ -191,13 +180,13 @@ class _ApplyLeavePageState extends ConsumerState<ApplyLeavePage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _buildDialogField(
-                    'Notes (Optional)',
+                  _buildField(
+                    'Admin Note',
                     TextField(
                       controller: reasonController,
                       maxLines: 2,
                       style: const TextStyle(fontSize: 13),
-                      decoration: _inputDecoration(hint: 'Reason for leave...'),
+                      decoration: _inputDecoration(hint: 'Reason for entry...'),
                     ),
                   ),
                 ],
@@ -208,9 +197,7 @@ class _ApplyLeavePageState extends ConsumerState<ApplyLeavePage> {
             if (isEditing)
               TextButton(
                 onPressed: () {
-                  setState(() {
-                    _entryMap.remove(date);
-                  });
+                  setState(() => _entryMap.remove(date));
                   Navigator.pop(context);
                 },
                 child: const Text(
@@ -218,20 +205,21 @@ class _ApplyLeavePageState extends ConsumerState<ApplyLeavePage> {
                   style: TextStyle(color: Colors.red),
                 ),
               ),
+            const Spacer(),
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () {
-                setState(() {
-                  _entryMap[date] = LeaveEntry(
+                setState(
+                  () => _entryMap[date] = LeaveEntry(
                     date: date,
                     type: selectedType,
                     duration: selectedDuration,
                     reason: reasonController.text,
-                  );
-                });
+                  ),
+                );
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
@@ -246,7 +234,209 @@ class _ApplyLeavePageState extends ConsumerState<ApplyLeavePage> {
     );
   }
 
-  Widget _buildDialogField(String label, Widget child) {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final existingLeavesAsync = ref.watch(
+      leavesByEntityProvider(widget.entityId),
+    );
+    final double width = MediaQuery.of(context).size.width;
+    final bool isDesktop = width > 1100;
+    final sortedDates = _entryMap.keys.toList()..sort();
+
+    return Scaffold(
+      backgroundColor: Colors.black12.withValues(alpha: .03),
+      body: existingLeavesAsync.when(
+        data: (existingLeaves) => SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Breadcrumbs
+              Row(
+                children: [
+                  _breadcrumb('Admin', () => context.go('/admin/dashboard')),
+                  _separator(),
+                  _breadcrumb('Availability', () => context.pop()),
+                  _separator(),
+                  Text(
+                    'Mark Entry: ${widget.entityName}',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Mark Unavailability',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              if (isDesktop)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: _buildCalendar(theme, existingLeaves),
+                    ),
+                    const SizedBox(width: 24),
+                    Expanded(flex: 3, child: _buildSummary(theme, sortedDates)),
+                  ],
+                )
+              else
+                Column(
+                  children: [
+                    _buildCalendar(theme, existingLeaves),
+                    const SizedBox(height: 24),
+                    _buildSummary(theme, sortedDates),
+                  ],
+                ),
+            ],
+          ),
+        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+      ),
+    );
+  }
+
+  Widget _buildCalendar(ThemeData theme, List<Leave> existing) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TableCalendar(
+              firstDay: DateTime.now().subtract(const Duration(days: 30)),
+              lastDay: DateTime.now().add(const Duration(days: 365)),
+              focusedDay: _focusedDay,
+              selectedDayPredicate: (day) =>
+                  _entryMap.containsKey(DateTime(day.year, day.month, day.day)),
+              onDaySelected: (sel, foc) => _onDaySelected(sel, foc, existing),
+              eventLoader: (day) => existing
+                  .where(
+                    (l) =>
+                        isSameDay(l.date, day) &&
+                        (l.status == LeaveStatus.approved ||
+                            l.status == LeaveStatus.pending),
+                  )
+                  .toList(),
+              headerStyle: const HeaderStyle(
+                formatButtonVisible: false,
+                titleCentered: true,
+              ),
+              calendarStyle: CalendarStyle(
+                selectedDecoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  shape: BoxShape.circle,
+                ),
+                markerDecoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.5),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummary(ThemeData theme, List<DateTime> sortedDates) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_entryMap.isEmpty)
+          Card(
+            elevation: 0,
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: Colors.grey.shade200),
+            ),
+            child: const Padding(
+              padding: EdgeInsets.all(60),
+              child: Center(child: Text('Select dates from calendar.')),
+            ),
+          )
+        else ...[
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: sortedDates.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final entry = _entryMap[sortedDates[index]]!;
+              return _buildSummaryItem(theme, entry);
+            },
+          ),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: () async {
+                final service = ref.read(leaveServiceProvider);
+                for (var entry in _entryMap.values) {
+                  await service.addLeave(
+                    employeeId: widget.entityId,
+                    date: entry.date,
+                    reason: entry.reason,
+                    leaveType: entry.type,
+                    duration: entry.duration,
+                  );
+                }
+                if (mounted) context.pop();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+              ),
+              child: Text('Save ${sortedDates.length} Entry(ies)'),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSummaryItem(ThemeData theme, LeaveEntry entry) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: ListTile(
+        title: Text(
+          DateFormat('MMM dd, yyyy').format(entry.date),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        ),
+        subtitle: Text(
+          '${entry.type.name.toUpperCase()} • ${entry.duration.name.toUpperCase()} DAY',
+          style: const TextStyle(fontSize: 12),
+        ),
+        trailing: IconButton(
+          icon: const Icon(LucideIcons.edit2, size: 16),
+          onPressed: () =>
+              _showConfigurationDialog(entry.date, existingEntry: entry),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildField(String label, Widget child) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -264,328 +454,6 @@ class _ApplyLeavePageState extends ConsumerState<ApplyLeavePage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final authState = ref.watch(authProvider);
-    final employeeId = authState.employeeId;
-
-    if (employeeId == null) return const SizedBox();
-
-    final existingLeavesAsync = ref.watch(leavesByEntityProvider(employeeId));
-    final double width = MediaQuery.of(context).size.width;
-    final bool isDesktop = width > 1100;
-
-    final sortedDates = _entryMap.keys.toList()..sort();
-
-    return Scaffold(
-      body: existingLeavesAsync.when(
-        data: (existingLeaves) => SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Breadcrumbs
-              Row(
-                children: [
-                  InkWell(
-                    onTap: () => context.go('/employee/dashboard'),
-                    child: Text(
-                      'Overview',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
-                  InkWell(
-                    onTap: () => context.go('/employee/leave'),
-                    child: Text(
-                      'Leave Management',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
-                  Text('Apply Leave', style: theme.textTheme.bodyMedium),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'New Leave Application',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: isDesktop ? 2 : 5,
-                    child: _buildCalendarSection(
-                      theme,
-                      sortedDates,
-                      existingLeaves,
-                    ),
-                  ),
-                  if (isDesktop) const SizedBox(width: 24),
-                  if (isDesktop)
-                    Expanded(
-                      flex: 3,
-                      child: _buildSummarySection(
-                        theme,
-                        sortedDates,
-                        employeeId,
-                      ),
-                    ),
-                ],
-              ),
-              if (!isDesktop) ...[
-                const SizedBox(height: 24),
-                _buildSummarySection(theme, sortedDates, employeeId),
-              ],
-            ],
-          ),
-        ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-      ),
-    );
-  }
-
-  Widget _buildCalendarSection(
-    ThemeData theme,
-    List<DateTime> sortedDates,
-    List<Leave> existingLeaves,
-  ) {
-    return Card(
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '1. Select Date',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            TableCalendar(
-              firstDay: DateTime.now(),
-              lastDay: DateTime.now().add(const Duration(days: 365)),
-              focusedDay: _focusedDay,
-              calendarFormat: CalendarFormat.month,
-              selectedDayPredicate: (day) =>
-                  _entryMap.containsKey(DateTime(day.year, day.month, day.day)),
-              onDaySelected: (sel, foc) =>
-                  _onDaySelected(sel, foc, existingLeaves),
-              headerStyle: const HeaderStyle(
-                formatButtonVisible: false,
-                titleCentered: true,
-              ),
-              eventLoader: (day) {
-                return existingLeaves
-                    .where(
-                      (l) =>
-                          l.date.year == day.year &&
-                          l.date.month == day.month &&
-                          l.date.day == day.day &&
-                          (l.status == LeaveStatus.approved ||
-                              l.status == LeaveStatus.pending),
-                    )
-                    .toList();
-              },
-              calendarStyle: CalendarStyle(
-                selectedDecoration: BoxDecoration(
-                  color: theme.colorScheme.primary,
-                  shape: BoxShape.circle,
-                ),
-                todayDecoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                todayTextStyle: TextStyle(color: theme.colorScheme.primary),
-                markerDecoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.5),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Tip: Tap a date to configure leave details. Small dots indicate already pending or approved leaves.',
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.grey,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSummarySection(
-    ThemeData theme,
-    List<DateTime> sortedDates,
-    String employeeId,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          '2. Review Applications',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        if (_entryMap.isEmpty)
-          Card(
-            elevation: 0,
-            color: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.shade200),
-            ),
-            child: const Padding(
-              padding: EdgeInsets.all(60),
-              child: Center(
-                child: Column(
-                  children: [
-                    Icon(LucideIcons.calendar, size: 48, color: Colors.grey),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'No dates selected yet.',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          )
-        else ...[
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: sortedDates.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final date = sortedDates[index];
-              final entry = _entryMap[date]!;
-              return _buildSummaryItem(entry, theme);
-            },
-          ),
-          const SizedBox(height: 32),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: () => _submitAll(employeeId),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                elevation: 0,
-              ),
-              child: Text(
-                'Submit ${sortedDates.length} Application(s)',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildSummaryItem(LeaveEntry entry, ThemeData theme) {
-    return Card(
-      elevation: 0,
-      color: Colors.white,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: CircleAvatar(
-          backgroundColor: _getLeaveColor(entry.type).withValues(alpha: 0.1),
-          child: Icon(
-            LucideIcons.calendar,
-            size: 18,
-            color: _getLeaveColor(entry.type),
-          ),
-        ),
-        title: Text(
-          DateFormat('MMM dd, yyyy').format(entry.date),
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-        ),
-        subtitle: Text(
-          '${entry.type.name.toUpperCase()} • ${entry.duration.name.toUpperCase()} DAY',
-          style: const TextStyle(fontSize: 12),
-        ),
-        trailing: PopupMenuButton<String>(
-          color: Colors.white,
-          icon: const Icon(
-            LucideIcons.moreVertical,
-            size: 18,
-            color: Colors.grey,
-          ),
-          onSelected: (value) {
-            if (value == 'edit') {
-              _showConfigurationDialog(entry.date, existingEntry: entry);
-            } else if (value == 'delete') {
-              setState(() {
-                _entryMap.remove(entry.date);
-              });
-            }
-          },
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'edit',
-              height: 35,
-              child: Row(
-                children: [
-                  Icon(LucideIcons.edit2, size: 14),
-                  SizedBox(width: 8),
-                  const Text('Edit', style: TextStyle(fontSize: 13)),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'delete',
-              height: 35,
-              child: Row(
-                children: [
-                  Icon(LucideIcons.trash2, size: 14, color: Colors.red),
-                  SizedBox(width: 8),
-                  const Text(
-                    'Delete',
-                    style: TextStyle(fontSize: 13, color: Colors.red),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   InputDecoration _inputDecoration({String? hint}) {
     return InputDecoration(
       hintText: hint,
@@ -596,53 +464,18 @@ class _ApplyLeavePageState extends ConsumerState<ApplyLeavePage> {
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(color: Colors.grey.shade200),
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.grey.shade100),
-      ),
     );
   }
 
-  Color _getLeaveColor(LeaveType type) {
-    switch (type) {
-      case LeaveType.annual:
-        return Colors.blue;
-      case LeaveType.sick:
-        return Colors.orange;
-      case LeaveType.causal:
-        return Colors.green;
-      case LeaveType.unpaid:
-        return Colors.red;
-    }
+  Widget _breadcrumb(String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Text(label, style: const TextStyle(color: Colors.grey)),
+    );
   }
 
-  Future<void> _submitAll(String employeeId) async {
-    final service = ref.read(leaveServiceProvider);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Processing applications...')));
-
-    try {
-      for (final entry in _entryMap.values) {
-        await service.addLeave(
-          employeeId: employeeId,
-          date: entry.date,
-          reason: entry.reason,
-          leaveType: entry.type,
-          duration: entry.duration,
-        );
-      }
-      if (mounted) {
-        context.go('/employee/leave');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Leaves applied successfully')),
-        );
-      }
-    } catch (e) {
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-    }
-  }
+  Widget _separator() => const Padding(
+    padding: EdgeInsets.symmetric(horizontal: 4),
+    child: Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+  );
 }

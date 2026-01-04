@@ -13,6 +13,7 @@ class AdminLayoutPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final authState = ref.watch(authProvider);
     final double width = MediaQuery.of(context).size.width;
     final bool isMobile = width < 700;
 
@@ -36,7 +37,7 @@ class AdminLayoutPage extends ConsumerWidget {
           ),
         ),
         leading: isMobile
-            ? null // Scaffold will automatically add menu icon
+            ? null
             : Padding(
                 padding: const EdgeInsets.only(left: 16.0),
                 child: MouseRegion(
@@ -92,47 +93,27 @@ class AdminLayoutPage extends ConsumerWidget {
               ),
               itemBuilder: (context) => [
                 PopupMenuItem(
-                  enabled: false,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Admin',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      Text(
-                        'Management',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                      // const Divider(),
+                  value: 1,
+                  height: 40,
+                  child: Row(
+                    children: const [
+                      Icon(LucideIcons.user, size: 18),
+                      SizedBox(width: 12),
+                      Text('My Profile'),
                     ],
                   ),
                 ),
-                // PopupMenuItem(
-                //   value: 1,
-                //   height: 40,
-                //   child: Row(
-                //     children: const [
-                //       Icon(LucideIcons.user, size: 18),
-                //       SizedBox(width: 12),
-                //       Text('Profile'),
-                //     ],
-                //   ),
-                // ),
-                // PopupMenuItem(
-                //   value: 2,
-                //   height: 40,
-                //   child: Row(
-                //     children: const [
-                //       Icon(LucideIcons.settings, size: 18),
-                //       SizedBox(width: 12),
-                //       Text('Settings'),
-                //     ],
-                //   ),
-                // ),
+                PopupMenuItem(
+                  value: 2,
+                  height: 40,
+                  child: Row(
+                    children: const [
+                      Icon(LucideIcons.settings, size: 18),
+                      SizedBox(width: 12),
+                      Text('Settings'),
+                    ],
+                  ),
+                ),
                 ...[
                   const PopupMenuDivider(),
                   PopupMenuItem(
@@ -201,10 +182,21 @@ class _SideMenu extends StatefulWidget {
 
 class _SideMenuState extends State<_SideMenu> {
   bool _isExpanded = true;
+  bool _isEmployeeSubmenuOpen = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final location = GoRouterState.of(context).matchedLocation;
+    if (location.startsWith('/admin/employees')) {
+      _isEmployeeSubmenuOpen = true;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final selectedIndex = _calculateSelectedIndex(context);
+    final theme = Theme.of(context);
 
     return Container(
       width: widget.isDrawer ? 200 : (_isExpanded ? 200 : 60),
@@ -231,16 +223,12 @@ class _SideMenuState extends State<_SideMenu> {
                             Navigator.pop(context);
                             context.go('/admin/dashboard');
                           },
-                          child: Row(
-                            children: const [
-                              Text(
-                                'Center Assistant',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
+                          child: const Text(
+                            'Center Assistant',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
@@ -256,12 +244,48 @@ class _SideMenuState extends State<_SideMenu> {
                     'Schedule',
                   ),
                   const SizedBox(height: 4),
-                  _buildNavItem(
-                    2,
-                    selectedIndex,
-                    LucideIcons.users,
-                    'Employees',
-                  ),
+
+                  // Expandable Employee Menu
+                  if (widget.isDrawer || _isExpanded)
+                    Column(
+                      children: [
+                        _buildNavHeader(
+                          selectedIndex,
+                          [2, 6], // Staff List, Hierarchy
+                          LucideIcons.users,
+                          'Employees',
+                          isOpen: _isEmployeeSubmenuOpen,
+                          onTap: () {
+                            setState(() {
+                              _isEmployeeSubmenuOpen = !_isEmployeeSubmenuOpen;
+                            });
+                          },
+                        ),
+                        if (_isEmployeeSubmenuOpen) ...[
+                          _buildSubNavItem(
+                            2,
+                            selectedIndex,
+                            'All Employees',
+                            onTap: () => context.go('/admin/employees'),
+                          ),
+                          _buildSubNavItem(
+                            6,
+                            selectedIndex,
+                            'Department & Designation',
+                            onTap: () =>
+                                context.go('/admin/employees/hierarchy'),
+                          ),
+                        ],
+                      ],
+                    )
+                  else
+                    _buildNavItem(
+                      2,
+                      selectedIndex,
+                      LucideIcons.users,
+                      'Employees',
+                    ),
+
                   const SizedBox(height: 4),
                   _buildNavItem(
                     3,
@@ -306,6 +330,101 @@ class _SideMenuState extends State<_SideMenu> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildNavHeader(
+    int selectedIndex,
+    List<int> subIndices,
+    IconData icon,
+    String label, {
+    required bool isOpen,
+    required VoidCallback onTap,
+  }) {
+    final isAnySubSelected = subIndices.contains(selectedIndex);
+    final theme = Theme.of(context);
+
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isAnySubSelected
+              ? theme.colorScheme.primary.withValues(alpha: 0.05)
+              : Colors.transparent,
+        ),
+        child: Row(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Icon(
+                icon,
+                size: 18,
+                color: isAnySubSelected
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isAnySubSelected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                  fontWeight: isAnySubSelected
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Icon(
+                isOpen ? LucideIcons.chevronDown : LucideIcons.chevronRight,
+                size: 14,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubNavItem(
+    int index,
+    int selectedIndex,
+    String label, {
+    required VoidCallback onTap,
+  }) {
+    final isSelected = index == selectedIndex;
+    final theme = Theme.of(context);
+
+    return InkWell(
+      onTap: () {
+        onTap();
+        if (widget.isDrawer) {
+          Navigator.pop(context);
+        }
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(50, 10, 16, 10),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: .ellipsis,
+          style: TextStyle(
+            fontSize: 13,
+
+            color: isSelected
+                ? theme.colorScheme.primary
+                : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
       ),
     );
   }
@@ -376,10 +495,13 @@ class _SideMenuState extends State<_SideMenu> {
   }
 
   int _calculateSelectedIndex(BuildContext context) {
-    final String location = GoRouterState.of(context).uri.toString();
+    final String location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith('/admin/dashboard')) return 0;
     if (location.startsWith('/admin/schedule')) return 1;
-    if (location.startsWith('/admin/employees')) return 2;
+    if (location.startsWith('/admin/employees')) {
+      if (location.contains('hierarchy')) return 6;
+      return 2;
+    }
     if (location.startsWith('/admin/clients')) return 3;
     if (location.startsWith('/admin/time-slots')) return 4;
     if (location.startsWith('/admin/leave')) return 5;

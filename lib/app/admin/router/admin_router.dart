@@ -2,21 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '/app/admin/features/auth/presentation/pages/admin_login_page.dart';
+import '/app/admin/features/availability/presentation/pages/admin_apply_leave_page.dart';
 import '/app/admin/features/availability/presentation/pages/availability_page.dart';
 import '/app/admin/features/clients/presentation/pages/add_client_page.dart';
+import '/app/admin/features/clients/presentation/pages/client_availability_page.dart';
 import '/app/admin/features/clients/presentation/pages/client_page.dart';
 import '/app/admin/features/clients/presentation/pages/client_schedule_page.dart';
 import '/app/admin/features/dashboard/presentation/pages/admin_dashboard_page.dart';
 import '/app/admin/features/employees/presentation/pages/access_portal_page.dart';
 import '/app/admin/features/employees/presentation/pages/add_employee_page.dart';
+import '/app/admin/features/employees/presentation/pages/edit_employee_page.dart';
 import '/app/admin/features/employees/presentation/pages/employee_page.dart';
 import '/app/admin/features/employees/presentation/pages/employee_schedule_page.dart';
+import '/app/admin/features/employees/presentation/pages/hierarchy_management_page.dart';
 import '/app/admin/features/layout/presentation/pages/admin_layout_page.dart';
 import '/app/admin/features/leave/presentation/pages/leave_management_page.dart';
 import '/app/admin/features/schedule/presentation/pages/schedule_page.dart';
 import '/app/admin/features/time_slots/presentation/pages/add_time_slot_page.dart';
 import '/app/admin/features/time_slots/presentation/pages/time_slot_page.dart';
-import '/core/models/leave.dart';
+import '../features/contact/presentation/pages/employee_contact_page.dart';
 
 List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
   return [
@@ -33,7 +37,6 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
 
     GoRoute(path: '/admin', redirect: (context, state) => '/admin/dashboard'),
 
-    //
     ShellRoute(
       pageBuilder: (context, state, child) {
         return NoTransitionPage(
@@ -72,6 +75,16 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           ),
         ),
         GoRoute(
+          path: '/admin/employees/hierarchy',
+          pageBuilder: (context, state) => NoTransitionPage(
+            child: Title(
+              title: 'Hierarchy | Center Assistant',
+              color: Colors.black,
+              child: const HierarchyManagementPage(),
+            ),
+          ),
+        ),
+        GoRoute(
           path: '/admin/employees/:employeeId/schedule',
           pageBuilder: (context, state) => NoTransitionPage(
             child: Title(
@@ -95,7 +108,24 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
                 color: Colors.black,
                 child: AvailabilityPage(
                   entityId: employeeId,
-                  entityType: LeaveEntityType.employee,
+                  entityName: employeeName,
+                ),
+              ),
+            );
+          },
+        ),
+        GoRoute(
+          path: '/admin/employees/:employeeId/availability/apply',
+          pageBuilder: (context, state) {
+            final employeeId = state.pathParameters['employeeId']!;
+            final employeeName =
+                state.uri.queryParameters['name'] ?? 'Employee';
+            return NoTransitionPage(
+              child: Title(
+                title: 'Mark Unavailability | Center Assistant',
+                color: Colors.black,
+                child: AdminApplyLeavePage(
+                  entityId: employeeId,
                   entityName: employeeName,
                 ),
               ),
@@ -109,6 +139,18 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
               title: 'Add Employee | Center Assistant',
               color: Colors.black,
               child: const AddEmployeePage(),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/admin/employees/:id/edit',
+          pageBuilder: (context, state) => NoTransitionPage(
+            child: Title(
+              title: 'Edit Employee | Center Assistant',
+              color: Colors.black,
+              child: EditEmployeePage(
+                employeeId: state.pathParameters['id']!,
+              ),
             ),
           ),
         ),
@@ -156,10 +198,9 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
               child: Title(
                 title: 'Client Availability | Center Assistant',
                 color: Colors.black,
-                child: AvailabilityPage(
-                  entityId: clientId,
-                  entityType: LeaveEntityType.client,
-                  entityName: clientName,
+                child: ClientAvailabilityPage(
+                  clientId: clientId,
+                  clientName: clientName,
                 ),
               ),
             );
@@ -192,6 +233,17 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
               title: 'Add Time Slot | Center Assistant',
               color: Colors.black,
               child: const AddTimeSlotPage(),
+            ),
+          ),
+        ),
+
+        GoRoute(
+          path: '/admin/contact',
+          pageBuilder: (context, state) => NoTransitionPage(
+            child: Title(
+              title: 'Employee Contact | Center Assistant',
+              color: Colors.black,
+              child: EmployeeContactPage(),
             ),
           ),
         ),

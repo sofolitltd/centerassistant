@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -29,10 +30,35 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
     return Scaffold(
       // backgroundColor: Colors.transparent,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            //
+            Row(
+              children: [
+                InkWell(
+                  onTap: () => context.go('/admin/dashboard'),
+                  child: Text(
+                    'Admin',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                  ),
+                ),
+
+                const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+                Text(
+                  'Leave Request',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+
+            //
+            const SizedBox(height: 8),
+
+            //
             Text(
               'Leave Management',
               style: theme.textTheme.headlineSmall?.copyWith(
@@ -86,10 +112,10 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
                     ..sort((a, b) {
                       bool aUrgent =
                           a.status == LeaveStatus.pending ||
-                          a.status == LeaveStatus.cancel_requested;
+                          a.status == LeaveStatus.cancelRequest;
                       bool bUrgent =
                           b.status == LeaveStatus.pending ||
-                          b.status == LeaveStatus.cancel_requested;
+                          b.status == LeaveStatus.cancelRequest;
 
                       if (aUrgent && !bUrgent) return -1;
                       if (!aUrgent && bUrgent) return 1;
@@ -129,7 +155,7 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
                       separatorBuilder: (_, __) => const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final leave = sortedLeaves[index];
-                        final employee = employeeMap[leave.entityId];
+                        final employee = employeeMap[leave.employeeId];
 
                         return ListTile(
                           contentPadding: const EdgeInsets.all(16),
@@ -257,7 +283,7 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
       );
     }
 
-    if (leave.status == LeaveStatus.cancel_requested) {
+    if (leave.status == LeaveStatus.cancelRequest) {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -341,7 +367,7 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
       case LeaveStatus.cancelled:
         color = Colors.grey;
         break;
-      case LeaveStatus.cancel_requested:
+      case LeaveStatus.cancelRequest:
         color = Colors.purple;
         label = 'CANCEL REQ';
         break;

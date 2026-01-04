@@ -59,11 +59,15 @@ class EmployeeRepositoryImpl implements IEmployeeRepository {
   @override
   Future<void> addEmployee({
     required String name,
+    String nickName = '',
     required String personalPhone,
     required String officialPhone,
     required String personalEmail,
     required String officialEmail,
     required String department,
+    String designation = '',
+    String gender = 'male',
+    DateTime? dateOfBirth,
     required String email,
     String? password,
   }) async {
@@ -80,9 +84,12 @@ class EmployeeRepositoryImpl implements IEmployeeRepository {
         newIdNumber = (data?['count'] as int? ?? 0) + 1;
       }
 
-      final newId = 't${newIdNumber.toString().padLeft(4, '0')}';
+      // 1. Generate a RANDOM document ID
+      final newEmployeeRef = _firestore.collection('employees').doc();
+      final docId = newEmployeeRef.id;
 
-      final newEmployeeRef = _firestore.collection('employees').doc(newId);
+      // 2. Generate a SEQUENTIAL employeeId (e.g., 0001)
+      final sequentialId = newIdNumber.toString().padLeft(4, '0');
 
       // Generate random password if not provided
       final finalPassword = (password == null || password.isEmpty)
@@ -90,13 +97,18 @@ class EmployeeRepositoryImpl implements IEmployeeRepository {
           : password;
 
       final newEmployee = Employee(
-        id: newId,
+        id: docId, // Firestore random ID
+        employeeId: sequentialId, // The incrementing ID (0001, 0002, etc.)
         name: name,
+        nickName: nickName,
         personalPhone: personalPhone,
         officialPhone: officialPhone,
         personalEmail: personalEmail,
         officialEmail: officialEmail,
         department: department,
+        designation: designation,
+        gender: gender,
+        dateOfBirth: dateOfBirth,
         email: email,
         password: finalPassword,
         mustChangePassword: true, // Always force change for new accounts
@@ -119,6 +131,22 @@ class EmployeeRepositoryImpl implements IEmployeeRepository {
 
   @override
   Future<void> deleteEmployee(String id) async {
-    await _firestore.collection('employees').doc(id).delete();
+    final counterRef = _firestore.collection('counters').doc('employees');
+    final employeeRef = _firestore.collection('employees').doc(id);
+
+    return _firestore.runTransaction((transaction) async {
+      final counterSnapshot = await transaction.get(counterRef);
+      
+      if (counterSnapshot.exists) {
+        final currentCount = counterSnapshot.data()?['count'] as int? ?? 0;
+        if (currentCount > 0) {
+          // Reduce the counter when an employee is deleted
+          transaction.update(counterRef, {'count': currentCount - 1});
+        }
+      }
+      
+      // Perform the actual deletion
+      transaction.delete(employeeRef);
+    });
   }
 }

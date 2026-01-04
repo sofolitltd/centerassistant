@@ -48,19 +48,10 @@ class ClientPage extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Clients',
-                          style: Theme.of(context).textTheme.headlineMedium!
-                              .copyWith(
-                                fontWeight: FontWeight.bold,
-                                height: 1.2,
-                              ),
-                        ),
-                        const SizedBox(height: 8),
                         Row(
                           children: [
                             InkWell(
-                              onTap: () => context.go('/admin/layout'),
+                              onTap: () => context.go('/admin/dashboard'),
                               child: Text(
                                 'Admin',
                                 style: Theme.of(context).textTheme.bodyMedium
@@ -77,6 +68,15 @@ class ClientPage extends ConsumerWidget {
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Clients',
+                          style: Theme.of(context).textTheme.headlineMedium!
+                              .copyWith(
+                                fontWeight: FontWeight.bold,
+                                height: 1.2,
+                              ),
                         ),
                       ],
                     ),
@@ -305,7 +305,7 @@ class ClientPage extends ConsumerWidget {
                           Row(
                             children: [
                               Text(
-                                'ID: ${client.id.toUpperCase()}',
+                                'ID: ${client.clientId.toUpperCase()}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey.shade700,
@@ -635,7 +635,7 @@ class ClientPage extends ConsumerWidget {
                   alignedDropdown: true,
                   child: DropdownButtonFormField<String>(
                     initialValue: selectedGender,
-                    items: ['Male', 'Female', 'Other']
+                    items: ['Male', 'Female']
                         .map((g) => DropdownMenuItem(value: g, child: Text(g)))
                         .toList(),
                     onChanged: (val) => setState(() => selectedGender = val!),
@@ -677,6 +677,7 @@ class ClientPage extends ConsumerWidget {
               onPressed: () {
                 final updatedClient = Client(
                   id: client.id,
+                  clientId: client.clientId,
                   name: nameController.text,
                   mobileNo: mobileController.text,
                   email: emailController.text,

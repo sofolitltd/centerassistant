@@ -1,17 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum LeaveEntityType { employee, client }
-
 enum LeaveType { annual, sick, causal, unpaid }
 
 enum LeaveDuration { full, half }
 
-enum LeaveStatus { pending, approved, rejected, cancelled, cancel_requested }
+enum LeaveStatus { pending, approved, rejected, cancelled, cancelRequest }
 
 class Leave {
   final String id;
-  final String entityId; // employeeId or clientId
-  final LeaveEntityType entityType;
+  final String employeeId;
   final DateTime date;
   final String? reason;
   final LeaveType leaveType;
@@ -21,8 +18,7 @@ class Leave {
 
   Leave({
     required this.id,
-    required this.entityId,
-    required this.entityType,
+    required this.employeeId,
     required this.date,
     this.reason,
     this.leaveType = LeaveType.annual,
@@ -33,8 +29,7 @@ class Leave {
 
   Map<String, dynamic> toJson() {
     return {
-      'entityId': entityId,
-      'entityType': entityType.name,
+      'employeeId': employeeId,
       'date': Timestamp.fromDate(date),
       'reason': reason,
       'leaveType': leaveType.name,
@@ -48,10 +43,7 @@ class Leave {
     final data = snapshot.data()!;
     return Leave(
       id: snapshot.id,
-      entityId: data['entityId'] as String? ?? '',
-      entityType: LeaveEntityType.values.byName(
-        data['entityType'] as String? ?? 'employee',
-      ),
+      employeeId: data['employeeId'] as String? ?? '',
       date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
       reason: data['reason'] as String?,
       leaveType: LeaveType.values.byName(
@@ -60,21 +52,15 @@ class Leave {
       duration: LeaveDuration.values.byName(
         data['duration'] as String? ?? 'full',
       ),
-      status: LeaveStatus.values.byName(
-        data['status'] as String? ?? 'pending',
-      ),
+      status: LeaveStatus.values.byName(data['status'] as String? ?? 'pending'),
       approvedBy: data['approvedBy'] as String?,
     );
   }
 
-  Leave copyWith({
-    LeaveStatus? status,
-    String? approvedBy,
-  }) {
+  Leave copyWith({LeaveStatus? status, String? approvedBy}) {
     return Leave(
       id: id,
-      entityId: entityId,
-      entityType: entityType,
+      employeeId: employeeId,
       date: date,
       reason: reason,
       leaveType: leaveType,

@@ -471,8 +471,7 @@ class EmployeeLeavePage extends ConsumerWidget {
                 await ref
                     .read(leaveServiceProvider)
                     .addLeave(
-                      entityId: leave.entityId,
-                      entityType: leave.entityType,
+                      employeeId: leave.employeeId,
                       date: leave.date,
                       reason: reasonController.text,
                       leaveType: selectedType,
@@ -546,7 +545,7 @@ class EmployeeLeavePage extends ConsumerWidget {
       case LeaveStatus.cancelled:
         color = Colors.grey;
         break;
-      case LeaveStatus.cancel_requested:
+      case LeaveStatus.cancelRequest:
         color = Colors.purple;
         label = 'CANCEL REQ';
         break;

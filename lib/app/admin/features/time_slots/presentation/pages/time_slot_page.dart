@@ -43,19 +43,10 @@ class TimeSlotPage extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Time Slots',
-                          style: Theme.of(context).textTheme.headlineMedium!
-                              .copyWith(
-                                fontWeight: FontWeight.bold,
-                                height: 1.2,
-                              ),
-                        ),
-                        const SizedBox(height: 8),
                         Row(
                           children: [
                             InkWell(
-                              onTap: () => context.go('/admin/layout'),
+                              onTap: () => context.go('/admin/dashboard'),
                               child: Text(
                                 'Admin',
                                 style: Theme.of(context).textTheme.bodyMedium
@@ -72,6 +63,15 @@ class TimeSlotPage extends ConsumerWidget {
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Time Slots',
+                          style: Theme.of(context).textTheme.headlineMedium!
+                              .copyWith(
+                                fontWeight: FontWeight.bold,
+                                height: 1.2,
+                              ),
                         ),
                       ],
                     ),

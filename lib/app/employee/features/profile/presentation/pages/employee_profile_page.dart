@@ -61,6 +61,7 @@ class _EmployeeProfilePageState extends ConsumerState<EmployeeProfilePage> {
     try {
       final updatedEmployee = Employee(
         id: currentEmployee.id,
+        employeeId: currentEmployee.employeeId,
         name: _nameController.text.trim(),
         personalPhone: _pPhoneController.text.trim(),
         officialPhone: _oPhoneController.text.trim(),

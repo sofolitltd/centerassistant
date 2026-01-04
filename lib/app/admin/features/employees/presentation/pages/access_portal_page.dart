@@ -254,7 +254,7 @@ class _InviteEmployeePageState extends ConsumerState<AccessPortalPage> {
             Row(
               children: [
                 InkWell(
-                  onTap: () => context.go('/admin/layout'),
+                  onTap: () => context.go('/admin/dashboard'),
                   child: Text(
                     'Admin',
                     style: theme.textTheme.bodyMedium?.copyWith(
