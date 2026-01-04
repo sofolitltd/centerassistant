@@ -333,7 +333,7 @@ class _EmployeeSideMenuState extends State<_EmployeeSideMenu> {
                     'My Clients',
                   ),
                   const SizedBox(height: 4),
-                  // Expandable Leave Menu
+                  // Leave Menu
                   if (widget.isDrawer || _isExpanded)
                     Column(
                       children: [
@@ -351,29 +351,29 @@ class _EmployeeSideMenuState extends State<_EmployeeSideMenu> {
                         ),
                         if (_isLeaveSubmenuOpen) ...[
                           _buildSubNavItem(
-                            6,
+                            4,
                             selectedIndex,
                             'Apply Leave',
-                            onTap: () => _onDestinationSelected(6, context),
+                            onTap: () => _onDestinationSelected(4, context),
+                          ),
+                          _buildSubNavItem(
+                            3,
+                            selectedIndex,
+                            'My Leave',
+                            onTap: () => _onDestinationSelected(3, context),
                           ),
                           _buildSubNavItem(
                             5,
                             selectedIndex,
-                            'My Leave',
-                            onTap: () => _onDestinationSelected(5, context),
-                          ),
-                          _buildSubNavItem(
-                            7,
-                            selectedIndex,
                             'Leave Policy',
-                            onTap: () => _onDestinationSelected(7, context),
+                            onTap: () => _onDestinationSelected(5, context),
                           ),
                         ],
                       ],
                     )
                   else
-                    _buildNavItem(
-                      3,
+                    _buildCollapsedSubMenu(
+                      [3, 4, 5],
                       selectedIndex,
                       LucideIcons.calendarX,
                       'Leave',
@@ -384,7 +384,7 @@ class _EmployeeSideMenuState extends State<_EmployeeSideMenu> {
                   _buildNavItem(
                     6,
                     selectedIndex,
-                    LucideIcons.users,
+                    LucideIcons.phone,
                     'Contacts',
                   ),
                 ],
@@ -410,6 +410,62 @@ class _EmployeeSideMenuState extends State<_EmployeeSideMenu> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildCollapsedSubMenu(
+    List<int> subIndices,
+    int selectedIndex,
+    IconData icon,
+    String label,
+  ) {
+    final isAnySubSelected = subIndices.contains(selectedIndex);
+    final theme = Theme.of(context);
+
+    return PopupMenuButton<int>(
+      offset: const Offset(65, 0),
+      position: PopupMenuPosition.over,
+      color: Colors.white,
+      tooltip: label,
+      onSelected: (index) => _onDestinationSelected(index, context),
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 4,
+          child: Text('Apply Leave', style: TextStyle(fontSize: 13)),
+        ),
+        const PopupMenuItem(
+          value: 3,
+          child: Text('My Leave', style: TextStyle(fontSize: 13)),
+        ),
+        const PopupMenuItem(
+          value: 5,
+          child: Text('Leave Policy', style: TextStyle(fontSize: 13)),
+        ),
+      ],
+      child: Container(
+        width: 60,
+        decoration: BoxDecoration(
+          color: isAnySubSelected
+              ? theme.colorScheme.secondary.withValues(alpha: 0.1)
+              : Colors.transparent,
+          border: Border(
+            left: BorderSide(
+              color: isAnySubSelected
+                  ? theme.colorScheme.secondary
+                  : Colors.transparent,
+              width: 4,
+            ),
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Icon(
+          icon,
+          size: 18,
+          color: isAnySubSelected
+              ? theme.colorScheme.secondary
+              : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+        ),
       ),
     );
   }
@@ -579,7 +635,7 @@ class _EmployeeSideMenuState extends State<_EmployeeSideMenu> {
     if (location == '/employee/leave') return 3;
     if (location == '/employee/leave/apply') return 4;
     if (location == '/employee/leave/policy') return 5;
-    if (location == '/employee/contact') return 5;
+    if (location == '/employee/contact') return 6;
     return 0;
   }
 

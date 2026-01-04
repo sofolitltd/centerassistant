@@ -68,6 +68,7 @@ class EmployeeRepositoryImpl implements IEmployeeRepository {
     String designation = '',
     String gender = 'male',
     DateTime? dateOfBirth,
+    DateTime? joinedDate,
     required String email,
     String? password,
   }) async {
@@ -112,7 +113,7 @@ class EmployeeRepositoryImpl implements IEmployeeRepository {
         email: email,
         password: finalPassword,
         mustChangePassword: true, // Always force change for new accounts
-        joinDate: DateTime.now(),
+        joinedDate: DateTime.now(),
         createdAt: DateTime.now(),
       );
 
@@ -131,22 +132,8 @@ class EmployeeRepositoryImpl implements IEmployeeRepository {
 
   @override
   Future<void> deleteEmployee(String id) async {
-    final counterRef = _firestore.collection('counters').doc('employees');
-    final employeeRef = _firestore.collection('employees').doc(id);
-
-    return _firestore.runTransaction((transaction) async {
-      final counterSnapshot = await transaction.get(counterRef);
-      
-      if (counterSnapshot.exists) {
-        final currentCount = counterSnapshot.data()?['count'] as int? ?? 0;
-        if (currentCount > 0) {
-          // Reduce the counter when an employee is deleted
-          transaction.update(counterRef, {'count': currentCount - 1});
-        }
-      }
-      
-      // Perform the actual deletion
-      transaction.delete(employeeRef);
-    });
+    // We no longer decrease the counter when an employee is deleted.
+    // This ensures employee IDs remain unique and sequential even if gaps are created.
+    await _firestore.collection('employees').doc(id).delete();
   }
 }

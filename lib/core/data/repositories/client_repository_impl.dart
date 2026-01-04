@@ -96,7 +96,7 @@ class ClientRepositoryImpl implements IClientRepository {
 
     return _firestore.runTransaction((transaction) async {
       final counterSnapshot = await transaction.get(counterRef);
-      
+
       if (counterSnapshot.exists) {
         final currentCount = counterSnapshot.data()?['count'] as int? ?? 0;
         if (currentCount > 0) {
@@ -104,7 +104,7 @@ class ClientRepositoryImpl implements IClientRepository {
           transaction.update(counterRef, {'count': currentCount - 1});
         }
       }
-      
+
       // Perform the actual deletion
       transaction.delete(clientRef);
     });

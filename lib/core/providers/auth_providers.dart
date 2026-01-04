@@ -173,6 +173,25 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  Future<void> completePasswordChange(String newPassword) async {
+    if (state.employeeId == null) return;
+
+    state = state.copyWith(isLoading: true);
+    try {
+      await ref
+          .read(employeeAuthRepositoryProvider)
+          .changePassword(state.employeeId!, newPassword);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('auth_must_change_password', false);
+
+      state = state.copyWith(mustChangePassword: false, isLoading: false);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      rethrow;
+    }
+  }
+
   Future<void> logoutAdmin() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('is_admin_authenticated', false);

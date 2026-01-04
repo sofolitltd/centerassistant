@@ -24,12 +24,13 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
 
     setState(() => _isLoading = true);
     try {
-      final employeeId = ref.read(authProvider).employeeId!;
+      // Use the updated completePasswordChange method to sync app state
       await ref
-          .read(employeeAuthRepositoryProvider)
-          .changePassword(employeeId, _passwordController.text);
+          .read(authProvider.notifier)
+          .completePasswordChange(_passwordController.text);
+
       if (mounted) {
-        context.go('/employee/layout');
+        context.go('/employee/dashboard');
       }
     } catch (e) {
       if (mounted) {
@@ -50,7 +51,7 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
       backgroundColor: theme.colorScheme.surfaceBright,
       body: Center(
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 400),
+          constraints: const BoxConstraints(minWidth: 350, maxWidth: 450),
           padding: const EdgeInsets.all(24),
           child: Card(
             child: Padding(
@@ -125,11 +126,18 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
                     ),
                     const SizedBox(height: 32),
                     SizedBox(
-                      height: 50,
+                      height: 48,
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _changePassword,
                         child: _isLoading
-                            ? const CircularProgressIndicator()
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
                             : const Text('Update Password'),
                       ),
                     ),

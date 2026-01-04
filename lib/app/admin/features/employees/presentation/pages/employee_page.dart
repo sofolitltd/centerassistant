@@ -299,7 +299,7 @@ class EmployeePage extends ConsumerWidget {
                                       mustChangePassword:
                                           employee.mustChangePassword,
                                       isActive: !employee.isActive, // Toggle
-                                      joinDate: employee.joinDate,
+                                      joinedDate: employee.joinedDate,
                                       createdAt: employee.createdAt,
                                       image: employee.image,
                                     );
@@ -553,7 +553,7 @@ class EmployeePage extends ConsumerWidget {
 
                           const SizedBox(height: 4),
                           Text(
-                            'Joined: ${DateFormat('dd MMM, yyyy').format(employee.joinDate)}',
+                            'Joined: ${DateFormat('dd MMM, yyyy').format(employee.joinedDate!)}',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey.shade700,

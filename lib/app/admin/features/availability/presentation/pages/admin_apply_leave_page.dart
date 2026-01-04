@@ -140,43 +140,50 @@ class _AdminApplyLeavePageState extends ConsumerState<AdminApplyLeavePage> {
                   const SizedBox(height: 20),
                   _buildField(
                     'Entry Type',
-                    DropdownButtonFormField<LeaveType>(
-                      value: selectedType,
-                      isDense: true,
-                      items: LeaveType.values
-                          .map(
-                            (t) => DropdownMenuItem(
-                              value: t,
-                              child: Text(
-                                t.name.toUpperCase(),
-                                style: const TextStyle(fontSize: 13),
+                    ButtonTheme(
+                      alignedDropdown: true,
+                      child: DropdownButtonFormField<LeaveType>(
+                        value: selectedType,
+                        isDense: true,
+                        items: LeaveType.values
+                            .map(
+                              (t) => DropdownMenuItem(
+                                value: t,
+                                child: Text(
+                                  t.name.toUpperCase(),
+                                  style: const TextStyle(fontSize: 13),
+                                ),
                               ),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (v) => setDialogState(() => selectedType = v!),
-                      decoration: _inputDecoration(),
+                            )
+                            .toList(),
+                        onChanged: (v) =>
+                            setDialogState(() => selectedType = v!),
+                        decoration: _inputDecoration(),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
                   _buildField(
                     'Duration',
-                    DropdownButtonFormField<LeaveDuration>(
-                      value: selectedDuration,
-                      items: LeaveDuration.values
-                          .map(
-                            (d) => DropdownMenuItem(
-                              value: d,
-                              child: Text(
-                                '${d.name} day'.toUpperCase(),
-                                style: const TextStyle(fontSize: 13),
+                    ButtonTheme(
+                      alignedDropdown: true,
+                      child: DropdownButtonFormField<LeaveDuration>(
+                        value: selectedDuration,
+                        items: LeaveDuration.values
+                            .map(
+                              (d) => DropdownMenuItem(
+                                value: d,
+                                child: Text(
+                                  '${d.name} day'.toUpperCase(),
+                                  style: const TextStyle(fontSize: 13),
+                                ),
                               ),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (v) =>
-                          setDialogState(() => selectedDuration = v!),
-                      decoration: _inputDecoration(),
+                            )
+                            .toList(),
+                        onChanged: (v) =>
+                            setDialogState(() => selectedDuration = v!),
+                        decoration: _inputDecoration(),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -205,7 +212,8 @@ class _AdminApplyLeavePageState extends ConsumerState<AdminApplyLeavePage> {
                   style: TextStyle(color: Colors.red),
                 ),
               ),
-            const Spacer(),
+
+            //
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Cancel'),
@@ -461,7 +469,7 @@ class _AdminApplyLeavePageState extends ConsumerState<AdminApplyLeavePage> {
       fillColor: Colors.grey.shade50,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(4),
         borderSide: BorderSide(color: Colors.grey.shade200),
       ),
     );

@@ -448,7 +448,7 @@ class _EditEmployeePageState extends ConsumerState<EditEmployeePage> {
         password: current.password,
         role: current.role,
         isActive: current.isActive,
-        joinDate: current.joinDate,
+        joinedDate: current.joinedDate,
         createdAt: current.createdAt,
         image: current.image,
       );

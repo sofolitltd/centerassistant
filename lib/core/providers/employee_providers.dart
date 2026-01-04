@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '/core/domain/repositories/employee_repository.dart';
@@ -34,11 +33,18 @@ class Designation {
 
 final allDesignationsProvider = StreamProvider<List<Designation>>((ref) {
   final firestore = ref.watch(firestoreProvider);
-  return firestore.collection('designations').snapshots().map(
-        (snapshot) => snapshot.docs.map((doc) => Designation(
-          name: doc['name'] as String,
-          department: doc['department'] as String? ?? '',
-        )).toList(),
+  return firestore
+      .collection('designations')
+      .snapshots()
+      .map(
+        (snapshot) => snapshot.docs
+            .map(
+              (doc) => Designation(
+                name: doc['name'] as String,
+                department: doc['department'] as String? ?? '',
+              ),
+            )
+            .toList(),
       );
 });
 

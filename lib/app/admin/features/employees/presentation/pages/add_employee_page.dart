@@ -26,7 +26,6 @@ class _AddEmployeePageState extends ConsumerState<AddEmployeePage> {
   String? _selectedDesignation;
   String _selectedGender = 'male';
   DateTime? _selectedDob;
-
   @override
   void dispose() {
     _nameController.dispose();
@@ -105,7 +104,7 @@ class _AddEmployeePageState extends ConsumerState<AddEmployeePage> {
     final isMobile = width < 800;
 
     return Scaffold(
-      backgroundColor: Colors.black12.withValues(alpha: 0.03),
+      backgroundColor: Colors.black12.withOpacity(0.03),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(isMobile ? 16.0 : 32.0),
         child: Center(
@@ -194,9 +193,14 @@ class _AddEmployeePageState extends ConsumerState<AddEmployeePage> {
                             isMobile: isMobile,
                             children: [
                               _buildGenderDropdown(),
-                              _buildDatePicker(),
+                              _buildDatePicker(
+                                'Date of Birth',
+                                _selectedDob,
+                                (d) => setState(() => _selectedDob = d),
+                              ),
                             ],
                           ),
+
                           const SizedBox(height: 48),
                           _buildFooterActions(),
                         ],
@@ -275,12 +279,12 @@ class _AddEmployeePageState extends ConsumerState<AddEmployeePage> {
             final deptsAsync = ref.watch(departmentsProvider);
             return deptsAsync.when(
               data: (items) {
-                // Fix: Ensure the value exists in items to avoid Assertion failure
                 final uniqueItems = items.toSet().toList();
-                if (_selectedDepartment != null && !uniqueItems.contains(_selectedDepartment)) {
+                if (_selectedDepartment != null &&
+                    !uniqueItems.contains(_selectedDepartment)) {
                   _selectedDepartment = null;
                 }
-                
+
                 return ButtonTheme(
                   alignedDropdown: true,
                   child: DropdownButtonFormField<String>(
@@ -324,9 +328,9 @@ class _AddEmployeePageState extends ConsumerState<AddEmployeePage> {
                     .map((d) => d.name)
                     .toSet()
                     .toList();
-                
-                // Fix: Ensure selected value exists in filtered list
-                if (_selectedDesignation != null && !filtered.contains(_selectedDesignation)) {
+
+                if (_selectedDesignation != null &&
+                    !filtered.contains(_selectedDesignation)) {
                   _selectedDesignation = null;
                 }
 
@@ -341,10 +345,8 @@ class _AddEmployeePageState extends ConsumerState<AddEmployeePage> {
                     ),
                     items: filtered
                         .map(
-                          (name) => DropdownMenuItem(
-                            value: name,
-                            child: Text(name),
-                          ),
+                          (name) =>
+                              DropdownMenuItem(value: name, child: Text(name)),
                         )
                         .toList(),
                     onChanged: _selectedDepartment == null
@@ -384,31 +386,33 @@ class _AddEmployeePageState extends ConsumerState<AddEmployeePage> {
     );
   }
 
-  Widget _buildDatePicker() {
+  Widget _buildDatePicker(
+    String label,
+    DateTime? value,
+    Function(DateTime?) onChanged,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildFieldTitle('Date of Birth'),
+        _buildFieldTitle(label),
         InkWell(
           onTap: () async {
             final picked = await showDatePicker(
               context: context,
-              initialDate: DateTime.now().subtract(
-                const Duration(days: 365 * 20),
-              ),
+              initialDate: value ?? DateTime.now(),
               firstDate: DateTime(1950),
-              lastDate: DateTime.now(),
+              lastDate: DateTime.now().add(const Duration(days: 365)),
             );
-            if (picked != null) setState(() => _selectedDob = picked);
+            if (picked != null) onChanged(picked);
           },
           child: InputDecorator(
             decoration: _inputDecoration(prefixIcon: LucideIcons.calendar),
             child: Text(
-              _selectedDob == null
+              value == null
                   ? 'Select Date'
-                  : DateFormat('MMM dd, yyyy').format(_selectedDob!),
+                  : DateFormat('MMM dd, yyyy').format(value),
               style: TextStyle(
-                color: _selectedDob == null ? Colors.grey : Colors.black,
+                color: value == null ? Colors.grey : Colors.black,
               ),
             ),
           ),
@@ -430,7 +434,9 @@ class _AddEmployeePageState extends ConsumerState<AddEmployeePage> {
           onPressed: _handleSubmit,
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
           child: const Text(
             'Create Employee Account',
@@ -443,7 +449,9 @@ class _AddEmployeePageState extends ConsumerState<AddEmployeePage> {
 
   void _handleSubmit() {
     if (_formKey.currentState!.validate()) {
-      ref.read(employeeServiceProvider).addEmployee(
+      ref
+          .read(employeeServiceProvider)
+          .addEmployee(
             name: _nameController.text.trim(),
             nickName: _nickNameController.text.trim(),
             personalPhone: _personalPhoneController.text.trim(),

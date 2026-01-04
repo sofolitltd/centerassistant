@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '/core/models/employee.dart';
@@ -18,10 +19,14 @@ class EmployeeProfilePage extends ConsumerStatefulWidget {
 class _EmployeeProfilePageState extends ConsumerState<EmployeeProfilePage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
+  late TextEditingController _nickNameController;
   late TextEditingController _pPhoneController;
   late TextEditingController _oPhoneController;
   late TextEditingController _pEmailController;
   late TextEditingController _oEmailController;
+
+  String? _selectedGender;
+  DateTime? _selectedDob;
   bool _isEditing = false;
   bool _isLoading = false;
 
@@ -29,6 +34,7 @@ class _EmployeeProfilePageState extends ConsumerState<EmployeeProfilePage> {
   void initState() {
     super.initState();
     _nameController = TextEditingController();
+    _nickNameController = TextEditingController();
     _pPhoneController = TextEditingController();
     _oPhoneController = TextEditingController();
     _pEmailController = TextEditingController();
@@ -38,6 +44,7 @@ class _EmployeeProfilePageState extends ConsumerState<EmployeeProfilePage> {
   @override
   void dispose() {
     _nameController.dispose();
+    _nickNameController.dispose();
     _pPhoneController.dispose();
     _oPhoneController.dispose();
     _pEmailController.dispose();
@@ -47,10 +54,13 @@ class _EmployeeProfilePageState extends ConsumerState<EmployeeProfilePage> {
 
   void _initFields(Employee employee) {
     _nameController.text = employee.name;
+    _nickNameController.text = employee.nickName;
     _pPhoneController.text = employee.personalPhone;
     _oPhoneController.text = employee.officialPhone;
     _pEmailController.text = employee.personalEmail;
     _oEmailController.text = employee.officialEmail;
+    _selectedGender = employee.gender;
+    _selectedDob = employee.dateOfBirth;
   }
 
   Future<void> _handleSave(Employee currentEmployee) async {
@@ -63,17 +73,21 @@ class _EmployeeProfilePageState extends ConsumerState<EmployeeProfilePage> {
         id: currentEmployee.id,
         employeeId: currentEmployee.employeeId,
         name: _nameController.text.trim(),
+        nickName: _nickNameController.text.trim(),
         personalPhone: _pPhoneController.text.trim(),
         officialPhone: _oPhoneController.text.trim(),
         personalEmail: _pEmailController.text.trim(),
         officialEmail: _oEmailController.text.trim(),
         department: currentEmployee.department,
+        designation: currentEmployee.designation,
+        gender: _selectedGender ?? 'male',
+        dateOfBirth: _selectedDob,
         email: currentEmployee.email,
         password: currentEmployee.password,
         role: currentEmployee.role,
         mustChangePassword: currentEmployee.mustChangePassword,
         isActive: currentEmployee.isActive,
-        joinDate: currentEmployee.joinDate,
+        joinedDate: currentEmployee.joinedDate,
         createdAt: currentEmployee.createdAt,
         image: currentEmployee.image,
       );
@@ -111,11 +125,11 @@ class _EmployeeProfilePageState extends ConsumerState<EmployeeProfilePage> {
     final bool isMobile = width < 700;
 
     return Scaffold(
-      // backgroundColor: Colors.transparent,
+      backgroundColor: Colors.transparent,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Align(
-          alignment: Alignment.topLeft,
+          alignment: Alignment.topCenter,
           child: Container(
             constraints: const BoxConstraints(maxWidth: 900),
             child: Column(
@@ -311,25 +325,42 @@ class _EmployeeProfilePageState extends ConsumerState<EmployeeProfilePage> {
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          employee.department,
-          textAlign: textAlign,
-          style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(
-            'ID: ${employee.id.toUpperCase()}',
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey,
+        Row(
+          mainAxisAlignment: textAlign == TextAlign.center
+              ? MainAxisAlignment.center
+              : MainAxisAlignment.start,
+          children: [
+            Text(
+              employee.department,
+              textAlign: textAlign,
+              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
             ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'ID: ${employee.employeeId.toUpperCase()}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          employee.designation.toUpperCase(),
+          textAlign: textAlign,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: Colors.grey,
+            fontSize: 12,
+            letterSpacing: 1.1,
           ),
         ),
       ],
@@ -343,6 +374,7 @@ class _EmployeeProfilePageState extends ConsumerState<EmployeeProfilePage> {
         _buildSectionTitle(theme, 'Basic Information'),
         const SizedBox(height: 12),
         _buildResponsiveGrid(
+          isMobile: isMobile,
           children: [
             _buildTextField(
               label: 'Full Name',
@@ -351,6 +383,14 @@ class _EmployeeProfilePageState extends ConsumerState<EmployeeProfilePage> {
               prefixIcon: LucideIcons.user,
               isRequired: true,
             ),
+            _buildTextField(
+              label: 'Nick Name',
+              controller: _nickNameController,
+              enabled: _isEditing,
+              prefixIcon: LucideIcons.userCheck,
+            ),
+            _buildGenderDropdown(theme),
+            _buildDatePicker(theme),
           ],
         ),
         const SizedBox(height: 32),
@@ -384,6 +424,107 @@ class _EmployeeProfilePageState extends ConsumerState<EmployeeProfilePage> {
               prefixIcon: LucideIcons.briefcase,
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGenderDropdown(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Gender',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ButtonTheme(
+          alignedDropdown: true,
+          child: DropdownButtonFormField<String>(
+            value: _selectedGender,
+            // Fixed: use onChanged null to disable the field
+            onChanged: _isEditing
+                ? (v) => setState(() => _selectedGender = v!)
+                : null,
+            items: const [
+              DropdownMenuItem(value: 'male', child: Text('MALE')),
+              DropdownMenuItem(value: 'female', child: Text('FEMALE')),
+            ],
+            decoration: InputDecoration(
+              prefixIcon: const Icon(LucideIcons.users, size: 18),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              filled: !_isEditing,
+              fillColor: _isEditing
+                  ? null
+                  : Colors.grey.withValues(alpha: 0.05),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDatePicker(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Date of Birth',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: _isEditing
+              ? () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate:
+                        _selectedDob ??
+                        DateTime.now().subtract(const Duration(days: 365 * 20)),
+                    firstDate: DateTime(1950),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) setState(() => _selectedDob = picked);
+                }
+              : null,
+          child: InputDecorator(
+            decoration: InputDecoration(
+              prefixIcon: const Icon(LucideIcons.calendar, size: 18),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              filled: !_isEditing,
+              fillColor: _isEditing
+                  ? null
+                  : Colors.grey.withValues(alpha: 0.05),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 14,
+              ),
+            ),
+            child: Text(
+              _selectedDob == null
+                  ? 'Select Date'
+                  : DateFormat('MMM dd, yyyy').format(_selectedDob!),
+              style: TextStyle(
+                color: _selectedDob == null ? Colors.grey : Colors.black87,
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -444,7 +585,7 @@ class _EmployeeProfilePageState extends ConsumerState<EmployeeProfilePage> {
               children: [
                 _buildInfoBadge(
                   'Joined Date',
-                  employee.joinDate.toString().split(' ')[0],
+                  employee.joinedDate.toString().split(' ')[0],
                   LucideIcons.calendar,
                 ),
                 _buildInfoBadge(

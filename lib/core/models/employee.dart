@@ -18,7 +18,7 @@ class Employee {
   final String role;
   final bool mustChangePassword;
   final bool isActive;
-  final DateTime joinDate;
+  final DateTime joinedDate;
   final DateTime createdAt;
   final String image;
   final int carriedForwardLeaves;
@@ -42,7 +42,7 @@ class Employee {
     this.role = 'employee',
     this.mustChangePassword = false,
     this.isActive = true,
-    required this.joinDate,
+    required this.joinedDate,
     required this.createdAt,
     this.image = '',
     this.carriedForwardLeaves = 0,
@@ -67,12 +67,12 @@ class Employee {
       'dateOfBirth': dateOfBirth != null
           ? Timestamp.fromDate(dateOfBirth!)
           : null,
+      'joinedDate': Timestamp.fromDate(joinedDate),
       'email': email,
       'password': password,
       'role': role,
       'mustChangePassword': mustChangePassword,
       'isActive': isActive,
-      'joinDate': Timestamp.fromDate(joinDate),
       'createdAt': Timestamp.fromDate(createdAt),
       'image': image,
       'carriedForwardLeaves': carriedForwardLeaves,
@@ -97,12 +97,13 @@ class Employee {
       designation: data['designation'] as String? ?? '',
       gender: data['gender'] as String? ?? 'male',
       dateOfBirth: (data['dateOfBirth'] as Timestamp?)?.toDate(),
+      joinedDate:
+          (data['joinedDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       email: data['email'] as String? ?? '',
       password: data['password'] as String? ?? '',
       role: data['role'] as String? ?? 'employee',
       mustChangePassword: data['mustChangePassword'] as bool? ?? false,
       isActive: data['isActive'] as bool? ?? true,
-      joinDate: (data['joinDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       image: data['image'] as String? ?? '',
       carriedForwardLeaves: data['carriedForwardLeaves'] as int? ?? 0,
