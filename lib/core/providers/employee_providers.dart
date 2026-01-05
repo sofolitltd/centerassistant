@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '/core/domain/repositories/employee_repository.dart';
@@ -22,6 +23,19 @@ final employeeByIdProvider = StreamProvider.family<Employee?, String>((
 
 final departmentsProvider = StreamProvider<List<String>>((ref) {
   return ref.watch(employeeRepositoryProvider).getDepartments();
+});
+
+final schedulableDepartmentsProvider = StreamProvider<Set<String>>((ref) {
+  final firestore = ref.watch(firestoreProvider);
+  return firestore
+      .collection('departments')
+      .where('isSchedulable', isEqualTo: true)
+      .snapshots()
+      .map(
+        (snapshot) => snapshot.docs
+            .map((doc) => doc.data()['name'] as String)
+            .toSet(),
+      );
 });
 
 // Model for Designation with Department link

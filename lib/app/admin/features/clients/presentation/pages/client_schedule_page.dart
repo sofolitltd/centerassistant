@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -89,6 +90,7 @@ class _WeeklyScheduleGridState extends ConsumerState<WeeklyScheduleGrid> {
     final clientId = uri.pathSegments[2];
 
     final scheduleAsync = ref.watch(scheduleTemplateProvider(clientId));
+    final allTemplatesAsync = ref.watch(allScheduleTemplatesProvider);
     final employeesAsync = ref.watch(employeesProvider);
     final timeSlotsAsync = ref.watch(timeSlotsProvider);
 
@@ -103,138 +105,191 @@ class _WeeklyScheduleGridState extends ConsumerState<WeeklyScheduleGrid> {
     ];
 
     return timeSlotsAsync.when(
+      skipLoadingOnRefresh: true,
       data: (timeSlots) => employeesAsync.when(
-        data: (employees) => scheduleAsync.when(
-          data: (template) {
-            final rules = template?.rules ?? [];
-            final employeeMap = {for (var t in employees) t.id: t};
+        skipLoadingOnRefresh: true,
+        data: (employees) => allTemplatesAsync.when(
+          skipLoadingOnRefresh: true,
+          data: (allTemplates) => scheduleAsync.when(
+            skipLoadingOnRefresh: true,
+            data: (template) {
+              final rules = template?.rules ?? [];
+              final employeeMap = {for (var t in employees) t.id: t};
 
-            return Align(
-              alignment: Alignment.topCenter,
-              child: Card(
-                elevation: 0,
-                clipBehavior: Clip.antiAlias,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  side: BorderSide(color: Colors.grey.shade300),
-                ),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final double tableMinWidth = (timeSlots.length + 1) * 150.0;
+              return Align(
+                alignment: Alignment.topCenter,
+                child: Card(
+                  elevation: 0,
+                  clipBehavior: Clip.antiAlias,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final double tableMinWidth =
+                          (timeSlots.length + 1) * 150.0;
 
-                    return Scrollbar(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minWidth: constraints.maxWidth > tableMinWidth
-                                ? constraints.maxWidth
-                                : tableMinWidth,
-                          ),
-                          child: DataTable(
-                            headingRowColor: WidgetStateProperty.all(
-                              Colors.grey.shade50,
+                      return Scrollbar(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minWidth: constraints.maxWidth > tableMinWidth
+                                  ? constraints.maxWidth
+                                  : tableMinWidth,
                             ),
-                            columnSpacing: 24,
-                            border: TableBorder.all(
-                              color: Colors.grey.shade300,
-                              width: 1,
-                            ),
-                            columns: [
-                              const DataColumn(label: Text('Day')),
-                              for (var slot in timeSlots)
-                                DataColumn(
-                                  label: Expanded(
-                                    child: Text(
+                            child: DataTable(
+                              headingRowColor: WidgetStateProperty.all(
+                                Colors.grey.shade50,
+                              ),
+                              columnSpacing: 24,
+                              border: TableBorder.all(
+                                color: Colors.grey.shade300,
+                                width: 1,
+                              ),
+                              columns: [
+                                const DataColumn(label: Text('Day')),
+                                for (var slot in timeSlots)
+                                  DataColumn(
+                                    label: Text(
                                       slot.label,
                                       textAlign: TextAlign.center,
                                     ),
                                   ),
-                                ),
-                            ],
-                            rows: days.map((day) {
-                              return DataRow(
-                                cells:
-                                    [
-                                      DataCell(
-                                        Text(
-                                          day,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
+                              ],
+                              rows: days.map((day) {
+                                return DataRow(
+                                  cells:
+                                      [
+                                        DataCell(
+                                          Text(
+                                            day,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ] +
-                                    timeSlots.map((slot) {
-                                      final rule = rules.firstWhere(
-                                        (r) =>
-                                            r.dayOfWeek == day &&
-                                            r.timeSlotId == slot.id,
-                                        orElse: () => ScheduleRule(
-                                          dayOfWeek: '',
-                                          timeSlotId: '',
-                                          employeeId: '',
-                                        ),
-                                      );
+                                      ] +
+                                      timeSlots.map((slot) {
+                                        final rule = rules.firstWhere(
+                                          (r) =>
+                                              r.dayOfWeek == day &&
+                                              r.timeSlotId == slot.id,
+                                          orElse: () => ScheduleRule(
+                                            dayOfWeek: '',
+                                            timeSlotId: '',
+                                            employeeId: '',
+                                          ),
+                                        );
 
-                                      if (rule.employeeId.isNotEmpty) {
-                                        final employee =
-                                            employeeMap[rule.employeeId];
-                                        return DataCell(
-                                          Center(
-                                            child: Chip(
-                                              label: Text(
-                                                employee?.name ?? 'Unknown',
+                                        if (rule.employeeId.isNotEmpty) {
+                                          final employee =
+                                              employeeMap[rule.employeeId];
+                                          return DataCell(
+                                            Center(
+                                              child: Chip(
+                                                label: Text(
+                                                  employee?.name ?? 'Unknown',
+                                                ),
+                                                onDeleted: () async {
+                                                  final confirmed = await showDialog<bool>(
+                                                    context: context,
+                                                    builder: (context) => AlertDialog(
+                                                      title: const Text(
+                                                        'Remove Assignment',
+                                                      ),
+                                                      content: const Text(
+                                                        'Are you sure you want to remove this employee from this session?',
+                                                      ),
+                                                      actions: [
+                                                        TextButton(
+                                                          onPressed: () =>
+                                                              Navigator.pop(
+                                                                context,
+                                                                false,
+                                                              ),
+                                                          child: const Text(
+                                                            'Cancel',
+                                                          ),
+                                                        ),
+                                                        ElevatedButton(
+                                                          onPressed: () =>
+                                                              Navigator.pop(
+                                                                context,
+                                                                true,
+                                                              ),
+                                                          style:
+                                                              ElevatedButton.styleFrom(
+                                                                backgroundColor:
+                                                                    Colors.red,
+                                                                foregroundColor:
+                                                                    Colors
+                                                                        .white,
+                                                              ),
+                                                          child: const Text(
+                                                            'Remove',
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+
+                                                  if (confirmed == true) {
+                                                    ref
+                                                        .read(
+                                                          scheduleTemplateServiceProvider,
+                                                        )
+                                                        .removeScheduleRule(
+                                                          clientId: clientId,
+                                                          ruleToRemove: rule,
+                                                        );
+                                                  }
+                                                },
                                               ),
-                                              onDeleted: () {
-                                                ref
-                                                    .read(
-                                                      scheduleTemplateServiceProvider,
-                                                    )
-                                                    .removeScheduleRule(
-                                                      clientId: clientId,
-                                                      ruleToRemove: rule,
-                                                    );
-                                              },
                                             ),
-                                          ),
-                                        );
-                                      } else {
-                                        return DataCell(
-                                          Center(
-                                            child: IconButton(
-                                              icon: const Icon(
-                                                Icons.add,
-                                                color: Colors.blue,
-                                                size: 20,
+                                          );
+                                        } else {
+                                          return DataCell(
+                                            Center(
+                                              child: IconButton(
+                                                icon: const Icon(
+                                                  Icons.add,
+                                                  color: Colors.blue,
+                                                  size: 20,
+                                                ),
+                                                onPressed: () =>
+                                                    _showAssignEmployeeDialog(
+                                                      context,
+                                                      ref,
+                                                      clientId,
+                                                      day,
+                                                      slot.id,
+                                                      employees,
+                                                      allTemplates,
+                                                    ),
                                               ),
-                                              onPressed: () =>
-                                                  _showAssignEmployeeDialog(
-                                                    context,
-                                                    ref,
-                                                    clientId,
-                                                    day,
-                                                    slot.id,
-                                                    employees,
-                                                  ),
                                             ),
-                                          ),
-                                        );
-                                      }
-                                    }).toList(),
-                              );
-                            }).toList(),
+                                          );
+                                        }
+                                      }).toList(),
+                                );
+                              }).toList(),
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, st) => Center(child: Text('Error loading schedule: $e')),
+          ),
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, st) => Center(child: Text('Error loading schedule: $e')),
+          error: (e, st) =>
+              const Center(child: Text('Error loading templates')),
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => const Center(child: Text('Could not load employees')),
@@ -251,31 +306,90 @@ class _WeeklyScheduleGridState extends ConsumerState<WeeklyScheduleGrid> {
     String day,
     String timeSlotId,
     List<Employee> employees,
+    List<ScheduleTemplate> allTemplates,
   ) {
     Employee? selectedEmployee;
+
+    // Find which employees are already busy in this specific slot
+    final busyEmployeeIds = allTemplates
+        .expand((t) => t.rules)
+        .where((r) => r.dayOfWeek == day && r.timeSlotId == timeSlotId)
+        .map((r) => r.employeeId)
+        .toSet();
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Assign Employee for $day'),
-        content: DropdownButtonFormField<Employee>(
-          hint: const Text('Select a employee'),
-          onChanged: (employee) => selectedEmployee = employee,
-          items: employees
-              .map(
-                (employee) => DropdownMenuItem(
-                  value: employee,
-                  child: Text(employee.name),
+        title: Container(
+          constraints: BoxConstraints(minWidth: 400),
+          child: Row(
+            mainAxisAlignment: .spaceBetween,
+            children: [
+              Text(
+                'Assign for $day',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+
+              //
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        ),
+        content: FutureBuilder<QuerySnapshot>(
+          future: FirebaseFirestore.instance
+              .collection('departments')
+              .where('isSchedulable', isEqualTo: true)
+              .get(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return Container(
+                height: 40,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 16,
                 ),
-              )
-              .toList(),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text('Loading...'),
+              );
+            }
+
+            final schedulableDepts = snapshot.data!.docs
+                .map((d) => (d.data() as Map<String, dynamic>)['name'])
+                .toSet();
+
+            final schedulableEmployees = employees
+                .where((e) => schedulableDepts.contains(e.department))
+                .toList();
+
+            return DropdownButtonFormField<Employee>(
+              hint: const Text('Select an employee'),
+              onChanged: (employee) => selectedEmployee = employee,
+              items: schedulableEmployees.map((employee) {
+                final isBusy = busyEmployeeIds.contains(employee.id);
+                return DropdownMenuItem(
+                  value: isBusy ? null : employee,
+                  enabled: !isBusy,
+                  child: Text(
+                    employee.name + (isBusy ? ' (Already Assigned)' : ''),
+                    style: TextStyle(color: isBusy ? Colors.grey : null),
+                  ),
+                );
+              }).toList(),
+            );
+          },
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () {
               if (selectedEmployee != null) {
                 ref

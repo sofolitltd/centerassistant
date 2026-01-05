@@ -17,6 +17,7 @@ class EmployeePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final employeesAsync = ref.watch(employeesProvider);
+    final schedulableDeptsAsync = ref.watch(schedulableDepartmentsProvider);
     final double width = MediaQuery.of(context).size.width;
 
     int crossAxisCount;
@@ -60,7 +61,7 @@ class EmployeePage extends ConsumerWidget {
                         Row(
                           children: [
                             InkWell(
-                              onTap: () => context.go('/admin/layout'),
+                              onTap: () => context.go('/admin/dashboard'),
                               child: Text(
                                 'Admin',
                                 style: Theme.of(context).textTheme.bodyMedium
@@ -105,355 +106,373 @@ class EmployeePage extends ConsumerWidget {
                       child: Text('No employees found. Add one!'),
                     );
                   }
-                  return MasonryGridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: crossAxisCount,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    itemCount: employees.length,
-                    itemBuilder: (context, index) {
-                      final employee = employees[index];
-                      return Card(
-                        margin: EdgeInsets.zero,
-                        child: Stack(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  CircleAvatar(
-                                    radius: 35,
-                                    backgroundImage: employee.image.isNotEmpty
-                                        ? NetworkImage(employee.image)
-                                        : null,
-                                    child: employee.image.isEmpty
-                                        ? const Icon(Icons.person, size: 30)
-                                        : null,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    employee.name,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(fontWeight: FontWeight.bold),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 2),
+                  return schedulableDeptsAsync.when(
+                    data: (schedulableDepts) => MasonryGridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: crossAxisCount,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      itemCount: employees.length,
+                      itemBuilder: (context, index) {
+                        final employee = employees[index];
+                        final bool isSchedulable = schedulableDepts.contains(
+                          employee.department,
+                        );
 
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    spacing: 8,
-                                    children: [
-                                      //
-                                      Text(
-                                        employee.department.toUpperCase(),
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall
-                                            ?.copyWith(
-                                              fontWeight: .bold,
-                                              color: Theme.of(
-                                                context,
-                                              ).primaryColor,
-                                              letterSpacing: 0.5,
-                                            ),
-                                        textAlign: TextAlign.center,
-                                      ),
-
-                                      Text(
-                                        '|',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelSmall
-                                            ?.copyWith(
-                                              fontWeight: .bold,
-                                              color: Theme.of(
-                                                context,
-                                              ).primaryColor,
-                                              letterSpacing: 0.5,
-                                            ),
-                                        textAlign: TextAlign.center,
-                                      ),
-
-                                      //
-                                      Text(
-                                        'ID: ${employee.employeeId.toUpperCase()} ',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall
-                                            ?.copyWith(
-                                              fontWeight: .bold,
-                                              color: Theme.of(
-                                                context,
-                                              ).primaryColor,
-                                              letterSpacing: 0.5,
-                                            ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    employee.designation.toUpperCase(),
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: Colors.grey.shade600,
-                                          letterSpacing: 0.5,
-                                        ),
-                                    textAlign: TextAlign.center,
-                                  ),
-
-                                  const SizedBox(height: 8),
-
-                                  TextButton(
-                                    onPressed: () => _showEmployeeInfoDialog(
-                                      context,
-                                      employee,
+                        return Card(
+                          margin: EdgeInsets.zero,
+                          child: Stack(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 35,
+                                      backgroundImage: employee.image.isNotEmpty
+                                          ? NetworkImage(employee.image)
+                                          : null,
+                                      child: employee.image.isEmpty
+                                          ? const Icon(Icons.person, size: 30)
+                                          : null,
                                     ),
-                                    child: const Text('View Details'),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: ElevatedButton(
-                                          onPressed: () {
-                                            context.go(
-                                              '/admin/employees/${employee.id}/schedule',
-                                            );
-                                          },
-                                          child: const Text(
-                                            'Schedule',
-                                            style: TextStyle(fontSize: 11),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      employee.name,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
                                           ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: OutlinedButton(
-                                          onPressed: () {
-                                            context.go(
-                                              '/admin/employees/${employee.id}/availability?name=${Uri.encodeComponent(employee.name)}',
-                                            );
-                                          },
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 2),
 
-                                          child: const Text(
-                                            'Availability',
-                                            style: TextStyle(fontSize: 11),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      spacing: 8,
+                                      children: [
+                                        //
+                                        Text(
+                                          employee.department.toUpperCase(),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                                color: Theme.of(
+                                                  context,
+                                                ).primaryColor,
+                                                letterSpacing: 0.5,
+                                              ),
+                                          textAlign: TextAlign.center,
+                                        ),
+
+                                        Text(
+                                          '|',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelSmall
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                                color: Theme.of(
+                                                  context,
+                                                ).primaryColor,
+                                                letterSpacing: 0.5,
+                                              ),
+                                          textAlign: TextAlign.center,
+                                        ),
+
+                                        //
+                                        Text(
+                                          'ID: ${employee.employeeId.toUpperCase()} ',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                                color: Theme.of(
+                                                  context,
+                                                ).primaryColor,
+                                                letterSpacing: 0.5,
+                                              ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      employee.designation.toUpperCase(),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: Colors.grey.shade600,
+                                            letterSpacing: 0.5,
+                                          ),
+                                      textAlign: TextAlign.center,
+                                    ),
+
+                                    const SizedBox(height: 8),
+
+                                    TextButton(
+                                      onPressed: () => _showEmployeeInfoDialog(
+                                        context,
+                                        employee,
+                                      ),
+                                      child: const Text('View Details'),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: ElevatedButton(
+                                            onPressed: isSchedulable
+                                                ? () {
+                                                    context.go(
+                                                      '/admin/employees/${employee.id}/schedule',
+                                                    );
+                                                  }
+                                                : null,
+                                            child: const Text(
+                                              'Schedule',
+                                              style: TextStyle(fontSize: 11),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: OutlinedButton(
+                                            onPressed: () {
+                                              context.go(
+                                                '/admin/employees/${employee.id}/availability?name=${Uri.encodeComponent(employee.name)}',
+                                              );
+                                            },
+
+                                            child: const Text(
+                                              'Availability',
+                                              style: TextStyle(fontSize: 11),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
 
-                            //
-                            Positioned(
-                              top: 2,
-                              right: 2,
-                              child: PopupMenuButton<String>(
-                                color: Colors.white,
-                                icon: const Icon(Icons.more_vert, size: 20),
-                                onSelected: (value) {
-                                  if (value == 'edit') {
-                                    context.go(
-                                      '/admin/employees/${employee.id}/edit',
-                                    );
-                                  } else if (value == 'delete') {
-                                    _showDeleteConfirmDialog(
-                                      context,
-                                      ref,
-                                      employee,
-                                    );
-                                  } else if (value == 'invite') {
-                                    context.go(
-                                      '/admin/employees/invite?userId=${employee.id}',
-                                    );
-                                  } else if (value == 'toggle_access') {
-                                    final updatedEmployee = Employee(
-                                      id: employee.id,
-                                      employeeId: employee.employeeId,
-                                      name: employee.name,
-                                      nickName: employee.nickName,
-                                      personalPhone: employee.personalPhone,
-                                      officialPhone: employee.officialPhone,
-                                      personalEmail: employee.personalEmail,
-                                      officialEmail: employee.officialEmail,
-                                      department: employee.department,
-                                      designation: employee.designation,
-                                      gender: employee.gender,
-                                      dateOfBirth: employee.dateOfBirth,
-                                      email: employee.email,
-                                      password: employee.password,
-                                      role: employee.role,
-                                      mustChangePassword:
-                                          employee.mustChangePassword,
-                                      isActive: !employee.isActive, // Toggle
-                                      joinedDate: employee.joinedDate,
-                                      createdAt: employee.createdAt,
-                                      image: employee.image,
-                                    );
-                                    ref
-                                        .read(employeeServiceProvider)
-                                        .updateEmployee(updatedEmployee);
+                              //
+                              Positioned(
+                                top: 2,
+                                right: 2,
+                                child: PopupMenuButton<String>(
+                                  color: Colors.white,
+                                  icon: const Icon(Icons.more_vert, size: 20),
+                                  onSelected: (value) {
+                                    if (value == 'edit') {
+                                      context.go(
+                                        '/admin/employees/${employee.id}/edit',
+                                      );
+                                    } else if (value == 'delete') {
+                                      _showDeleteConfirmDialog(
+                                        context,
+                                        ref,
+                                        employee,
+                                      );
+                                    } else if (value == 'invite') {
+                                      context.go(
+                                        '/admin/employees/invite?userId=${employee.id}',
+                                      );
+                                    } else if (value == 'toggle_access') {
+                                      final updatedEmployee = Employee(
+                                        id: employee.id,
+                                        employeeId: employee.employeeId,
+                                        name: employee.name,
+                                        nickName: employee.nickName,
+                                        personalPhone: employee.personalPhone,
+                                        officialPhone: employee.officialPhone,
+                                        personalEmail: employee.personalEmail,
+                                        officialEmail: employee.officialEmail,
+                                        department: employee.department,
+                                        designation: employee.designation,
+                                        gender: employee.gender,
+                                        dateOfBirth: employee.dateOfBirth,
+                                        email: employee.email,
+                                        password: employee.password,
+                                        role: employee.role,
+                                        mustChangePassword:
+                                            employee.mustChangePassword,
+                                        isActive: !employee.isActive, // Toggle
+                                        joinedDate: employee.joinedDate,
+                                        createdAt: employee.createdAt,
+                                        image: employee.image,
+                                      );
+                                      ref
+                                          .read(employeeServiceProvider)
+                                          .updateEmployee(updatedEmployee);
 
-                                    // Show feedback
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          employee.isActive
-                                              ? '${employee.name} portal access blocked'
-                                              : '${employee.name} portal access enabled',
+                                      // Show feedback
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            employee.isActive
+                                                ? '${employee.name} portal access blocked'
+                                                : '${employee.name} portal access enabled',
+                                          ),
+                                          backgroundColor: employee.isActive
+                                              ? Colors.orange
+                                              : Colors.green,
                                         ),
-                                        backgroundColor: employee.isActive
-                                            ? Colors.orange
-                                            : Colors.green,
+                                      );
+                                    }
+                                  },
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(
+                                      value: 'edit',
+                                      child: ListTile(
+                                        leading: Icon(Icons.edit, size: 18),
+                                        title: Text('Edit'),
+                                        contentPadding: EdgeInsets.zero,
                                       ),
-                                    );
-                                  }
-                                },
-                                itemBuilder: (context) => [
-                                  const PopupMenuItem(
-                                    value: 'edit',
-                                    child: ListTile(
-                                      leading: Icon(Icons.edit, size: 18),
-                                      title: Text('Edit'),
-                                      contentPadding: EdgeInsets.zero,
                                     ),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'invite',
-                                    child: ListTile(
-                                      leading: Icon(
-                                        Icons.person_add,
-                                        size: 18,
-                                        color: employee.hasPortalAccess
-                                            ? Colors.blue
-                                            : Colors.green,
-                                      ),
-                                      title: Text(
-                                        employee.hasPortalAccess
-                                            ? 'Manage Portal Access'
-                                            : 'Invite to Portal',
-                                        style: TextStyle(
+                                    PopupMenuItem(
+                                      value: 'invite',
+                                      child: ListTile(
+                                        leading: Icon(
+                                          Icons.person_add,
+                                          size: 18,
                                           color: employee.hasPortalAccess
                                               ? Colors.blue
                                               : Colors.green,
                                         ),
-                                      ),
-                                      contentPadding: EdgeInsets.zero,
-                                    ),
-                                  ),
-                                  if (employee.email.isNotEmpty &&
-                                      employee.password.isNotEmpty)
-                                    PopupMenuItem(
-                                      value: 'toggle_access',
-                                      child: ListTile(
-                                        leading: Icon(
-                                          employee.isActive
-                                              ? Icons.block
-                                              : Icons.check_circle_outline,
-                                          size: 18,
-                                          color: employee.isActive
-                                              ? Colors.orange
-                                              : Colors.green,
-                                        ),
                                         title: Text(
-                                          employee.isActive
-                                              ? 'Block Portal Access'
-                                              : 'Enable Portal Access',
+                                          employee.hasPortalAccess
+                                              ? 'Manage Portal Access'
+                                              : 'Invite to Portal',
                                           style: TextStyle(
-                                            color: employee.isActive
-                                                ? Colors.orange
+                                            color: employee.hasPortalAccess
+                                                ? Colors.blue
                                                 : Colors.green,
                                           ),
                                         ),
                                         contentPadding: EdgeInsets.zero,
                                       ),
                                     ),
-                                  const PopupMenuItem(
-                                    value: 'delete',
-                                    child: ListTile(
-                                      leading: Icon(
-                                        Icons.delete,
-                                        size: 18,
-                                        color: Colors.red,
+                                    if (employee.email.isNotEmpty &&
+                                        employee.password.isNotEmpty)
+                                      PopupMenuItem(
+                                        value: 'toggle_access',
+                                        child: ListTile(
+                                          leading: Icon(
+                                            employee.isActive
+                                                ? Icons.block
+                                                : Icons.check_circle_outline,
+                                            size: 18,
+                                            color: employee.isActive
+                                                ? Colors.orange
+                                                : Colors.green,
+                                          ),
+                                          title: Text(
+                                            employee.isActive
+                                                ? 'Block Portal Access'
+                                                : 'Enable Portal Access',
+                                            style: TextStyle(
+                                              color: employee.isActive
+                                                  ? Colors.orange
+                                                  : Colors.green,
+                                            ),
+                                          ),
+                                          contentPadding: EdgeInsets.zero,
+                                        ),
                                       ),
-                                      title: Text(
-                                        'Delete',
-                                        style: TextStyle(color: Colors.red),
-                                      ),
-                                      contentPadding: EdgeInsets.zero,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // Portal access indicator
-                            Positioned(
-                              top: 12,
-                              left: 12,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: employee.hasPortalAccess
-                                      ? Colors.green.shade100
-                                      : Colors.orange.shade100,
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(
-                                    color: employee.hasPortalAccess
-                                        ? Colors.green.shade300
-                                        : Colors.orange.shade300,
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      employee.hasPortalAccess
-                                          ? Icons.check_circle
-                                          : Icons.lock_outline,
-                                      size: 10,
-                                      color: employee.hasPortalAccess
-                                          ? Colors.green.shade700
-                                          : Colors.orange.shade700,
-                                    ),
-                                    const SizedBox(width: 3),
-                                    Text(
-                                      employee.hasPortalAccess
-                                          ? 'Access'
-                                          : 'No Access',
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w600,
-                                        color: employee.hasPortalAccess
-                                            ? Colors.green.shade700
-                                            : Colors.orange.shade700,
+                                    const PopupMenuItem(
+                                      value: 'delete',
+                                      child: ListTile(
+                                        leading: Icon(
+                                          Icons.delete,
+                                          size: 18,
+                                          color: Colors.red,
+                                        ),
+                                        title: Text(
+                                          'Delete',
+                                          style: TextStyle(color: Colors.red),
+                                        ),
+                                        contentPadding: EdgeInsets.zero,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+
+                              // Portal access indicator
+                              Positioned(
+                                top: 12,
+                                left: 12,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: employee.hasPortalAccess
+                                        ? Colors.green.shade100
+                                        : Colors.orange.shade100,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: employee.hasPortalAccess
+                                          ? Colors.green.shade300
+                                          : Colors.orange.shade300,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        employee.hasPortalAccess
+                                            ? Icons.check_circle
+                                            : Icons.lock_outline,
+                                        size: 10,
+                                        color: employee.hasPortalAccess
+                                            ? Colors.green.shade700
+                                            : Colors.orange.shade700,
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        employee.hasPortalAccess
+                                            ? 'Access'
+                                            : 'No Access',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w600,
+                                          color: employee.hasPortalAccess
+                                              ? Colors.green.shade700
+                                              : Colors.orange.shade700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (_, __) => const SizedBox(),
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),

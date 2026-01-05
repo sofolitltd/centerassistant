@@ -5,18 +5,21 @@ import '/core/domain/repositories/schedule_template_repository.dart';
 import '/core/models/schedule_template.dart';
 import '/core/providers/session_providers.dart';
 import '/services/firebase_service.dart';
+import 'client_providers.dart';
+import 'notification_providers.dart';
+import 'time_slot_providers.dart';
 
 final scheduleTemplateRepositoryProvider =
     Provider<IScheduleTemplateRepository>((ref) {
-      return ScheduleTemplateRepositoryImpl(ref.watch(firestoreProvider));
-    });
+  return ScheduleTemplateRepositoryImpl(ref.watch(firestoreProvider));
+});
 
-final scheduleTemplateProvider = StreamProvider.autoDispose
-    .family<ScheduleTemplate?, String>((ref, clientId) {
-      return ref
-          .watch(scheduleTemplateRepositoryProvider)
-          .getScheduleTemplateByClientId(clientId);
-    });
+final scheduleTemplateProvider =
+    StreamProvider.autoDispose.family<ScheduleTemplate?, String>((ref, clientId) {
+  return ref
+      .watch(scheduleTemplateRepositoryProvider)
+      .getScheduleTemplateByClientId(clientId);
+});
 
 final allScheduleTemplatesProvider = StreamProvider<List<ScheduleTemplate>>((
   ref,
@@ -63,6 +66,23 @@ class ScheduleTemplateActionService {
     _ref.invalidate(scheduleTemplateProvider(clientId));
     _ref.invalidate(scheduleViewProvider);
     _ref.invalidate(allScheduleTemplatesProvider);
+
+    // Send Notification
+    try {
+      final client = _ref.read(clientByIdProvider(clientId)).value;
+      final timeSlot = _ref
+          .read(timeSlotsProvider)
+          .value
+          ?.firstWhere((s) => s.id == timeSlotId);
+
+      _ref.read(notificationServiceProvider).sendToUser(
+            userId: employeeId,
+            collection: 'employees',
+            title: 'New Schedule Assigned',
+            body:
+                'You have been assigned to ${client?.name ?? 'a client'} on ${dayOfWeek}s at ${timeSlot?.label ?? 'the scheduled time'}.',
+          );
+    } catch (_) {}
   }
 
   Future<void> removeScheduleRule({
@@ -75,5 +95,22 @@ class ScheduleTemplateActionService {
     _ref.invalidate(scheduleTemplateProvider(clientId));
     _ref.invalidate(scheduleViewProvider);
     _ref.invalidate(allScheduleTemplatesProvider);
+
+    // Send Notification
+    try {
+      final client = _ref.read(clientByIdProvider(clientId)).value;
+      final timeSlot = _ref
+          .read(timeSlotsProvider)
+          .value
+          ?.firstWhere((s) => s.id == ruleToRemove.timeSlotId);
+
+      _ref.read(notificationServiceProvider).sendToUser(
+            userId: ruleToRemove.employeeId,
+            collection: 'employees',
+            title: 'Schedule Removed',
+            body:
+                'Your assignment with ${client?.name ?? 'a client'} on ${ruleToRemove.dayOfWeek}s at ${timeSlot?.label ?? 'the scheduled time'} has been removed.',
+          );
+    } catch (_) {}
   }
 }

@@ -83,8 +83,11 @@ class EmployeeSchedulePage extends ConsumerWidget {
           const SizedBox(height: 24),
           Expanded(
             child: templatesAsync.when(
+              skipLoadingOnRefresh: true,
               data: (templates) => clientsAsync.when(
+                skipLoadingOnRefresh: true,
                 data: (clients) => timeSlotsAsync.when(
+                  skipLoadingOnRefresh: true,
                   data: (timeSlots) {
                     final clientMap = {for (var c in clients) c.id: c};
 
@@ -138,11 +141,9 @@ class EmployeeSchedulePage extends ConsumerWidget {
                                       const DataColumn(label: Text('Day')),
                                       for (var slot in timeSlots)
                                         DataColumn(
-                                          label: Expanded(
-                                            child: Text(
-                                              slot.label,
-                                              textAlign: TextAlign.center,
-                                            ),
+                                          label: Text(
+                                            slot.label,
+                                            textAlign: TextAlign.center,
                                           ),
                                         ),
                                     ],
@@ -196,17 +197,63 @@ class EmployeeSchedulePage extends ConsumerWidget {
                                                               FontWeight.w500,
                                                         ),
                                                       ),
-                                                      onDeleted: () {
-                                                        ref
-                                                            .read(
-                                                              scheduleTemplateServiceProvider,
-                                                            )
-                                                            .removeScheduleRule(
-                                                              clientId:
-                                                                  clientIdForRule,
-                                                              ruleToRemove:
-                                                                  rule,
-                                                            );
+                                                      onDeleted: () async {
+                                                        final confirmed = await showDialog<bool>(
+                                                          context: context,
+                                                          builder: (context) => AlertDialog(
+                                                            title: const Text(
+                                                              'Remove Assignment',
+                                                            ),
+                                                            content: Text(
+                                                              'Are you sure you want to remove ${client?.name ?? 'this client'} from this session?',
+                                                            ),
+                                                            actions: [
+                                                              TextButton(
+                                                                onPressed: () =>
+                                                                    Navigator.pop(
+                                                                      context,
+                                                                      false,
+                                                                    ),
+                                                                child:
+                                                                    const Text(
+                                                                      'Cancel',
+                                                                    ),
+                                                              ),
+                                                              ElevatedButton(
+                                                                onPressed: () =>
+                                                                    Navigator.pop(
+                                                                      context,
+                                                                      true,
+                                                                    ),
+                                                                style: ElevatedButton.styleFrom(
+                                                                  backgroundColor:
+                                                                      Colors
+                                                                          .red,
+                                                                  foregroundColor:
+                                                                      Colors
+                                                                          .white,
+                                                                ),
+                                                                child:
+                                                                    const Text(
+                                                                      'Remove',
+                                                                    ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        );
+
+                                                        if (confirmed == true) {
+                                                          ref
+                                                              .read(
+                                                                scheduleTemplateServiceProvider,
+                                                              )
+                                                              .removeScheduleRule(
+                                                                clientId:
+                                                                    clientIdForRule,
+                                                                ruleToRemove:
+                                                                    rule,
+                                                              );
+                                                        }
                                                       },
                                                     ),
                                                   ),
@@ -228,6 +275,7 @@ class EmployeeSchedulePage extends ConsumerWidget {
                                                             day,
                                                             slot.id,
                                                             clients,
+                                                            templates,
                                                           ),
                                                     ),
                                                   ),
@@ -271,8 +319,19 @@ class EmployeeSchedulePage extends ConsumerWidget {
     String day,
     String timeSlotId,
     List<Client> clients,
+    List<ScheduleTemplate> allTemplates,
   ) {
     Client? selectedClient;
+
+    // Find which clients are already busy in this specific slot with ANY employee
+    final busyClientIds = allTemplates
+        .where(
+          (t) => t.rules.any(
+            (r) => r.dayOfWeek == day && r.timeSlotId == timeSlotId,
+          ),
+        )
+        .map((t) => t.clientId)
+        .toSet();
 
     showDialog(
       context: context,
@@ -281,12 +340,17 @@ class EmployeeSchedulePage extends ConsumerWidget {
         content: DropdownButtonFormField<Client>(
           hint: const Text('Select a client'),
           onChanged: (client) => selectedClient = client,
-          items: clients
-              .map(
-                (client) =>
-                    DropdownMenuItem(value: client, child: Text(client.name)),
-              )
-              .toList(),
+          items: clients.map((client) {
+            final isBusy = busyClientIds.contains(client.id);
+            return DropdownMenuItem(
+              value: isBusy ? null : client,
+              enabled: !isBusy,
+              child: Text(
+                client.name + (isBusy ? ' (Occupied)' : ''),
+                style: TextStyle(color: isBusy ? Colors.grey : null),
+              ),
+            );
+          }).toList(),
         ),
         actions: [
           TextButton(
