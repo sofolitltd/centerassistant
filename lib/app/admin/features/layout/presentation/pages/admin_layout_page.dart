@@ -279,8 +279,8 @@ class _SideMenuState extends State<_SideMenu> {
                       ],
                     )
                   else
-                    _buildNavItem(
-                      2,
+                    _buildCollapsedSubMenu(
+                      [2, 6],
                       selectedIndex,
                       LucideIcons.users,
                       'Employees',
@@ -307,6 +307,13 @@ class _SideMenuState extends State<_SideMenu> {
                     LucideIcons.calendarX,
                     'Leave Requests',
                   ),
+                  const SizedBox(height: 4),
+                  _buildNavItem(
+                    7,
+                    selectedIndex,
+                    LucideIcons.phone,
+                    'Contacts',
+                  ),
                 ],
               ),
             ),
@@ -330,6 +337,58 @@ class _SideMenuState extends State<_SideMenu> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildCollapsedSubMenu(
+    List<int> subIndices,
+    int selectedIndex,
+    IconData icon,
+    String label,
+  ) {
+    final isAnySubSelected = subIndices.contains(selectedIndex);
+    final theme = Theme.of(context);
+
+    return PopupMenuButton<int>(
+      offset: const Offset(65, 0),
+      position: PopupMenuPosition.over,
+      color: Colors.white,
+      tooltip: label,
+      onSelected: (index) => _onDestinationSelected(index, context),
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 2,
+          child: Text('All Employees', style: TextStyle(fontSize: 13)),
+        ),
+        const PopupMenuItem(
+          value: 6,
+          child: Text('Department & Designation', style: TextStyle(fontSize: 13)),
+        ),
+      ],
+      child: Container(
+        width: 60,
+        decoration: BoxDecoration(
+          color: isAnySubSelected
+              ? theme.colorScheme.primary.withValues(alpha: 0.1)
+              : Colors.transparent,
+          border: Border(
+            left: BorderSide(
+              color: isAnySubSelected
+                  ? theme.colorScheme.primary
+                  : Colors.transparent,
+              width: 4,
+            ),
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Icon(
+          icon,
+          size: 18,
+          color: isAnySubSelected
+              ? theme.colorScheme.primary
+              : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+        ),
       ),
     );
   }
@@ -415,10 +474,9 @@ class _SideMenuState extends State<_SideMenu> {
         child: Text(
           label,
           maxLines: 1,
-          overflow: .ellipsis,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: 13,
-
             color: isSelected
                 ? theme.colorScheme.primary
                 : theme.colorScheme.onSurface.withValues(alpha: 0.6),
@@ -505,6 +563,7 @@ class _SideMenuState extends State<_SideMenu> {
     if (location.startsWith('/admin/clients')) return 3;
     if (location.startsWith('/admin/time-slots')) return 4;
     if (location.startsWith('/admin/leave')) return 5;
+    if (location.startsWith('/admin/contact')) return 7;
     return 0;
   }
 
@@ -527,6 +586,12 @@ class _SideMenuState extends State<_SideMenu> {
         break;
       case 5:
         context.go('/admin/leave');
+        break;
+      case 6:
+        context.go('/admin/employees/hierarchy');
+        break;
+      case 7:
+        context.go('/admin/contact');
         break;
     }
   }

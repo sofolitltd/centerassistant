@@ -1,6 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:center_assistant/core/models/leave.dart';
 import 'package:center_assistant/core/domain/repositories/leave_repository.dart';
+import 'package:center_assistant/core/models/leave.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LeaveRepositoryImpl implements ILeaveRepository {
   final FirebaseFirestore _firestore;
@@ -49,16 +49,16 @@ class LeaveRepositoryImpl implements ILeaveRepository {
   Stream<List<Leave>> getLeavesByEntity(String entityId) {
     return _firestore
         .collection('leaves')
-        .where('entityId', isEqualTo: entityId)
+        .where('employeeId', isEqualTo: entityId)
         .snapshots()
         .map((snapshot) {
           final leaves = snapshot.docs
               .map((doc) => Leave.fromFirestore(doc))
               .toList();
-          
+
           // Fix: Proper descending sort (Newest date first)
           leaves.sort((a, b) => b.date.compareTo(a.date));
-          
+
           return leaves;
         });
   }

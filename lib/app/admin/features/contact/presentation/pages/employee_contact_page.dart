@@ -40,16 +40,16 @@ class EmployeeContactPage extends ConsumerWidget {
             Row(
               children: [
                 InkWell(
-                  onTap: () => context.go('/employee/dashboard'),
+                  onTap: () => context.go('/admin/dashboard'),
                   child: Text(
-                    'Overview',
+                    'Admin',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: Colors.grey,
                     ),
                   ),
                 ),
                 const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
-                Text('Directory', style: theme.textTheme.bodyMedium),
+                Text('Employee Directory', style: theme.textTheme.bodyMedium),
               ],
             ),
             const SizedBox(height: 16),
@@ -87,9 +87,12 @@ class EmployeeContactPage extends ConsumerWidget {
                       return const Center(child: Text('No colleagues found.'));
                     }
 
+                    // Sort by name
+                    activeEmployees.sort((a, b) => a.name.compareTo(b.name));
+
                     return LayoutBuilder(
                       builder: (context, constraints) {
-                        const double tableMinWidth = 1000.0;
+                        const double tableMinWidth = 1200.0;
 
                         Widget table = DataTable(
                           headingRowColor: WidgetStateProperty.all(
@@ -113,6 +116,12 @@ class EmployeeContactPage extends ConsumerWidget {
                             DataColumn(
                               label: Text(
                                 'Department',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            DataColumn(
+                              label: Text(
+                                'Designation',
                                 style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                             ),
@@ -174,6 +183,12 @@ class EmployeeContactPage extends ConsumerWidget {
                                 DataCell(
                                   Text(
                                     colleague.department.toUpperCase(),
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    colleague.designation,
                                     style: const TextStyle(fontSize: 11),
                                   ),
                                 ),
