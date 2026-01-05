@@ -27,6 +27,7 @@ class _AssignCoverDialogState extends ConsumerState<AssignCoverDialog> {
   Widget build(BuildContext context) {
     final scheduleViewAsync = ref.watch(scheduleViewProvider);
     final employeesAsync = ref.watch(employeesProvider);
+    final schedulableDeptsAsync = ref.watch(schedulableDepartmentsProvider);
 
     return AlertDialog(
       title: Container(
@@ -44,56 +45,65 @@ class _AssignCoverDialogState extends ConsumerState<AssignCoverDialog> {
       ),
       content: scheduleViewAsync.when(
         data: (scheduleView) => employeesAsync.when(
-          data: (employees) {
-            // Find who is busy in this time slot WITH OTHER CLIENTS
-            // We exclude the current client so the current employee doesn't show as "Busy"
-            // solely because they are assigned to this specific session.
-            final busyEmployeeIds =
-                scheduleView.sessionsByTimeSlot[widget.timeSlotId]
-                    ?.where(
-                      (s) =>
-                          s.clientId !=
-                              widget.session.clientId && // Not this client
-                          s.sessionType !=
-                              SessionType.cancelled, // Not cancelled
-                    )
-                    .map((s) => s.employeeId)
-                    .toSet() ??
-                {};
+          data: (employees) => schedulableDeptsAsync.when(
+            data: (schedulableDepts) {
+              // 1. Filter employees to only those in schedulable departments
+              final schedulableEmployees = employees
+                  .where((e) => schedulableDepts.contains(e.department))
+                  .toList();
 
-            return DropdownButtonFormField<Employee>(
-              hint: const Text('Select a employee'),
-              initialValue: _selectedEmployee,
-              onChanged: (employee) =>
-                  setState(() => _selectedEmployee = employee),
-              items: employees.map((employee) {
-                final isRegular =
-                    employee.id == widget.session.templateEmployeeId;
-                final isCurrentlyAssigned =
-                    employee.id == widget.session.employeeId;
-                final isBusyWithOthers = busyEmployeeIds.contains(employee.id);
+              // 2. Find who is busy in this time slot WITH OTHER CLIENTS
+              final busyEmployeeIds =
+                  scheduleView.sessionsByTimeSlot[widget.timeSlotId]
+                      ?.where(
+                        (s) =>
+                            s.clientId != widget.session.clientId &&
+                            s.sessionType != SessionType.cancelled,
+                      )
+                      .map((s) => s.employeeId)
+                      .toSet() ??
+                  {};
 
-                // Logic:
-                // 1. Hide the regular employee (as requested, use "Restore Regular" instead)
-                // 2. Disable if busy with another client.
-                // 3. Disable if already assigned to THIS specific session card.
-                final bool isSelectable =
-                    !isRegular && !isCurrentlyAssigned && !isBusyWithOthers;
+              return DropdownButtonFormField<Employee>(
+                hint: const Text('Select a employee'),
+                initialValue: _selectedEmployee,
+                onChanged: (employee) =>
+                    setState(() => _selectedEmployee = employee),
+                items: schedulableEmployees.map((employee) {
+                  final isRegular =
+                      employee.id == widget.session.templateEmployeeId;
+                  final isCurrentlyAssigned =
+                      employee.id == widget.session.employeeId;
+                  final isBusyWithOthers = busyEmployeeIds.contains(
+                    employee.id,
+                  );
 
-                return DropdownMenuItem<Employee>(
-                  value: employee,
-                  enabled: isSelectable,
-                  child: Text(
-                    employee.name +
-                        (isRegular ? ' (Regular)' : '') +
-                        (isBusyWithOthers ? ' (Busy)' : '') +
-                        (isCurrentlyAssigned && !isRegular ? ' (Current)' : ''),
-                    style: TextStyle(color: isSelectable ? null : Colors.grey),
-                  ),
-                );
-              }).toList(),
-            );
-          },
+                  // Logic:
+                  // 1. Hide the regular employee (use "Restore Regular" instead)
+                  // 2. Disable if busy with another client.
+                  // 3. Disable if already assigned to THIS specific session card.
+                  final bool isSelectable =
+                      !isRegular && !isCurrentlyAssigned && !isBusyWithOthers;
+
+                  return DropdownMenuItem<Employee>(
+                    value: isSelectable ? employee : null,
+                    enabled: isSelectable,
+                    child: Text(
+                      employee.name +
+                          (isRegular ? ' (Regular)' : '') +
+                          (isBusyWithOthers ? ' (Busy)' : '') +
+                          (isCurrentlyAssigned && !isRegular
+                              ? ' (Current)'
+                              : ''),
+                      style: TextStyle(color: isSelectable ? null : Colors.grey),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => const SizedBox(),
+          ),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Text('Error: $e'),
         ),

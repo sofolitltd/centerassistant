@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -424,123 +425,132 @@ class _EmployeeView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scheduleViewAsync = ref.watch(scheduleViewProvider);
     final employeesAsync = ref.watch(employeesProvider);
+    final schedulableDeptsAsync = ref.watch(schedulableDepartmentsProvider);
 
     return scheduleViewAsync.when(
       data: (scheduleView) => employeesAsync.when(
-        data: (employees) {
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              const double tableMinWidth = 800.0;
+        data: (employees) => schedulableDeptsAsync.when(
+          data: (schedulableDepts) {
+            final filteredEmployees = employees
+                .where((e) => schedulableDepts.contains(e.department))
+                .toList();
 
-              Widget table = DataTable(
-                columnSpacing: 24,
-                border: TableBorder.all(
-                  color: Colors.grey.withValues(alpha: 0.2),
-                  width: 1,
-                ),
-                columns: [
-                  const DataColumn(
-                    label: Text(
-                      'Employee',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                const double tableMinWidth = 800.0;
+
+                Widget table = DataTable(
+                  columnSpacing: 24,
+                  border: TableBorder.all(
+                    color: Colors.grey.withValues(alpha: 0.2),
+                    width: 1,
                   ),
-                  for (var slot in scheduleView.timeSlots)
-                    DataColumn(
+                  columns: [
+                    const DataColumn(
                       label: Text(
-                        slot.label,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        'Employee',
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
-                ],
-                rows: employees.map((employee) {
-                  return DataRow(
-                    cells:
-                        [
-                          DataCell(
-                            Text(
-                              employee.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w500,
+                    for (var slot in scheduleView.timeSlots)
+                      DataColumn(
+                        label: Text(
+                          slot.label,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                  ],
+                  rows: filteredEmployees.map((employee) {
+                    return DataRow(
+                      cells:
+                          [
+                            DataCell(
+                              Text(
+                                employee.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
-                          ),
-                        ] +
-                        scheduleView.timeSlots.map((slot) {
-                          final sessions =
-                              scheduleView.sessionsByTimeSlot[slot.id] ?? [];
-                          final employeeSessions = sessions
-                              .where((s) => s.employeeId == employee.id)
-                              .toList();
+                          ] +
+                          scheduleView.timeSlots.map((slot) {
+                            final sessions =
+                                scheduleView.sessionsByTimeSlot[slot.id] ?? [];
+                            final employeeSessions = sessions
+                                .where((s) => s.employeeId == employee.id)
+                                .toList();
 
-                          if (employeeSessions.isEmpty) {
-                            return const DataCell(
-                              Text('-', style: TextStyle(color: Colors.grey)),
+                            if (employeeSessions.isEmpty) {
+                              return const DataCell(
+                                Text('-', style: TextStyle(color: Colors.grey)),
+                              );
+                            }
+
+                            return DataCell(
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                child: Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  children: employeeSessions.map((s) {
+                                    final color = _getSessionColor(s.sessionType);
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: color,
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(
+                                          color:
+                                              s.sessionType == SessionType.regular
+                                              ? Colors.grey.withValues(alpha: 0.2)
+                                              : _getStatusBorderColor(
+                                                  s.sessionType,
+                                                ),
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        s.clientName,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          decoration:
+                                              s.sessionType ==
+                                                  SessionType.cancelled
+                                              ? TextDecoration.lineThrough
+                                              : null,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
                             );
-                          }
-
-                          return DataCell(
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Wrap(
-                                spacing: 8,
-                                runSpacing: 4,
-                                children: employeeSessions.map((s) {
-                                  final color = _getSessionColor(s.sessionType);
-                                  return Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: color,
-                                      borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(
-                                        color:
-                                            s.sessionType == SessionType.regular
-                                            ? Colors.grey.withValues(alpha: 0.2)
-                                            : _getStatusBorderColor(
-                                                s.sessionType,
-                                              ),
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      s.clientName,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        decoration:
-                                            s.sessionType ==
-                                                SessionType.cancelled
-                                            ? TextDecoration.lineThrough
-                                            : null,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                  );
-                }).toList(),
-              );
-
-              if (constraints.maxWidth < tableMinWidth) {
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minWidth: tableMinWidth),
-                    child: table,
-                  ),
+                          }).toList(),
+                    );
+                  }).toList(),
                 );
-              } else {
-                return SizedBox(width: double.infinity, child: table);
-              }
-            },
-          );
-        },
+
+                if (constraints.maxWidth < tableMinWidth) {
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minWidth: tableMinWidth),
+                      child: table,
+                    ),
+                  );
+                } else {
+                  return SizedBox(width: double.infinity, child: table);
+                }
+              },
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, st) => const SizedBox(),
+        ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => const Center(child: Text('Could not load employees')),
       ),
