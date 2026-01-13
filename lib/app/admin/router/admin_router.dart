@@ -17,10 +17,10 @@ import '/app/admin/features/employees/presentation/pages/employee_schedule_page.
 import '/app/admin/features/employees/presentation/pages/hierarchy_management_page.dart';
 import '/app/admin/features/layout/presentation/pages/admin_layout_page.dart';
 import '/app/admin/features/leave/presentation/pages/leave_management_page.dart';
-import '/app/admin/features/schedule/presentation/pages/schedule_page.dart';
 import '/app/admin/features/time_slots/presentation/pages/add_time_slot_page.dart';
 import '/app/admin/features/time_slots/presentation/pages/time_slot_page.dart';
 import '../features/contact/presentation/pages/employee_contact_page.dart';
+import '../features/schedule/presentation/pages/schedule_planner_page.dart';
 
 List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
   return [
@@ -60,7 +60,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
             child: Title(
               title: 'Schedule | Center Assistant',
               color: Colors.black,
-              child: const SchedulePage(),
+              child: const SchedulePlannerPage(),
             ),
           ),
         ),
@@ -148,9 +148,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
             child: Title(
               title: 'Edit Employee | Center Assistant',
               color: Colors.black,
-              child: EditEmployeePage(
-                employeeId: state.pathParameters['id']!,
-              ),
+              child: EditEmployeePage(employeeId: state.pathParameters['id']!),
             ),
           ),
         ),

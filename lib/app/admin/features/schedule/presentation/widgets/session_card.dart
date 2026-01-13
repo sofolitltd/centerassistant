@@ -20,7 +20,10 @@ class SessionCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final cardColor = _getSessionColor(session.sessionType);
     final isRegular = session.sessionType == SessionType.regular;
-    final isCancelled = session.sessionType == SessionType.cancelled;
+    final isCancelled =
+        session.sessionType == SessionType.cancelled ||
+        session.sessionType == SessionType.cancelledCenter ||
+        session.sessionType == SessionType.cancelledClient;
     final isCompleted = session.sessionType == SessionType.completed;
 
     return Container(
@@ -29,14 +32,14 @@ class SessionCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+            color: Colors.black12.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 1),
           ),
         ],
         border: Border.all(
           color: isRegular
-              ? Colors.grey.withValues(alpha: 0.2)
+              ? Colors.black12.withValues(alpha: 0.05)
               : _getStatusBorderColor(session.sessionType),
           width: 1.5,
         ),
@@ -73,7 +76,7 @@ class SessionCard extends ConsumerWidget {
                         color: Colors.black.withValues(alpha: 0.05),
                       ),
                       child: Text(
-                        session.sessionType.name.toUpperCase(),
+                        _getStatusLabel(session.sessionType),
                         style: TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
@@ -141,13 +144,7 @@ class SessionCard extends ConsumerWidget {
                 if (value == 1) {
                   _showAssignCoverDialog(context, ref);
                 } else if (value == 2) {
-                  ref
-                      .read(sessionServiceProvider)
-                      .cancelSession(
-                        session.clientId,
-                        timeSlotId,
-                        session.employeeId,
-                      );
+                  _showCancelDialog(context, ref);
                 } else if (value == 3) {
                   // Restore to regular
                   if (session.templateEmployeeId != null) {
@@ -240,6 +237,17 @@ class SessionCard extends ConsumerWidget {
     );
   }
 
+  String _getStatusLabel(SessionType type) {
+    switch (type) {
+      case SessionType.cancelledCenter:
+        return 'CENTER CANCELLED';
+      case SessionType.cancelledClient:
+        return 'CLIENT CANCELLED';
+      default:
+        return type.name.toUpperCase();
+    }
+  }
+
   Color _getSessionColor(SessionType type) {
     switch (type) {
       case SessionType.regular:
@@ -251,6 +259,8 @@ class SessionCard extends ConsumerWidget {
       case SessionType.extra:
         return const Color(0xFFF0FDF4);
       case SessionType.cancelled:
+      case SessionType.cancelledCenter:
+      case SessionType.cancelledClient:
         return const Color(0xFFFEF2F2);
       case SessionType.completed:
         return const Color(0xFFF0FDF4); // Light green background
@@ -266,6 +276,8 @@ class SessionCard extends ConsumerWidget {
       case SessionType.extra:
         return Colors.green.shade200;
       case SessionType.cancelled:
+      case SessionType.cancelledCenter:
+      case SessionType.cancelledClient:
         return Colors.red.shade200;
       case SessionType.completed:
         return Colors.green.shade300;
@@ -279,6 +291,93 @@ class SessionCard extends ConsumerWidget {
       context: context,
       builder: (context) =>
           AssignCoverDialog(session: session, timeSlotId: timeSlotId),
+    );
+  }
+
+  void _showCancelDialog(BuildContext context, WidgetRef ref) {
+    SessionType selectedType = SessionType.cancelledClient;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: 350),
+            child: Row(
+              mainAxisAlignment: .spaceBetween,
+              children: [
+                Text('Cancel Session'),
+                //
+                IconButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  icon: Icon(Icons.clear),
+                ),
+              ],
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ButtonTheme(
+                alignedDropdown: true,
+                child: DropdownButtonFormField<SessionType>(
+                  value: selectedType,
+                  decoration: const InputDecoration(
+                    labelText: 'Cancel by',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: SessionType.cancelledClient,
+                      child: Text('Client'),
+                    ),
+                    DropdownMenuItem(
+                      value: SessionType.cancelledCenter,
+                      child: Text('Center'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() => selectedType = value);
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Back'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                ref
+                    .read(sessionServiceProvider)
+                    .cancelSession(
+                      session.clientId,
+                      timeSlotId,
+                      session.employeeId,
+                      selectedType,
+                    );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Confirm'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

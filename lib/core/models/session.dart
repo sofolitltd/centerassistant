@@ -1,6 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum SessionType { regular, cover, makeup, extra, cancelled, completed }
+enum SessionType {
+  regular,
+  cover,
+  makeup,
+  extra,
+  cancelled,
+  cancelledCenter,
+  cancelledClient,
+  completed
+}
 
 class Session {
   final String id;
@@ -9,6 +18,7 @@ class Session {
   final String timeSlotId;
   final Timestamp date;
   final SessionType sessionType;
+  final String serviceType; // e.g., 'ABA', 'SLT', 'OT'
   final String? notes;
   final String? originalEmployeeId;
   final Timestamp createdAt;
@@ -20,6 +30,7 @@ class Session {
     required this.timeSlotId,
     required this.date,
     required this.sessionType,
+    this.serviceType = 'ABA',
     this.notes,
     this.originalEmployeeId,
     required this.createdAt,
@@ -32,6 +43,7 @@ class Session {
       'timeSlotId': timeSlotId,
       'date': date,
       'sessionType': sessionType.name,
+      'serviceType': serviceType,
       'notes': notes,
       'originalEmployeeId': originalEmployeeId,
       'createdAt': createdAt,
@@ -51,9 +63,36 @@ class Session {
       sessionType: SessionType.values.byName(
         data['sessionType'] as String? ?? 'regular',
       ),
+      serviceType: data['serviceType'] as String? ?? 'ABA',
       notes: data['notes'] as String?,
       originalEmployeeId: data['originalEmployeeId'] as String?,
-      createdAt: data['createdAt'] as Timestamp,
+      createdAt: (data['createdAt'] as Timestamp?) ?? Timestamp.now(),
+    );
+  }
+
+  Session copyWith({
+    String? id,
+    String? clientId,
+    String? employeeId,
+    String? timeSlotId,
+    Timestamp? date,
+    SessionType? sessionType,
+    String? serviceType,
+    String? notes,
+    String? originalEmployeeId,
+    Timestamp? createdAt,
+  }) {
+    return Session(
+      id: id ?? this.id,
+      clientId: clientId ?? this.clientId,
+      employeeId: employeeId ?? this.employeeId,
+      timeSlotId: timeSlotId ?? this.timeSlotId,
+      date: date ?? this.date,
+      sessionType: sessionType ?? this.sessionType,
+      serviceType: serviceType ?? this.serviceType,
+      notes: notes ?? this.notes,
+      originalEmployeeId: originalEmployeeId ?? this.originalEmployeeId,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 }

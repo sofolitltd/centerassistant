@@ -26,6 +26,10 @@ class _ClientAvailabilityPageState
     extends ConsumerState<ClientAvailabilityPage> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  DateTime? _rangeStart;
+  DateTime? _rangeEnd;
+  RangeSelectionMode _rangeSelectionMode = RangeSelectionMode.toggledOn;
+
   final _noteController = TextEditingController();
   bool _isLoading = false;
 
@@ -94,12 +98,12 @@ class _ClientAvailabilityPageState
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(flex: 4, child: _buildActionCard(theme)),
-                  const SizedBox(width: 32),
                   Expanded(
                     flex: 6,
                     child: _buildHistorySection(theme, unavailabilityAsync),
                   ),
+                  const SizedBox(width: 32),
+                  Expanded(flex: 4, child: _buildActionCard(theme)),
                 ],
               )
             else
@@ -136,7 +140,7 @@ class _ClientAvailabilityPageState
             const SizedBox(height: 24),
 
             const Text(
-              'Select Date',
+              'Select Date or Range',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
@@ -149,10 +153,28 @@ class _ClientAvailabilityPageState
               lastDay: DateTime.now().add(const Duration(days: 365)),
               focusedDay: _focusedDay,
               selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+              rangeStartDay: _rangeStart,
+              rangeEndDay: _rangeEnd,
+              rangeSelectionMode: _rangeSelectionMode,
               onDaySelected: (selectedDay, focusedDay) {
+                if (!isSameDay(_selectedDay, selectedDay)) {
+                  setState(() {
+                    _selectedDay = selectedDay;
+                    _focusedDay = focusedDay;
+                    _rangeStart =
+                        null; // Important: Reset range when single day selected
+                    _rangeEnd = null;
+                    _rangeSelectionMode = RangeSelectionMode.toggledOff;
+                  });
+                }
+              },
+              onRangeSelected: (start, end, focusedDay) {
                 setState(() {
-                  _selectedDay = selectedDay;
+                  _selectedDay = null;
                   _focusedDay = focusedDay;
+                  _rangeStart = start;
+                  _rangeEnd = end;
+                  _rangeSelectionMode = RangeSelectionMode.toggledOn;
                 });
               },
               calendarFormat: CalendarFormat.month,
@@ -165,6 +187,15 @@ class _ClientAvailabilityPageState
                   color: theme.colorScheme.primary,
                   shape: BoxShape.circle,
                 ),
+                rangeStartDecoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  shape: BoxShape.circle,
+                ),
+                rangeEndDecoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  shape: BoxShape.circle,
+                ),
+                rangeHighlightColor: theme.colorScheme.primary.withOpacity(0.1),
                 todayDecoration: BoxDecoration(
                   color: theme.colorScheme.primary.withOpacity(0.1),
                   shape: BoxShape.circle,
@@ -194,7 +225,7 @@ class _ClientAvailabilityPageState
                   vertical: 12,
                 ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(4),
                   borderSide: BorderSide(color: Colors.grey.shade200),
                 ),
               ),
@@ -202,9 +233,10 @@ class _ClientAvailabilityPageState
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
-              height: 48,
               child: ElevatedButton(
-                onPressed: (_selectedDay == null || _isLoading)
+                onPressed:
+                    ((_selectedDay == null && _rangeStart == null) ||
+                        _isLoading)
                     ? null
                     : _handleSave,
                 child: _isLoading
@@ -228,16 +260,35 @@ class _ClientAvailabilityPageState
   Future<void> _handleSave() async {
     setState(() => _isLoading = true);
     try {
-      await ref
-          .read(clientUnavailabilityServiceProvider)
-          .addUnavailability(
-            clientId: widget.clientId,
-            date: _selectedDay!,
-            note: _noteController.text.trim(),
-          );
+      final service = ref.read(clientUnavailabilityServiceProvider);
+
+      if (_rangeStart != null && _rangeEnd != null) {
+        await service.addUnavailabilityRange(
+          clientId: widget.clientId,
+          start: _rangeStart!,
+          end: _rangeEnd!,
+          note: _noteController.text.trim(),
+        );
+      } else if (_rangeStart != null) {
+        // Only start selected (single day range)
+        await service.addUnavailability(
+          clientId: widget.clientId,
+          date: _rangeStart!,
+          note: _noteController.text.trim(),
+        );
+      } else if (_selectedDay != null) {
+        await service.addUnavailability(
+          clientId: widget.clientId,
+          date: _selectedDay!,
+          note: _noteController.text.trim(),
+        );
+      }
+
       if (mounted) {
         setState(() {
           _selectedDay = null;
+          _rangeStart = null;
+          _rangeEnd = null;
           _noteController.clear();
           _isLoading = false;
         });
@@ -273,8 +324,9 @@ class _ClientAvailabilityPageState
               return Card(
                 elevation: 0,
                 color: Colors.white,
+                margin: .zero,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                   side: BorderSide(color: Colors.grey.shade200),
                 ),
                 child: const Padding(
@@ -287,20 +339,23 @@ class _ClientAvailabilityPageState
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: list.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final item = list[index];
                 return Card(
                   elevation: 0,
                   color: Colors.white,
+                  margin: .zero,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(8),
                     side: BorderSide(color: Colors.grey.shade200),
                   ),
                   child: ListTile(
+                    visualDensity: .compact,
+                    dense: true,
                     contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
+                      horizontal: 8,
+                      vertical: 4,
                     ),
                     leading: CircleAvatar(
                       backgroundColor: theme.colorScheme.error.withOpacity(0.1),

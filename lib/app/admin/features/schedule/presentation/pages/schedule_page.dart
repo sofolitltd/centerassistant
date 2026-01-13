@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -488,12 +487,16 @@ class _EmployeeView extends ConsumerWidget {
 
                             return DataCell(
                               Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 4,
+                                ),
                                 child: Wrap(
                                   spacing: 8,
                                   runSpacing: 4,
                                   children: employeeSessions.map((s) {
-                                    final color = _getSessionColor(s.sessionType);
+                                    final color = _getSessionColor(
+                                      s.sessionType,
+                                    );
                                     return Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 8,
@@ -504,8 +507,11 @@ class _EmployeeView extends ConsumerWidget {
                                         borderRadius: BorderRadius.circular(4),
                                         border: Border.all(
                                           color:
-                                              s.sessionType == SessionType.regular
-                                              ? Colors.grey.withValues(alpha: 0.2)
+                                              s.sessionType ==
+                                                  SessionType.regular
+                                              ? Colors.grey.withValues(
+                                                  alpha: 0.2,
+                                                )
                                               : _getStatusBorderColor(
                                                   s.sessionType,
                                                 ),
@@ -574,6 +580,11 @@ class _EmployeeView extends ConsumerWidget {
         return const Color(0xFFFEF2F2); // Light red
       case SessionType.completed:
         return const Color(0xFFF0FDF4); // Also light green
+      case SessionType.cancelledCenter:
+        return Colors.red.shade300;
+
+      case SessionType.cancelledClient:
+        return Colors.red.shade400;
     }
   }
 
@@ -591,6 +602,10 @@ class _EmployeeView extends ConsumerWidget {
         return Colors.red.shade200;
       case SessionType.completed:
         return Colors.green.shade300;
+      case SessionType.cancelledCenter:
+        return Colors.red.shade300;
+      case SessionType.cancelledClient:
+        return Colors.red.shade400;
     }
   }
 }

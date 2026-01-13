@@ -4,11 +4,13 @@ class ScheduleRule {
   final String dayOfWeek;
   final String timeSlotId;
   final String employeeId;
+  final String serviceType;
 
   ScheduleRule({
     required this.dayOfWeek,
     required this.timeSlotId,
     required this.employeeId,
+    this.serviceType = 'ABA',
   });
 
   Map<String, dynamic> toJson() {
@@ -16,6 +18,7 @@ class ScheduleRule {
       'dayOfWeek': dayOfWeek,
       'timeSlotId': timeSlotId,
       'employeeId': employeeId,
+      'serviceType': serviceType,
     };
   }
 
@@ -24,6 +27,7 @@ class ScheduleRule {
       dayOfWeek: (json['dayOfWeek'] as String?) ?? '',
       timeSlotId: (json['timeSlotId'] as String?) ?? '',
       employeeId: (json['employeeId'] as String?) ?? '',
+      serviceType: (json['serviceType'] as String?) ?? 'ABA',
     );
   }
 }
@@ -59,9 +63,13 @@ class ScheduleTemplate {
     return ScheduleTemplate(
       id: snapshot.id,
       clientId: (data['clientId'] as String?) ?? '',
-      rules: (data['rules'] as List<dynamic>)
-          .map((rule) => ScheduleRule.fromJson(rule as Map<String, dynamic>))
-          .toList(),
+      rules:
+          (data['rules'] as List<dynamic>?)
+              ?.map(
+                (rule) => ScheduleRule.fromJson(rule as Map<String, dynamic>),
+              )
+              .toList() ??
+          [],
       createdAt: data['createdAt'] as Timestamp,
       updatedAt: data['updatedAt'] as Timestamp,
     );

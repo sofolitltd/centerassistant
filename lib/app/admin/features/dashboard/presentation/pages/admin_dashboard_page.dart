@@ -7,7 +7,7 @@ import '/core/models/leave.dart';
 import '/core/providers/client_providers.dart';
 import '/core/providers/employee_providers.dart';
 import '/core/providers/leave_providers.dart';
-import '/core/providers/time_slot_providers.dart';
+import '/core/providers/session_providers.dart';
 
 class AdminDashboardPage extends ConsumerWidget {
   const AdminDashboardPage({super.key});
@@ -16,18 +16,16 @@ class AdminDashboardPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final employeesAsync = ref.watch(employeesProvider);
     final clientsAsync = ref.watch(clientsProvider);
-    final timeSlotsAsync = ref.watch(timeSlotsProvider);
+    final todayScheduleAsync = ref.watch(scheduleViewProvider);
     final leavesAsync = ref.watch(allLeavesProvider);
 
     return Scaffold(
-      // backgroundColor: Colors.transparent,
       body: SingleChildScrollView(
         child: Container(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              //
               Row(
                 children: [
                   InkWell(
@@ -47,7 +45,6 @@ class AdminDashboardPage extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 8),
-
               Text(
                 'Overview',
                 style: Theme.of(context).textTheme.headlineMedium!.copyWith(
@@ -55,10 +52,7 @@ class AdminDashboardPage extends ConsumerWidget {
                   height: 1.2,
                 ),
               ),
-
               const SizedBox(height: 24),
-
-              //
               LayoutBuilder(
                 builder: (context, constraints) {
                   int crossAxisCount = 1;
@@ -78,13 +72,16 @@ class AdminDashboardPage extends ConsumerWidget {
                     crossAxisSpacing: 16,
                     itemCount: 4,
                     itemBuilder: (context, index) {
-                      //
                       switch (index) {
                         case 0:
                           return _buildSummaryCard(
                             context: context,
                             title: 'Total Employees',
-                            asyncValue: employeesAsync,
+                            count: employeesAsync.when(
+                              data: (items) => items.length.toString(),
+                              loading: () => '...',
+                              error: (_, __) => '0',
+                            ),
                             icon: Icons.group,
                             onTap: () => context.go('/admin/employees'),
                           );
@@ -92,28 +89,42 @@ class AdminDashboardPage extends ConsumerWidget {
                           return _buildSummaryCard(
                             context: context,
                             title: 'Total Clients',
-                            asyncValue: clientsAsync,
+                            count: clientsAsync.when(
+                              data: (items) => items.length.toString(),
+                              loading: () => '...',
+                              error: (_, __) => '0',
+                            ),
                             icon: Icons.person,
                             onTap: () => context.go('/admin/clients'),
                           );
                         case 2:
+                          final sessionCount = todayScheduleAsync.when(
+                            data: (view) => view.sessionsByTimeSlot.values
+                                .fold(0, (sum, list) => sum + list.length)
+                                .toString(),
+                            loading: () => '...',
+                            error: (_, __) => '0',
+                          );
                           return _buildSummaryCard(
                             context: context,
-                            title: 'Total Time Slots',
-                            asyncValue: timeSlotsAsync,
-                            icon: Icons.schedule,
-                            onTap: () => context.go('/admin/time-slots'),
+                            title: "Today's Services",
+                            count: sessionCount,
+                            icon: Icons.assignment_turned_in,
+                            onTap: () => context.go('/admin/schedule'),
                           );
                         case 3:
-                          final pendingLeavesAsync = leavesAsync.whenData(
-                            (leaves) => leaves
+                          final pendingCount = leavesAsync.when(
+                            data: (leaves) => leaves
                                 .where((l) => l.status == LeaveStatus.pending)
-                                .toList(),
+                                .length
+                                .toString(),
+                            loading: () => '...',
+                            error: (_, __) => '0',
                           );
                           return _buildSummaryCard(
                             context: context,
                             title: 'Pending Leaves',
-                            asyncValue: pendingLeavesAsync,
+                            count: pendingCount,
                             icon: Icons.calendar_today,
                             iconColor: Colors.orange,
                             onTap: () => context.go('/admin/leave'),
@@ -135,7 +146,7 @@ class AdminDashboardPage extends ConsumerWidget {
   Widget _buildSummaryCard({
     required BuildContext context,
     required String title,
-    required AsyncValue<List<dynamic>> asyncValue,
+    required String count,
     required IconData icon,
     required VoidCallback onTap,
     Color? iconColor,
@@ -145,7 +156,6 @@ class AdminDashboardPage extends ConsumerWidget {
       child: InkWell(
         hoverColor: Colors.transparent,
         onTap: onTap,
-        // borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Row(
@@ -177,21 +187,10 @@ class AdminDashboardPage extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    asyncValue.when(
-                      data: (items) => Text(
-                        items.length.toString(),
-                        style: Theme.of(context).textTheme.headlineSmall!
-                            .copyWith(fontWeight: FontWeight.bold, height: 1.2),
-                      ),
-                      loading: () => const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      error: (err, stack) => const Text(
-                        '0',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                    Text(
+                      count,
+                      style: Theme.of(context).textTheme.headlineSmall!
+                          .copyWith(fontWeight: FontWeight.bold, height: 1.2),
                     ),
                   ],
                 ),
