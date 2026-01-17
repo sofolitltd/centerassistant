@@ -1,5 +1,4 @@
-import 'dart:ui' show PointerDeviceKind;
-
+import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,64 +17,64 @@ class ClientPage extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          InkWell(
-                            onTap: () => context.go('/admin/dashboard'),
-                            child: Text(
-                              'Admin',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: Colors.grey,
-                              ),
+      body: Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        InkWell(
+                          onTap: () => context.go('/admin/dashboard'),
+                          child: Text(
+                            'Admin',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey,
                             ),
                           ),
-                          const Icon(
-                            Icons.chevron_right,
-                            size: 16,
-                            color: Colors.grey,
-                          ),
-                          Text('Clients', style: theme.textTheme.bodyMedium),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Client Directory',
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
                         ),
-                      ),
-                    ],
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: () => context.go('/admin/clients/add'),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Client'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 16,
+                        const Icon(
+                          Icons.chevron_right,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        Text('Clients', style: theme.textTheme.bodyMedium),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Client Directory',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
+                  ],
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => context.go('/admin/clients/add'),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Client'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 32),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
 
-              // Table Card
-              Card(
+            // Table Card
+            Expanded(
+              child: Card(
                 elevation: 0,
                 margin: EdgeInsets.zero,
                 clipBehavior: Clip.antiAlias,
@@ -86,10 +85,7 @@ class ClientPage extends ConsumerWidget {
                 child: clientsAsync.when(
                   data: (clients) {
                     if (clients.isEmpty) {
-                      return const Padding(
-                        padding: EdgeInsets.all(40),
-                        child: Center(child: Text('No clients found.')),
-                      );
+                      return const Center(child: Text('No clients found.'));
                     }
 
                     // Reverse numeric sort by clientId
@@ -104,198 +100,148 @@ class ClientPage extends ConsumerWidget {
                         }
                       });
 
-                    return LayoutBuilder(
-                      builder: (context, constraints) {
-                        const double minWidth = 1000;
-
-                        return ScrollConfiguration(
-                          behavior: ScrollConfiguration.of(context).copyWith(
-                            dragDevices: {
-                              PointerDeviceKind.touch,
-                              PointerDeviceKind.mouse,
-                              PointerDeviceKind.trackpad,
-                            },
+                    return DataTable2(
+                      columnSpacing: 24,
+                      horizontalMargin: 12,
+                      minWidth: 1000,
+                      headingRowColor: WidgetStateProperty.all(
+                        theme.colorScheme.surfaceContainerHighest.withValues(
+                          alpha: 0.3,
+                        ),
+                      ),
+                      border: TableBorder.all(
+                        color: Colors.grey.shade200,
+                        width: 1,
+                      ),
+                      columns: const [
+                        DataColumn2(
+                          label: Text(
+                            'ID',
+                            style: TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          child: Scrollbar(
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  minWidth: constraints.maxWidth,
-                                ),
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    minWidth: minWidth,
-                                  ),
-                                  child: DataTable(
-                                    showCheckboxColumn: false,
-                                    headingRowColor: WidgetStateProperty.all(
-                                      theme.colorScheme.surfaceContainerHighest
-                                          .withValues(alpha: 0.3),
-                                    ),
-                                    columnSpacing: 24,
-                                    border: TableBorder.all(
-                                      color: Colors.grey.shade200,
-                                      width: 1,
-                                    ),
-                                    columns: const [
-                                      DataColumn(
-                                        label: SizedBox(
-                                          width: 60,
-                                          child: Text(
-                                            'ID',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          'Client Name',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          'Nick Name',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          'Gender',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          'Age',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          'Contact',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          'Actions',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                    rows: sortedClients.map((client) {
-                                      return DataRow(
-                                        onSelectChanged: (_) => context.go(
-                                          '/admin/clients/${client.id}',
-                                        ),
-                                        cells: [
-                                          DataCell(
-                                            SizedBox(
-                                              width: 60,
-                                              child: Text(
-                                                client.clientId,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          DataCell(
-                                            Row(
-                                              children: [
-                                                CircleAvatar(
-                                                  radius: 14,
-                                                  backgroundImage:
-                                                      client.image.isNotEmpty
-                                                      ? NetworkImage(
-                                                          client.image,
-                                                        )
-                                                      : null,
-                                                  child: client.image.isEmpty
-                                                      ? const Icon(
-                                                          Icons.person,
-                                                          size: 14,
-                                                        )
-                                                      : null,
-                                                ),
-                                                const SizedBox(width: 12),
-                                                Text(
-                                                  client.name,
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          DataCell(Text(client.nickName)),
-                                          DataCell(
-                                            Text(client.gender.toUpperCase()),
-                                          ),
-                                          DataCell(
-                                            Text(
-                                              '${_calculateAge(client.dateOfBirth)} Y',
-                                            ),
-                                          ),
-                                          DataCell(Text(client.mobileNo)),
-                                          DataCell(
-                                            Row(
-                                              children: [
-                                                IconButton(
-                                                  icon: const Icon(
-                                                    LucideIcons.edit,
-                                                    size: 16,
-                                                  ),
-                                                  onPressed: () =>
-                                                      _showEditClientDialog(
-                                                        context,
-                                                        client,
-                                                      ),
-                                                  tooltip: 'Edit',
-                                                ),
-                                                IconButton(
-                                                  icon: const Icon(
-                                                    LucideIcons.trash2,
-                                                    size: 16,
-                                                    color: Colors.red,
-                                                  ),
-                                                  onPressed: () =>
-                                                      _showDeleteConfirmDialog(
-                                                        context,
-                                                        ref,
-                                                        client,
-                                                      ),
-                                                  tooltip: 'Delete',
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    }).toList(),
+                          headingRowAlignment: MainAxisAlignment.center,
+                          fixedWidth: 24,
+                        ),
+                        DataColumn2(
+                          label: Text(
+                            'Client Name',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          size: ColumnSize.L,
+                        ),
+                        DataColumn2(
+                          label: Text(
+                            'Nick Name',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        DataColumn2(
+                          label: Text(
+                            'Gender',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          fixedWidth: 100,
+                        ),
+                        DataColumn2(
+                          label: Text(
+                            'Age',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          fixedWidth: 80,
+                        ),
+                        DataColumn2(
+                          label: Text(
+                            'Contact',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          size: ColumnSize.M,
+                        ),
+                        DataColumn2(
+                          label: Text(
+                            'Actions',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          fixedWidth: 100,
+                        ),
+                      ],
+                      rows: sortedClients.map((client) {
+                        return DataRow2(
+                          onTap: () =>
+                              context.go('/admin/clients/${client.id}'),
+                          cells: [
+                            DataCell(
+                              Center(
+                                child: Text(
+                                  client.clientId,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
                             ),
-                          ),
+                            DataCell(
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 14,
+                                    backgroundImage: client.image.isNotEmpty
+                                        ? NetworkImage(client.image)
+                                        : null,
+                                    child: client.image.isEmpty
+                                        ? const Icon(Icons.person, size: 14)
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      client.name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            DataCell(Text(client.nickName)),
+                            DataCell(Text(client.gender.toUpperCase())),
+                            DataCell(
+                              Text('${_calculateAge(client.dateOfBirth)} Y'),
+                            ),
+                            DataCell(Text(client.mobileNo)),
+                            DataCell(
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(
+                                      LucideIcons.edit,
+                                      size: 16,
+                                    ),
+                                    onPressed: () =>
+                                        _showEditClientDialog(context, client),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      LucideIcons.trash2,
+                                      size: 16,
+                                      color: Colors.red,
+                                    ),
+                                    onPressed: () => _showDeleteConfirmDialog(
+                                      context,
+                                      ref,
+                                      client,
+                                    ),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         );
-                      },
+                      }).toList(),
                     );
                   },
                   loading: () =>
@@ -303,8 +249,8 @@ class ClientPage extends ConsumerWidget {
                   error: (err, _) => Center(child: Text('Error: $err')),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
