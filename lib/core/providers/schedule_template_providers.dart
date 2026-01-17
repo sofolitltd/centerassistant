@@ -7,26 +7,24 @@ import '/core/providers/session_providers.dart';
 import '/services/firebase_service.dart';
 import 'client_providers.dart';
 import 'notification_providers.dart';
-import 'time_slot_providers.dart';
 
 final scheduleTemplateRepositoryProvider =
     Provider<IScheduleTemplateRepository>((ref) {
-  return ScheduleTemplateRepositoryImpl(ref.watch(firestoreProvider));
-});
+      return ScheduleTemplateRepositoryImpl(ref.watch(firestoreProvider));
+    });
 
-final scheduleTemplateProvider =
-    StreamProvider.autoDispose.family<ScheduleTemplate?, String>((ref, clientId) {
-  return ref
-      .watch(scheduleTemplateRepositoryProvider)
-      .getScheduleTemplateByClientId(clientId);
-});
+final scheduleTemplateProvider = StreamProvider.autoDispose
+    .family<ScheduleTemplate?, String>((ref, clientId) {
+      return ref
+          .watch(scheduleTemplateRepositoryProvider)
+          .getScheduleTemplateByClientId(clientId);
+    });
 
 final allScheduleTemplatesProvider = StreamProvider<List<ScheduleTemplate>>((
   ref,
 ) {
   final repository = ref.watch(scheduleTemplateRepositoryProvider);
   if (repository is ScheduleTemplateRepositoryImpl) {
-    // We need a stream of all templates to react to any change
     return ref
         .watch(firestoreProvider)
         .collection('schedule_templates')
@@ -37,7 +35,6 @@ final allScheduleTemplatesProvider = StreamProvider<List<ScheduleTemplate>>((
               .toList(),
         );
   }
-  // Fallback if repository doesn't support streaming all
   return Stream.fromFuture(repository.getAllTemplates());
 });
 
@@ -51,14 +48,34 @@ class ScheduleTemplateActionService {
 
   Future<void> setScheduleRule({
     required String clientId,
-    required String dayOfWeek,
     required String timeSlotId,
     required String employeeId,
+    required String serviceType,
+    required String startTime,
+    required String endTime,
+    required RecurrenceFrequency frequency,
+    required int interval,
+    required List<String> daysOfWeek,
+    required RecurrenceEndType endType,
+    DateTime? untilDate,
+    int? occurrences,
+    int? dayOfMonth,
+    DateTime? startDate,
   }) async {
     final rule = ScheduleRule(
-      dayOfWeek: dayOfWeek,
       timeSlotId: timeSlotId,
       employeeId: employeeId,
+      serviceType: serviceType,
+      startTime: startTime,
+      endTime: endTime,
+      frequency: frequency,
+      interval: interval,
+      daysOfWeek: daysOfWeek,
+      endType: endType,
+      untilDate: untilDate,
+      occurrences: occurrences,
+      dayOfMonth: dayOfMonth,
+      startDate: startDate,
     );
     await _ref
         .read(scheduleTemplateRepositoryProvider)
@@ -67,20 +84,17 @@ class ScheduleTemplateActionService {
     _ref.invalidate(scheduleViewProvider);
     _ref.invalidate(allScheduleTemplatesProvider);
 
-    // Send Notification
+    // Notification Logic
     try {
       final client = _ref.read(clientByIdProvider(clientId)).value;
-      final timeSlot = _ref
-          .read(timeSlotsProvider)
-          .value
-          ?.firstWhere((s) => s.id == timeSlotId);
-
-      _ref.read(notificationServiceProvider).sendToUser(
+      _ref
+          .read(notificationServiceProvider)
+          .sendToUser(
             userId: employeeId,
             collection: 'employees',
             title: 'New Schedule Assigned',
             body:
-                'You have been assigned to ${client?.name ?? 'a client'} on ${dayOfWeek}s at ${timeSlot?.label ?? 'the scheduled time'}.',
+                'You have been assigned to ${client?.name ?? 'a client'} with a ${frequency.name} recurrence.',
           );
     } catch (_) {}
   }
@@ -95,22 +109,5 @@ class ScheduleTemplateActionService {
     _ref.invalidate(scheduleTemplateProvider(clientId));
     _ref.invalidate(scheduleViewProvider);
     _ref.invalidate(allScheduleTemplatesProvider);
-
-    // Send Notification
-    try {
-      final client = _ref.read(clientByIdProvider(clientId)).value;
-      final timeSlot = _ref
-          .read(timeSlotsProvider)
-          .value
-          ?.firstWhere((s) => s.id == ruleToRemove.timeSlotId);
-
-      _ref.read(notificationServiceProvider).sendToUser(
-            userId: ruleToRemove.employeeId,
-            collection: 'employees',
-            title: 'Schedule Removed',
-            body:
-                'Your assignment with ${client?.name ?? 'a client'} on ${ruleToRemove.dayOfWeek}s at ${timeSlot?.label ?? 'the scheduled time'} has been removed.',
-          );
-    } catch (_) {}
   }
 }

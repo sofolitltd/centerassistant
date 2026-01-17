@@ -1,0 +1,286 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '/core/models/client.dart';
+import '/core/models/employee.dart';
+import '/core/models/session.dart';
+import '/core/providers/employee_providers.dart';
+import '/core/providers/session_providers.dart';
+import '/core/providers/time_slot_providers.dart';
+import '../add_schedule_utils.dart';
+
+class AddScheduleServiceDialog extends ConsumerStatefulWidget {
+  final String? selectedTimeSlotId;
+  final String? initialStartTime;
+  final String? initialEndTime;
+  final Employee? initialEmployee;
+  final Client? selectedClient;
+
+  const AddScheduleServiceDialog({
+    super.key,
+    required this.selectedTimeSlotId,
+    this.initialStartTime,
+    this.initialEndTime,
+    this.initialEmployee,
+    this.selectedClient,
+  });
+
+  @override
+  ConsumerState<AddScheduleServiceDialog> createState() =>
+      _AddScheduleServiceDialogState();
+}
+
+class _AddScheduleServiceDialogState
+    extends ConsumerState<AddScheduleServiceDialog> {
+  Employee? _employee;
+  String? _serviceType;
+  String? _startTime;
+  String? _endTime;
+  bool _isInclusive = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTime = widget.initialStartTime;
+    _endTime = widget.initialEndTime;
+    _employee = widget.initialEmployee;
+    if (_employee != null) {
+      _serviceType = _employee!.department;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final employeesAsync = ref.watch(employeesProvider);
+    final deptsAsync = ref.watch(schedulableDepartmentsProvider);
+    final timeSlotsAsync = ref.watch(timeSlotsProvider);
+    final scheduleAsync = ref.watch(scheduleViewProvider);
+
+    final slots = timeSlotsAsync.value ?? [];
+    final currentSlot =
+        slots.where((s) => s.id == widget.selectedTimeSlotId).firstOrNull;
+
+    List<String> startTimes = [];
+    List<String> endTimes = [];
+
+    if (currentSlot != null) {
+      startTimes = AddScheduleUtils.generateTimeOptions(
+        currentSlot.startTime,
+        currentSlot.endTime,
+      );
+      if (_startTime != null) {
+        endTimes = AddScheduleUtils.generateTimeOptions(
+          _startTime!,
+          currentSlot.endTime,
+          includeStart: false,
+        );
+      }
+    }
+
+    return AlertDialog(
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text('Add Service'),
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.close),
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: SizedBox(
+          width: 500,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              deptsAsync.when(
+                data: (depts) {
+                  final items = depts.toList();
+                  return DropdownButtonFormField<String>(
+                    initialValue: depts.contains(_serviceType) ? _serviceType : null,
+                    hint: const Text('Service'),
+                    onChanged: (v) {
+                      setState(() {
+                        _serviceType = v;
+                        if (_employee != null && _employee!.department != v) {
+                          _employee = null;
+                        }
+                      });
+                    },
+                    items: items
+                        .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                        .toList(),
+                    decoration: _inputDecoration(label: 'Service'),
+                  );
+                },
+                loading: () => const LinearProgressIndicator(),
+                error: (_, __) => const Text('Error loading services'),
+              ),
+              const SizedBox(height: 16),
+              employeesAsync.when(
+                data: (employees) => deptsAsync.when(
+                  data: (depts) {
+                    final available = employees.where((e) {
+                      final bool matchesDept = depts.contains(e.department) &&
+                          (_serviceType == null || e.department == _serviceType);
+                      
+                      if (!matchesDept) return false;
+
+                      // --- Therapist Conflict Check ---
+                      // Check if therapist is already busy in this time slot
+                      final busyTherapists = scheduleAsync.value?.sessionsByTimeSlot[widget.selectedTimeSlotId]
+                          ?.expand((session) => session.services)
+                          .map((service) => service.employeeId)
+                          .toSet() ?? {};
+                      
+                      return !busyTherapists.contains(e.id);
+                    }).toList();
+
+                    return DropdownButtonFormField<Employee>(
+                      isExpanded: true,
+                      hint: const Text('Select Therapist'),
+                      initialValue: _employee,
+                      onChanged: (e) {
+                        setState(() {
+                          _employee = e;
+                          if (e != null) {
+                            _serviceType = e.department;
+                          }
+                        });
+                      },
+                      items: available
+                          .map(
+                            (e) =>
+                                DropdownMenuItem(value: e, child: Text(e.name)),
+                          )
+                          .toList(),
+                      decoration: _inputDecoration(label: 'Therapist'),
+                    );
+                  },
+                  loading: () => const SizedBox(),
+                  error: (_, __) => const SizedBox(),
+                ),
+                loading: () => const SizedBox(),
+                error: (_, __) => const SizedBox(),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _startTime,
+                      hint: const Text('Start'),
+                      onChanged: (v) {
+                        setState(() {
+                          _startTime = v;
+                          if (_endTime != null &&
+                              AddScheduleUtils.timeToDouble(_endTime!) <=
+                                  AddScheduleUtils.timeToDouble(v!)) {
+                            _endTime = null;
+                          }
+                        });
+                      },
+                      items: startTimes
+                          .map(
+                            (t) => DropdownMenuItem(
+                              value: t,
+                              child: Text(AddScheduleUtils.formatTimeToAmPm(t)),
+                            ),
+                          )
+                          .toList(),
+                      decoration: _inputDecoration(label: 'Start Time'),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: Text('—', style: TextStyle(color: Colors.grey)),
+                  ),
+                  Expanded(
+                    flex: 4,
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _endTime,
+                      hint: const Text('End'),
+                      onChanged: (v) => setState(() => _endTime = v),
+                      items: endTimes.map((t) {
+                        final duration = _startTime != null
+                            ? AddScheduleUtils.calculateDurationLabel(
+                                _startTime!,
+                                t,
+                              )
+                            : '';
+                        return DropdownMenuItem(
+                          value: t,
+                          child: Text(
+                            '${AddScheduleUtils.formatTimeToAmPm(t)} ($duration)',
+                          ),
+                        );
+                      }).toList(),
+                      decoration: _inputDecoration(label: 'End Time'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<bool>(
+                initialValue: _isInclusive,
+                onChanged: (v) => setState(() => _isInclusive = v!),
+                items: const [
+                  DropdownMenuItem(value: false, child: Text('EXCLUSIVE')),
+                  DropdownMenuItem(value: true, child: Text('INCLUSIVE')),
+                ],
+                decoration: _inputDecoration(label: 'Session Type'),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(onPressed: _onAdd, child: const Text('Add Service')),
+      ],
+    );
+  }
+
+  void _onAdd() {
+    if (_employee == null ||
+        _startTime == null ||
+        _endTime == null ||
+        _serviceType == null) {
+      return;
+    }
+
+    if (AddScheduleUtils.timeToDouble(_endTime!) <=
+        AddScheduleUtils.timeToDouble(_startTime!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('End time must be after start time')),
+      );
+      return;
+    }
+
+    final service = ServiceDetail(
+      type: _serviceType!,
+      startTime: _startTime!,
+      endTime: _endTime!,
+      employeeId: _employee!.id,
+      isInclusive: _isInclusive,
+    );
+
+    Navigator.pop(context, service);
+  }
+
+  InputDecoration _inputDecoration({String? label}) {
+    return InputDecoration(
+      labelText: label,
+      border: const OutlineInputBorder(),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      filled: true,
+      fillColor: Colors.grey.shade50,
+      labelStyle: const TextStyle(fontSize: 14),
+    );
+  }
+}

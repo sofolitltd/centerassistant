@@ -152,7 +152,7 @@ class _ApplyLeavePageState extends ConsumerState<ApplyLeavePage> {
                   _buildDialogField(
                     'Leave Type',
                     DropdownButtonFormField<LeaveType>(
-                      value: selectedType,
+                      initialValue: selectedType,
                       isDense: true,
                       items: LeaveType.values
                           .map(
@@ -173,7 +173,7 @@ class _ApplyLeavePageState extends ConsumerState<ApplyLeavePage> {
                   _buildDialogField(
                     'Duration',
                     DropdownButtonFormField<LeaveDuration>(
-                      value: selectedDuration,
+                      initialValue: selectedDuration,
                       items: LeaveDuration.values
                           .map(
                             (d) => DropdownMenuItem(
@@ -461,8 +461,8 @@ class _ApplyLeavePageState extends ConsumerState<ApplyLeavePage> {
                 child: Column(
                   children: [
                     Icon(LucideIcons.calendar, size: 48, color: Colors.grey),
-                    const SizedBox(height: 16),
-                    const Text(
+                    SizedBox(height: 16),
+                    Text(
                       'No dates selected yet.',
                       style: TextStyle(color: Colors.grey),
                     ),
@@ -562,7 +562,7 @@ class _ApplyLeavePageState extends ConsumerState<ApplyLeavePage> {
                 children: [
                   Icon(LucideIcons.edit2, size: 14),
                   SizedBox(width: 8),
-                  const Text('Edit', style: TextStyle(fontSize: 13)),
+                  Text('Edit', style: TextStyle(fontSize: 13)),
                 ],
               ),
             ),
@@ -573,7 +573,7 @@ class _ApplyLeavePageState extends ConsumerState<ApplyLeavePage> {
                 children: [
                   Icon(LucideIcons.trash2, size: 14, color: Colors.red),
                   SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'Delete',
                     style: TextStyle(fontSize: 13, color: Colors.red),
                   ),

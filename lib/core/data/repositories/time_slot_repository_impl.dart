@@ -10,9 +10,7 @@ class TimeSlotRepositoryImpl implements ITimeSlotRepository {
 
   @override
   Stream<List<TimeSlot>> getTimeSlots() {
-    return _firestore.collection('time_slots').orderBy('id').snapshots().map((
-      snapshot,
-    ) {
+    return _firestore.collection('time_slots').snapshots().map((snapshot) {
       return snapshot.docs
           .map(
             (doc) => TimeSlot.fromFirestore(
@@ -28,34 +26,21 @@ class TimeSlotRepositoryImpl implements ITimeSlotRepository {
     required String startTime,
     required String endTime,
     required String label,
+    required bool isActive,
+    required DateTime effectiveDate,
   }) async {
-    final counterRef = _firestore.collection('counters').doc('time_slots');
+    final docRef = _firestore.collection('time_slots').doc();
 
-    return _firestore.runTransaction((transaction) async {
-      final counterSnapshot = await transaction.get(counterRef);
+    final newTimeSlot = TimeSlot(
+      id: docRef.id,
+      startTime: startTime,
+      endTime: endTime,
+      label: label,
+      isActive: isActive,
+      effectiveDate: effectiveDate,
+    );
 
-      int newIdNumber;
-      if (!counterSnapshot.exists) {
-        newIdNumber = 1;
-      } else {
-        final data = counterSnapshot.data();
-        newIdNumber = (data?['count'] as int? ?? 0) + 1;
-      }
-
-      final newId = 'ts${newIdNumber.toString().padLeft(4, '0')}';
-
-      final newTimeSlotRef = _firestore.collection('time_slots').doc(newId);
-
-      final newTimeSlot = TimeSlot(
-        id: newId,
-        startTime: startTime,
-        endTime: endTime,
-        label: label,
-      );
-
-      transaction.set(newTimeSlotRef, newTimeSlot.toJson());
-      transaction.set(counterRef, {'count': newIdNumber});
-    });
+    await docRef.set(newTimeSlot.toJson());
   }
 
   @override
@@ -67,7 +52,21 @@ class TimeSlotRepositoryImpl implements ITimeSlotRepository {
   }
 
   @override
-  Future<void> deleteTimeSlot(String id) async {
+  Future<void> archiveTimeSlot(String id) async {
+    await _firestore.collection('time_slots').doc(id).update({
+      'isActive': false,
+    });
+  }
+
+  @override
+  Future<void> unarchiveTimeSlot(String id) async {
+    await _firestore.collection('time_slots').doc(id).update({
+      'isActive': true,
+    });
+  }
+
+  @override
+  Future<void> deleteTimeSlotPermanently(String id) async {
     await _firestore.collection('time_slots').doc(id).delete();
   }
 }

@@ -278,7 +278,7 @@ class _DailyView extends ConsumerWidget {
                       (m) =>
                           (m['rule'] as ScheduleRule).employeeId ==
                               employeeId &&
-                          (m['rule'] as ScheduleRule).dayOfWeek == dayName,
+                          (m['rule'] as ScheduleRule).daysOfWeek == dayName,
                     )
                     .toList();
 
@@ -539,7 +539,7 @@ class _WeeklyView extends ConsumerWidget {
                             final matches = myRules
                                 .where(
                                   (m) =>
-                                      (m['rule'] as ScheduleRule).dayOfWeek ==
+                                      (m['rule'] as ScheduleRule).daysOfWeek ==
                                           day &&
                                       (m['rule'] as ScheduleRule).timeSlotId ==
                                           slot.id,

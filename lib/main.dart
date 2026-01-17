@@ -2,7 +2,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'core/providers/notification_providers.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/url_strategy/url_strategy_stub.dart'
@@ -17,11 +16,12 @@ Future<void> main() async {
   final container = ProviderContainer();
 
   // Initialize Notification Service
-  try {
-    await container.read(notificationServiceProvider).initialize();
-  } catch (e) {
-    debugPrint('Failed to initialize notifications: $e');
-  }
+  //todo: test later
+  // try {
+  //   await container.read(notificationServiceProvider).initialize();
+  // } catch (e) {
+  //   debugPrint('Failed to initialize notifications: $e');
+  // }
 
   // Configure URL strategy conditionally for Web
   configureUrlStrategy();

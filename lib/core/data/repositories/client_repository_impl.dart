@@ -38,6 +38,7 @@ class ClientRepositoryImpl implements IClientRepository {
   @override
   Future<void> addClient({
     required String name,
+    required String nickName,
     required String mobileNo,
     required String email,
     required String address,
@@ -68,6 +69,7 @@ class ClientRepositoryImpl implements IClientRepository {
         id: docId,
         clientId: sequentialId,
         name: name,
+        nickName: nickName,
         mobileNo: mobileNo,
         email: email,
         address: address,
@@ -91,22 +93,9 @@ class ClientRepositoryImpl implements IClientRepository {
 
   @override
   Future<void> deleteClient(String id) async {
-    final counterRef = _firestore.collection('counters').doc('clients');
     final clientRef = _firestore.collection('clients').doc(id);
-
-    return _firestore.runTransaction((transaction) async {
-      final counterSnapshot = await transaction.get(counterRef);
-
-      if (counterSnapshot.exists) {
-        final currentCount = counterSnapshot.data()?['count'] as int? ?? 0;
-        if (currentCount > 0) {
-          // Reduce the counter when a client is deleted
-          transaction.update(counterRef, {'count': currentCount - 1});
-        }
-      }
-
-      // Perform the actual deletion
-      transaction.delete(clientRef);
-    });
+    await clientRef.delete();
+    // Counter decrement is usually not recommended for sequential IDs 
+    // to avoid ID reuse and complexity, so we only delete the document.
   }
 }

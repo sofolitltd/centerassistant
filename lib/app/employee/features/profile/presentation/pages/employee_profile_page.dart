@@ -445,7 +445,7 @@ class _EmployeeProfilePageState extends ConsumerState<EmployeeProfilePage> {
         ButtonTheme(
           alignedDropdown: true,
           child: DropdownButtonFormField<String>(
-            value: _selectedGender,
+            initialValue: _selectedGender,
             // Fixed: use onChanged null to disable the field
             onChanged: _isEditing
                 ? (v) => setState(() => _selectedGender = v!)

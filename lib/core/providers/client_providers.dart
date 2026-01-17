@@ -25,6 +25,7 @@ class ClientActionService {
 
   Future<void> addClient({
     required String name,
+    required String nickName,
     required String mobileNo,
     required String email,
     required String address,
@@ -35,6 +36,7 @@ class ClientActionService {
         .read(clientRepositoryProvider)
         .addClient(
           name: name,
+          nickName: nickName,
           mobileNo: mobileNo,
           email: email,
           address: address,

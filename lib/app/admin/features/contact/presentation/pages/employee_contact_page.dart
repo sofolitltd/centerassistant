@@ -1,3 +1,5 @@
+import 'dart:ui' show PointerDeviceKind;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -30,7 +32,6 @@ class EmployeeContactPage extends ConsumerWidget {
     final employeesAsync = ref.watch(employeesProvider);
 
     return Scaffold(
-      // backgroundColor: Colors.transparent,
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -72,7 +73,7 @@ class EmployeeContactPage extends ConsumerWidget {
             Expanded(
               child: Card(
                 elevation: 0,
-                margin: .zero,
+                margin: EdgeInsets.zero,
                 clipBehavior: Clip.antiAlias,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -87,7 +88,6 @@ class EmployeeContactPage extends ConsumerWidget {
                       return const Center(child: Text('No colleagues found.'));
                     }
 
-                    // Sort by name
                     activeEmployees.sort((a, b) => a.name.compareTo(b.name));
 
                     return LayoutBuilder(
@@ -217,21 +217,35 @@ class EmployeeContactPage extends ConsumerWidget {
                           }).toList(),
                         );
 
-                        if (constraints.maxWidth < tableMinWidth) {
-                          return Scrollbar(
+                        return ScrollConfiguration(
+                          behavior: ScrollConfiguration.of(context).copyWith(
+                            dragDevices: {
+                              PointerDeviceKind.touch,
+                              PointerDeviceKind.mouse,
+                              PointerDeviceKind.trackpad,
+                            },
+                          ),
+                          child: Scrollbar(
                             child: SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  minWidth: tableMinWidth,
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.vertical,
+
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    minWidth: constraints.maxWidth,
+                                  ),
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      minWidth: tableMinWidth,
+                                    ),
+                                    child: table,
+                                  ),
                                 ),
-                                child: table,
                               ),
                             ),
-                          );
-                        } else {
-                          return SizedBox(width: double.infinity, child: table);
-                        }
+                          ),
+                        );
                       },
                     );
                   },

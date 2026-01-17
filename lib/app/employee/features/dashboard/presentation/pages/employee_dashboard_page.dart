@@ -168,7 +168,7 @@ class _EmployeeDashboardContent extends ConsumerWidget {
                             final todaySessions = myRules
                                 .where(
                                   (m) =>
-                                      (m['rule'] as ScheduleRule).dayOfWeek ==
+                                      (m['rule'] as ScheduleRule).daysOfWeek ==
                                       todayName,
                                 )
                                 .toList();
@@ -464,7 +464,7 @@ class _EmployeeDashboardContent extends ConsumerWidget {
                       (m) =>
                           (m['rule'] as ScheduleRule).employeeId ==
                               employeeId &&
-                          (m['rule'] as ScheduleRule).dayOfWeek == todayName,
+                          (m['rule'] as ScheduleRule).daysOfWeek == todayName,
                     )
                     .toList();
 

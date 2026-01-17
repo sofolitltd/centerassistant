@@ -104,10 +104,10 @@ class _AddEmployeePageState extends ConsumerState<AddEmployeePage> {
     final isMobile = width < 800;
 
     return Scaffold(
-      backgroundColor: Colors.black12.withOpacity(0.03),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(isMobile ? 16.0 : 32.0),
-        child: Center(
+        child: Align(
+          alignment: .centerLeft,
           child: Container(
             constraints: const BoxConstraints(maxWidth: 1000),
             child: Column(
@@ -288,7 +288,7 @@ class _AddEmployeePageState extends ConsumerState<AddEmployeePage> {
                 return ButtonTheme(
                   alignedDropdown: true,
                   child: DropdownButtonFormField<String>(
-                    value: _selectedDepartment,
+                    initialValue: _selectedDepartment,
                     hint: const Text('Select Dept'),
                     items: uniqueItems
                         .map((d) => DropdownMenuItem(value: d, child: Text(d)))
@@ -337,7 +337,7 @@ class _AddEmployeePageState extends ConsumerState<AddEmployeePage> {
                 return ButtonTheme(
                   alignedDropdown: true,
                   child: DropdownButtonFormField<String>(
-                    value: _selectedDesignation,
+                    initialValue: _selectedDesignation,
                     hint: Text(
                       _selectedDepartment == null
                           ? 'Select Dept First'
@@ -373,7 +373,7 @@ class _AddEmployeePageState extends ConsumerState<AddEmployeePage> {
         ButtonTheme(
           alignedDropdown: true,
           child: DropdownButtonFormField<String>(
-            value: _selectedGender,
+            initialValue: _selectedGender,
             items: const [
               DropdownMenuItem(value: 'male', child: Text('MALE')),
               DropdownMenuItem(value: 'female', child: Text('FEMALE')),

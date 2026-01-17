@@ -54,7 +54,7 @@ ThemeData buildTheme(ColorScheme colorScheme) {
         backgroundColor: colorScheme.primary,
         foregroundColor: Colors.white,
         // textStyle: GoogleFonts.lato(fontWeight: FontWeight.bold, fontSize: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       ),
     ),
@@ -63,14 +63,14 @@ ThemeData buildTheme(ColorScheme colorScheme) {
         foregroundColor: colorScheme.primary,
         side: BorderSide(color: colorScheme.primary.withValues(alpha: 0.5)),
         textStyle: GoogleFonts.lato(fontWeight: FontWeight.bold, fontSize: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
       ),
     ),
     dialogTheme: DialogThemeData(

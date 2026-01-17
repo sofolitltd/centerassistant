@@ -13,7 +13,6 @@ class AdminLayoutPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final authState = ref.watch(authProvider);
     final double width = MediaQuery.of(context).size.width;
     final bool isMobile = width < 700;
 
@@ -93,43 +92,20 @@ class AdminLayoutPage extends ConsumerWidget {
               ),
               itemBuilder: (context) => [
                 PopupMenuItem(
-                  value: 1,
+                  value: 3,
                   height: 40,
                   child: Row(
                     children: const [
-                      Icon(LucideIcons.user, size: 18),
+                      Icon(LucideIcons.refreshCcw, size: 18),
                       SizedBox(width: 12),
-                      Text('My Profile'),
+                      Text('Switch to Employee Portal'),
                     ],
                   ),
                 ),
-                PopupMenuItem(
-                  value: 2,
-                  height: 40,
-                  child: Row(
-                    children: const [
-                      Icon(LucideIcons.settings, size: 18),
-                      SizedBox(width: 12),
-                      Text('Settings'),
-                    ],
-                  ),
-                ),
-                ...[
-                  const PopupMenuDivider(),
-                  PopupMenuItem(
-                    value: 3,
-                    child: Row(
-                      children: const [
-                        Icon(LucideIcons.refreshCcw, size: 18),
-                        SizedBox(width: 12),
-                        Text('Switch to Employee Portal'),
-                      ],
-                    ),
-                  ),
-                ],
                 const PopupMenuDivider(),
                 PopupMenuItem(
                   value: 0,
+                  height: 40,
                   child: Row(
                     children: const [
                       Icon(LucideIcons.logOut, size: 18, color: Colors.red),
@@ -174,6 +150,7 @@ class AdminLayoutPage extends ConsumerWidget {
 
 class _SideMenu extends StatefulWidget {
   final bool isDrawer;
+
   const _SideMenu({this.isDrawer = false});
 
   @override
@@ -182,14 +159,15 @@ class _SideMenu extends StatefulWidget {
 
 class _SideMenuState extends State<_SideMenu> {
   bool _isExpanded = true;
-  bool _isEmployeeSubmenuOpen = false;
+  bool _isSettingsSubmenuOpen = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith('/admin/employees')) {
-      _isEmployeeSubmenuOpen = true;
+
+    if (location.contains('/admin/settings')) {
+      _isSettingsSubmenuOpen = true;
     }
   }
 
@@ -243,48 +221,14 @@ class _SideMenuState extends State<_SideMenu> {
                     LucideIcons.calendar,
                     'Schedule',
                   ),
-                  const SizedBox(height: 4),
 
-                  // Expandable Employee Menu
-                  if (widget.isDrawer || _isExpanded)
-                    Column(
-                      children: [
-                        _buildNavHeader(
-                          selectedIndex,
-                          [2, 6], // Staff List, Hierarchy
-                          LucideIcons.users,
-                          'Employees',
-                          isOpen: _isEmployeeSubmenuOpen,
-                          onTap: () {
-                            setState(() {
-                              _isEmployeeSubmenuOpen = !_isEmployeeSubmenuOpen;
-                            });
-                          },
-                        ),
-                        if (_isEmployeeSubmenuOpen) ...[
-                          _buildSubNavItem(
-                            2,
-                            selectedIndex,
-                            'All Employees',
-                            onTap: () => context.go('/admin/employees'),
-                          ),
-                          _buildSubNavItem(
-                            6,
-                            selectedIndex,
-                            'Department & Designation',
-                            onTap: () =>
-                                context.go('/admin/employees/hierarchy'),
-                          ),
-                        ],
-                      ],
-                    )
-                  else
-                    _buildCollapsedSubMenu(
-                      [2, 6],
-                      selectedIndex,
-                      LucideIcons.users,
-                      'Employees',
-                    ),
+                  const SizedBox(height: 4),
+                  _buildNavItem(
+                    2,
+                    selectedIndex,
+                    LucideIcons.users,
+                    'Employee',
+                  ),
 
                   const SizedBox(height: 4),
                   _buildNavItem(
@@ -297,23 +241,106 @@ class _SideMenuState extends State<_SideMenu> {
                   _buildNavItem(
                     4,
                     selectedIndex,
-                    LucideIcons.clock,
-                    'Time Slots',
+                    LucideIcons.calendarX,
+                    'Leaves',
                   ),
                   const SizedBox(height: 4),
                   _buildNavItem(
                     5,
                     selectedIndex,
-                    LucideIcons.calendarX,
-                    'Leave Requests',
-                  ),
-                  const SizedBox(height: 4),
-                  _buildNavItem(
-                    7,
-                    selectedIndex,
                     LucideIcons.phone,
                     'Contacts',
                   ),
+
+                  const SizedBox(height: 4),
+
+                  // Expandable Settings Menu
+                  if (widget.isDrawer || _isExpanded)
+                    Column(
+                      children: [
+                        _buildNavHeader(
+                          selectedIndex,
+                          [6, 7, 8, 9],
+                          LucideIcons.settings,
+                          'Settings',
+                          isOpen: _isSettingsSubmenuOpen,
+                          onTap: () {
+                            setState(() {
+                              _isSettingsSubmenuOpen = !_isSettingsSubmenuOpen;
+                            });
+                          },
+                        ),
+                        if (_isSettingsSubmenuOpen) ...[
+                          _buildSubNavItem(
+                            6,
+                            selectedIndex,
+                            'Departments',
+                            onTap: () =>
+                                context.go('/admin/settings/departments'),
+                          ),
+                          _buildSubNavItem(
+                            7,
+                            selectedIndex,
+                            'Time Slots',
+                            onTap: () =>
+                                context.go('/admin/settings/time-slots'),
+                          ),
+
+                          _buildSubNavItem(
+                            8,
+                            selectedIndex,
+                            'Holidays',
+                            onTap: () => context.go('/admin/settings/holidays'),
+                          ),
+
+                          _buildSubNavItem(
+                            9,
+                            selectedIndex,
+                            'Service Charges',
+                            onTap: () =>
+                                context.go('/admin/settings/service-charges'),
+                          ),
+                        ],
+                      ],
+                    )
+                  else
+                    _buildCollapsedSubMenu(
+                      [6, 7, 8, 9],
+                      selectedIndex,
+                      LucideIcons.settings,
+                      'Settings',
+                      [
+                        const PopupMenuItem(
+                          value: 6,
+                          child: Text(
+                            'Departments',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 7,
+                          child: Text(
+                            'Time Slots',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 8,
+                          child: Text(
+                            'Holidays',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                        ),
+
+                        const PopupMenuItem(
+                          value: 9,
+                          child: Text(
+                            'Service Charges',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),
@@ -346,6 +373,7 @@ class _SideMenuState extends State<_SideMenu> {
     int selectedIndex,
     IconData icon,
     String label,
+    List<PopupMenuEntry<int>> items,
   ) {
     final isAnySubSelected = subIndices.contains(selectedIndex);
     final theme = Theme.of(context);
@@ -356,16 +384,7 @@ class _SideMenuState extends State<_SideMenu> {
       color: Colors.white,
       tooltip: label,
       onSelected: (index) => _onDestinationSelected(index, context),
-      itemBuilder: (context) => [
-        const PopupMenuItem(
-          value: 2,
-          child: Text('All Employees', style: TextStyle(fontSize: 13)),
-        ),
-        const PopupMenuItem(
-          value: 6,
-          child: Text('Department & Designation', style: TextStyle(fontSize: 13)),
-        ),
-      ],
+      itemBuilder: (context) => items,
       child: Container(
         width: 60,
         decoration: BoxDecoration(
@@ -556,14 +575,17 @@ class _SideMenuState extends State<_SideMenu> {
     final String location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith('/admin/dashboard')) return 0;
     if (location.startsWith('/admin/schedule')) return 1;
-    if (location.startsWith('/admin/employees')) {
-      if (location.contains('hierarchy')) return 6;
-      return 2;
-    }
+    if (location.startsWith('/admin/employees')) return 2;
     if (location.startsWith('/admin/clients')) return 3;
-    if (location.startsWith('/admin/time-slots')) return 4;
-    if (location.startsWith('/admin/leave')) return 5;
-    if (location.startsWith('/admin/contact')) return 7;
+    if (location.startsWith('/admin/leaves')) return 4;
+    if (location.startsWith('/admin/contacts')) return 5;
+
+    if (location.startsWith('/admin/settings')) {
+      if (location.contains('departments')) return 6;
+      if (location.contains('time-slots')) return 7;
+      if (location.contains('holidays')) return 8;
+      if (location.contains('service-charges')) return 9;
+    }
     return 0;
   }
 
@@ -582,16 +604,22 @@ class _SideMenuState extends State<_SideMenu> {
         context.go('/admin/clients');
         break;
       case 4:
-        context.go('/admin/time-slots');
+        context.go('/admin/leaves');
         break;
       case 5:
-        context.go('/admin/leave');
+        context.go('/admin/contacts');
         break;
       case 6:
-        context.go('/admin/employees/hierarchy');
+        context.go('/admin/settings/departments');
         break;
       case 7:
-        context.go('/admin/contact');
+        context.go('/admin/settings/time-slots');
+        break;
+      case 8:
+        context.go('/admin/settings/holidays');
+        break;
+      case 9:
+        context.go('/admin/settings/service-charges');
         break;
     }
   }

@@ -235,7 +235,7 @@ class EmployeePage extends ConsumerWidget {
                                             onPressed: isSchedulable
                                                 ? () {
                                                     context.go(
-                                                      '/admin/employees/${employee.id}/schedule',
+                                                      '/admin/schedule?employeeId=${employee.id}',
                                                     );
                                                   }
                                                 : null,
@@ -572,7 +572,7 @@ class EmployeePage extends ConsumerWidget {
 
                           const SizedBox(height: 4),
                           Text(
-                            'Joined: ${DateFormat('dd MMM, yyyy').format(employee.joinedDate!)}',
+                            'Joined: ${DateFormat('dd MMM, yyyy').format(employee.joinedDate)}',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey.shade700,

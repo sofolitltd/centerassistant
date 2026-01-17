@@ -398,7 +398,7 @@ class EmployeeLeavePage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 6),
                 DropdownButtonFormField<LeaveType>(
-                  value: selectedType,
+                  initialValue: selectedType,
                   isDense: true,
                   items: LeaveType.values
                       .map(
@@ -425,7 +425,7 @@ class EmployeeLeavePage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 6),
                 DropdownButtonFormField<LeaveDuration>(
-                  value: selectedDuration,
+                  initialValue: selectedDuration,
                   items: LeaveDuration.values
                       .map(
                         (d) => DropdownMenuItem(

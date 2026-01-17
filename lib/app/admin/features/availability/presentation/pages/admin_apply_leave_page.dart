@@ -143,7 +143,7 @@ class _AdminApplyLeavePageState extends ConsumerState<AdminApplyLeavePage> {
                     ButtonTheme(
                       alignedDropdown: true,
                       child: DropdownButtonFormField<LeaveType>(
-                        value: selectedType,
+                        initialValue: selectedType,
                         isDense: true,
                         items: LeaveType.values
                             .map(
@@ -168,7 +168,7 @@ class _AdminApplyLeavePageState extends ConsumerState<AdminApplyLeavePage> {
                     ButtonTheme(
                       alignedDropdown: true,
                       child: DropdownButtonFormField<LeaveDuration>(
-                        value: selectedDuration,
+                        initialValue: selectedDuration,
                         items: LeaveDuration.values
                             .map(
                               (d) => DropdownMenuItem(

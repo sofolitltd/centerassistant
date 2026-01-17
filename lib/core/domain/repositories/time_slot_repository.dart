@@ -6,7 +6,11 @@ abstract class ITimeSlotRepository {
     required String startTime,
     required String endTime,
     required String label,
+    required bool isActive,
+    required DateTime effectiveDate,
   });
   Future<void> updateTimeSlot(TimeSlot timeSlot);
-  Future<void> deleteTimeSlot(String id);
+  Future<void> archiveTimeSlot(String id);
+  Future<void> unarchiveTimeSlot(String id);
+  Future<void> deleteTimeSlotPermanently(String id);
 }

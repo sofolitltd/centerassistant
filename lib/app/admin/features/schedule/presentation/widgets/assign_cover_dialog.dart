@@ -60,7 +60,7 @@ class _AssignCoverDialogState extends ConsumerState<AssignCoverDialog> {
                             s.clientId != widget.session.clientId &&
                             s.sessionType != SessionType.cancelled,
                       )
-                      .map((s) => s.employeeId)
+                      .map((s) => s.services.first.employeeId)
                       .toSet() ??
                   {};
 
@@ -73,7 +73,7 @@ class _AssignCoverDialogState extends ConsumerState<AssignCoverDialog> {
                   final isRegular =
                       employee.id == widget.session.templateEmployeeId;
                   final isCurrentlyAssigned =
-                      employee.id == widget.session.employeeId;
+                      employee.id == widget.session.services.first.employeeId;
                   final isBusyWithOthers = busyEmployeeIds.contains(
                     employee.id,
                   );
@@ -95,7 +95,9 @@ class _AssignCoverDialogState extends ConsumerState<AssignCoverDialog> {
                           (isCurrentlyAssigned && !isRegular
                               ? ' (Current)'
                               : ''),
-                      style: TextStyle(color: isSelectable ? null : Colors.grey),
+                      style: TextStyle(
+                        color: isSelectable ? null : Colors.grey,
+                      ),
                     ),
                   );
                 }).toList(),
@@ -126,6 +128,7 @@ class _AssignCoverDialogState extends ConsumerState<AssignCoverDialog> {
                         widget.timeSlotId,
                         _selectedEmployee!.id,
                         widget.session.templateEmployeeId,
+                        widget.session.services,
                       );
                   Navigator.pop(context);
                 },

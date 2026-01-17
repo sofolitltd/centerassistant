@@ -317,8 +317,9 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
     String actionLabel = 'process';
     if (status == LeaveStatus.approved) actionLabel = 'approve';
     if (status == LeaveStatus.rejected) actionLabel = 'reject';
-    if (status == LeaveStatus.cancelled)
+    if (status == LeaveStatus.cancelled) {
       actionLabel = 'confirm cancellation of';
+    }
 
     final confirmed = await showDialog<bool>(
       context: context,

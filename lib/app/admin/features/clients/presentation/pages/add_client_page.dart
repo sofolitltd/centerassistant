@@ -16,6 +16,7 @@ class AddClientPage extends ConsumerStatefulWidget {
 class _AddClientPageState extends ConsumerState<AddClientPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _nickNameController = TextEditingController();
   final _mobileController = TextEditingController();
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
@@ -27,6 +28,7 @@ class _AddClientPageState extends ConsumerState<AddClientPage> {
   @override
   void dispose() {
     _nameController.dispose();
+    _nickNameController.dispose();
     _mobileController.dispose();
     _emailController.dispose();
     _addressController.dispose();
@@ -104,7 +106,19 @@ class _AddClientPageState extends ConsumerState<AddClientPage> {
                                 hint: 'e.g. John Smith',
                                 isRequired: true,
                               ),
+                              _buildFieldBlock(
+                                'Nick Name',
+                                _nickNameController,
+                                hint: 'e.g. Johnny',
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                          _buildResponsiveRow(
+                            isMobile: isMobile,
+                            children: [
                               _buildGenderDropdown(),
+                              _buildDatePicker(),
                             ],
                           ),
                           const SizedBox(height: 24),
@@ -127,17 +141,11 @@ class _AddClientPageState extends ConsumerState<AddClientPage> {
                             ],
                           ),
                           const SizedBox(height: 24),
-                          _buildResponsiveRow(
-                            isMobile: isMobile,
-                            children: [
-                              _buildDatePicker(),
-                              _buildFieldBlock(
-                                'Full Address',
-                                _addressController,
-                                hint: 'Enter current address',
-                                icon: LucideIcons.mapPin,
-                              ),
-                            ],
+                          _buildFieldBlock(
+                            'Full Address',
+                            _addressController,
+                            hint: 'Enter current address',
+                            icon: LucideIcons.mapPin,
                           ),
                           const SizedBox(height: 48),
                           _buildFooterActions(),
@@ -301,6 +309,7 @@ class _AddClientPageState extends ConsumerState<AddClientPage> {
             .read(clientServiceProvider)
             .addClient(
               name: _nameController.text.trim(),
+              nickName: _nickNameController.text.trim(),
               mobileNo: _mobileController.text.trim(),
               email: _emailController.text.trim(),
               address: _addressController.text.trim(),

@@ -1,216 +1,332 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '/core/models/client.dart';
-import '/core/models/employee.dart';
-import '/core/models/session.dart';
-import '/core/providers/client_providers.dart';
-import '/core/providers/employee_providers.dart';
-import '/core/providers/leave_providers.dart';
-import '/core/providers/session_providers.dart';
-
-class AddSessionDialog extends ConsumerStatefulWidget {
-  final String timeSlotId;
-
-  const AddSessionDialog({super.key, required this.timeSlotId});
-
-  @override
-  ConsumerState<AddSessionDialog> createState() => _AddSessionDialogState();
-}
-
-class _AddSessionDialogState extends ConsumerState<AddSessionDialog> {
-  Client? _selectedClient;
-  Employee? _selectedEmployee;
-  SessionType _sessionType = SessionType.extra;
-
-  @override
-  Widget build(BuildContext context) {
-    final selectedDate = ref.watch(selectedDateProvider);
-    final scheduleViewAsync = ref.watch(scheduleViewProvider);
-    final leavesAsync = ref.watch(leavesByDateProvider(selectedDate));
-
-    return AlertDialog(
-      title: Container(
-        constraints: const BoxConstraints(minWidth: 350),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('Book New Session', style: TextStyle(fontSize: 18)),
-            InkWell(
-              child: const Icon(Icons.close),
-              onTap: () => Navigator.pop(context),
-            ),
-          ],
-        ),
-      ),
-      content: ButtonTheme(
-        alignedDropdown: true,
-        child: scheduleViewAsync.when(
-          data: (scheduleView) => leavesAsync.when(
-            data: (leaves) {
-              final sessionsInSlot =
-                  scheduleView.sessionsByTimeSlot[widget.timeSlotId] ?? [];
-
-              // 1. Check Busy Status (Already in a session)
-              final busyClientIds = sessionsInSlot
-                  .where((s) => s.sessionType != SessionType.cancelled)
-                  .map((s) => s.clientId)
-                  .toSet();
-
-              final busyEmployeeIds = sessionsInSlot
-                  .where((s) => s.sessionType != SessionType.cancelled)
-                  .map((s) => s.employeeId)
-                  .toSet();
-
-              // 2. Check Leave Status (Marked as off for the day)
-              final leaveEntityIds = leaves.map((l) => l.employeeId).toSet();
-
-              return SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Client Dropdown
-                    ref
-                        .watch(clientsProvider)
-                        .when(
-                          data: (clients) => DropdownButtonFormField<Client>(
-                            hint: const Text('Select a client'),
-                            initialValue: _selectedClient,
-                            onChanged: (client) =>
-                                setState(() => _selectedClient = client),
-                            items: clients.map((client) {
-                              final isBusy = busyClientIds.contains(client.id);
-                              final isOnLeave = leaveEntityIds.contains(
-                                client.id,
-                              );
-
-                              final bool isDisabled = isBusy || isOnLeave;
-                              final String statusText = isOnLeave
-                                  ? ' (On Leave)'
-                                  : (isBusy ? ' (Occupied)' : '');
-
-                              return DropdownMenuItem(
-                                value: isDisabled ? null : client,
-                                enabled: !isDisabled,
-                                child: Text(
-                                  client.name + statusText,
-                                  style: TextStyle(
-                                    color: isDisabled ? Colors.grey : null,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                          loading: () => const CircularProgressIndicator(),
-                          error: (_, _) => const Text('Error loading clients'),
-                        ),
-                    const SizedBox(height: 12),
-
-                    // Employee Dropdown
-                    ref
-                        .watch(employeesProvider)
-                        .when(
-                          data: (employees) =>
-                              DropdownButtonFormField<Employee>(
-                                hint: const Text('Select a employee'),
-                                initialValue: _selectedEmployee,
-                                onChanged: (employee) => setState(
-                                  () => _selectedEmployee = employee,
-                                ),
-                                items: employees.map((employee) {
-                                  final isBusy = busyEmployeeIds.contains(
-                                    employee.id,
-                                  );
-                                  final isOnLeave = leaveEntityIds.contains(
-                                    employee.id,
-                                  );
-
-                                  final bool isDisabled = isBusy || isOnLeave;
-                                  final String statusText = isOnLeave
-                                      ? ' (On Leave)'
-                                      : (isBusy ? ' (Busy)' : '');
-
-                                  return DropdownMenuItem(
-                                    value: isDisabled ? null : employee,
-                                    enabled: !isDisabled,
-                                    child: Text(
-                                      employee.name + statusText,
-                                      style: TextStyle(
-                                        color: isDisabled ? Colors.grey : null,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                          loading: () => const CircularProgressIndicator(),
-                          error: (_, _) =>
-                              const Text('Error loading employees'),
-                        ),
-                    const SizedBox(height: 12),
-
-                    // Session Type
-                    DropdownButtonFormField<SessionType>(
-                      initialValue: _sessionType,
-                      hint: const Text('Session Type'),
-                      onChanged: (type) {
-                        if (type != null) {
-                          setState(() => _sessionType = type);
-                        }
-                      },
-                      items: [SessionType.extra, SessionType.makeup]
-                          .map(
-                            (type) => DropdownMenuItem(
-                              value: type,
-                              child: Text(
-                                type.name[0].toUpperCase() +
-                                    type.name.substring(1),
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ],
-                ),
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Text('Error loading availability: $e'),
-          ),
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Text('Error loading schedule: $e'),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: (_selectedClient == null || _selectedEmployee == null)
-              ? null
-              : () {
-                  if (_sessionType == SessionType.extra) {
-                    ref
-                        .read(sessionServiceProvider)
-                        .bookExtraSession(
-                          _selectedClient!.id,
-                          widget.timeSlotId,
-                          _selectedEmployee!.id,
-                        );
-                  } else {
-                    ref
-                        .read(sessionServiceProvider)
-                        .bookMakeup(
-                          _selectedClient!.id,
-                          widget.timeSlotId,
-                          _selectedEmployee!.id,
-                        );
-                  }
-                  Navigator.pop(context);
-                },
-          child: const Text('Book Session'),
-        ),
-      ],
-    );
-  }
-}
+// import 'package:flutter/material.dart';
+// import 'package:flutter_riverpod/flutter_riverpod.dart';
+// import 'package:lucide_icons/lucide_icons.dart';
+//
+// import '/core/models/client.dart';
+// import '/core/models/employee.dart';
+// import '/core/models/session.dart';
+// import '/core/providers/client_providers.dart';
+// import '/core/providers/employee_providers.dart';
+// import '/core/providers/session_providers.dart';
+//
+// class AddSessionDialog extends ConsumerStatefulWidget {
+//   final String timeSlotId;
+//
+//   const AddSessionDialog({super.key, required this.timeSlotId});
+//
+//   @override
+//   ConsumerState<AddSessionDialog> createState() => _AddSessionDialogState();
+// }
+//
+// class _AddSessionDialogState extends ConsumerState<AddSessionDialog> {
+//   Client? _selectedClient;
+//   Employee? _builderEmployee;
+//   String _builderServiceType = 'ABA';
+//   final _durationController = TextEditingController(text: '1.0');
+//   final List<ServiceDetail> _pendingServices = [];
+//   SessionType _sessionType = SessionType.extra;
+//
+//   @override
+//   void dispose() {
+//     _durationController.dispose();
+//     super.dispose();
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     final employeesAsync = ref.watch(employeesProvider);
+//     final schedulableDeptsAsync = ref.watch(schedulableDepartmentsProvider);
+//     final selectedDate = ref.watch(selectedDateProvider);
+//
+//     return AlertDialog(
+//       title: Row(
+//         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//         children: [
+//           const Text(
+//             'Session Configuration',
+//             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+//           ),
+//           IconButton(
+//             icon: const Icon(Icons.close),
+//             onPressed: () => Navigator.pop(context),
+//           ),
+//         ],
+//       ),
+//       content: SizedBox(
+//         width: 500,
+//         child: SingleChildScrollView(
+//           child: Column(
+//             mainAxisSize: MainAxisSize.min,
+//             crossAxisAlignment: CrossAxisAlignment.start,
+//             children: [
+//               // 1. Client Selection
+//               const Text(
+//                 '1. Target Client',
+//                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+//               ),
+//               const SizedBox(height: 8),
+//               ref
+//                   .watch(clientsProvider)
+//                   .when(
+//                     data: (clients) => DropdownButtonFormField<Client>(
+//                       isExpanded: true,
+//                       hint: const Text('Select Client'),
+//                       value: _selectedClient,
+//                       onChanged: (c) => setState(() => _selectedClient = c),
+//                       items: clients
+//                           .map(
+//                             (c) =>
+//                                 DropdownMenuItem(value: c, child: Text(c.name)),
+//                           )
+//                           .toList(),
+//                       decoration: _inputDecoration(),
+//                     ),
+//                     loading: () => const LinearProgressIndicator(),
+//                     error: (_, __) => const Text('Error loading clients'),
+//                   ),
+//               const SizedBox(height: 24),
+//
+//               // 2. Service Builder Section
+//               const Text(
+//                 '2. Service Builder (Multi-Therapist)',
+//                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+//               ),
+//               const SizedBox(height: 12),
+//               Container(
+//                 padding: const EdgeInsets.all(16),
+//                 decoration: BoxDecoration(
+//                   color: Colors.blue.withOpacity(0.03),
+//                   borderRadius: BorderRadius.circular(8),
+//                   border: Border.all(color: Colors.blue.withOpacity(0.1)),
+//                 ),
+//                 child: Column(
+//                   children: [
+//                     employeesAsync.when(
+//                       data: (employees) => schedulableDeptsAsync.when(
+//                         data: (schedulableDepts) {
+//                           // TODO: Filter out busy employees if needed for the specific date
+//                           final available = employees
+//                               .where(
+//                                 (e) => schedulableDepts.contains(e.department),
+//                               )
+//                               .toList();
+//                           return DropdownButtonFormField<Employee>(
+//                             isExpanded: true,
+//                             hint: const Text('Select Therapist'),
+//                             value: _builderEmployee,
+//                             onChanged: (e) =>
+//                                 setState(() => _builderEmployee = e),
+//                             items: available
+//                                 .map(
+//                                   (e) => DropdownMenuItem(
+//                                     value: e,
+//                                     child: Text(e.name),
+//                                   ),
+//                                 )
+//                                 .toList(),
+//                             decoration: _inputDecoration(label: 'Therapist'),
+//                           );
+//                         },
+//                         loading: () => const SizedBox(),
+//                         error: (_, __) => const SizedBox(),
+//                       ),
+//                       loading: () => const SizedBox(),
+//                       error: (_, __) => const SizedBox(),
+//                     ),
+//                     const SizedBox(height: 12),
+//                     Row(
+//                       children: [
+//                         Expanded(
+//                           flex: 3,
+//                           child: DropdownButtonFormField<String>(
+//                             value: _builderServiceType,
+//                             onChanged: (v) =>
+//                                 setState(() => _builderServiceType = v!),
+//                             items: ['ABA', 'SLT', 'OT', 'PT', 'Counselling']
+//                                 .map(
+//                                   (s) => DropdownMenuItem(
+//                                     value: s,
+//                                     child: Text(s),
+//                                   ),
+//                                 )
+//                                 .toList(),
+//                             decoration: _inputDecoration(label: 'Service'),
+//                           ),
+//                         ),
+//                         const SizedBox(width: 12),
+//                         Expanded(
+//                           flex: 2,
+//                           child: TextField(
+//                             controller: _durationController,
+//                             keyboardType: const TextInputType.numberWithOptions(
+//                               decimal: true,
+//                             ),
+//                             decoration: _inputDecoration(
+//                               label: 'Hours',
+//                               suffix: 'h',
+//                             ),
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//                     const SizedBox(height: 16),
+//                     SizedBox(
+//                       width: double.infinity,
+//                       child: ElevatedButton.icon(
+//                         onPressed: _addServiceToPending,
+//                         icon: const Icon(LucideIcons.plus, size: 16),
+//                         label: const Text('Add to List'),
+//                         style: ElevatedButton.styleFrom(
+//                           backgroundColor: Colors.blue.shade700,
+//                           foregroundColor: Colors.white,
+//                         ),
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//
+//               // 3. List of Added Services
+//               if (_pendingServices.isNotEmpty) ...[
+//                 const SizedBox(height: 24),
+//                 const Text(
+//                   'Assigned Therapists:',
+//                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+//                 ),
+//                 const SizedBox(height: 8),
+//                 ListView.separated(
+//                   shrinkWrap: true,
+//                   physics: const NeverScrollableScrollPhysics(),
+//                   itemCount: _pendingServices.length,
+//                   separatorBuilder: (_, __) => const SizedBox(height: 8),
+//                   itemBuilder: (context, index) {
+//                     final service = _pendingServices[index];
+//                     return FutureBuilder<Employee?>(
+//                       future: _getEmployee(service.employeeId),
+//                       builder: (context, snapshot) => Container(
+//                         padding: const EdgeInsets.symmetric(
+//                           horizontal: 12,
+//                           vertical: 8,
+//                         ),
+//                         decoration: BoxDecoration(
+//                           color: Colors.white,
+//                           borderRadius: BorderRadius.circular(6),
+//                           border: Border.all(color: Colors.grey.shade200),
+//                         ),
+//                         child: Row(
+//                           children: [
+//                             const Icon(
+//                               LucideIcons.user,
+//                               size: 14,
+//                               color: Colors.blue,
+//                             ),
+//                             const SizedBox(width: 8),
+//                             Expanded(
+//                               child: Text(
+//                                 '${snapshot.data?.name ?? '...'} | ${service.type} (${service.duration}h)',
+//                                 style: const TextStyle(
+//                                   fontWeight: FontWeight.w500,
+//                                   fontSize: 13,
+//                                 ),
+//                               ),
+//                             ),
+//                             IconButton(
+//                               icon: const Icon(
+//                                 LucideIcons.trash2,
+//                                 size: 16,
+//                                 color: Colors.red,
+//                               ),
+//                               onPressed: () => setState(
+//                                 () => _pendingServices.removeAt(index),
+//                               ),
+//                             ),
+//                           ],
+//                         ),
+//                       ),
+//                     );
+//                   },
+//                 ),
+//               ],
+//
+//               const SizedBox(height: 24),
+//               const Text(
+//                 '3. Booking Details',
+//                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+//               ),
+//               const SizedBox(height: 8),
+//               DropdownButtonFormField<SessionType>(
+//                 value: _sessionType,
+//                 onChanged: (v) => setState(() => _sessionType = v!),
+//                 items:
+//                     [SessionType.regular, SessionType.extra, SessionType.makeup]
+//                         .map(
+//                           (t) => DropdownMenuItem(
+//                             value: t,
+//                             child: Text(t.name.toUpperCase()),
+//                           ),
+//                         )
+//                         .toList(),
+//                 decoration: _inputDecoration(label: 'Session Type'),
+//               ),
+//             ],
+//           ),
+//         ),
+//       ),
+//       actions: [
+//         TextButton(
+//           onPressed: () => Navigator.pop(context),
+//           child: const Text('Cancel'),
+//         ),
+//         ElevatedButton(
+//           onPressed: (_selectedClient == null || _pendingServices.isEmpty)
+//               ? null
+//               : _handleSave,
+//           child: const Text('Book Session'),
+//         ),
+//       ],
+//     );
+//   }
+//
+//   void _addServiceToPending() {
+//     if (_builderEmployee == null) return;
+//     final dur = double.tryParse(_durationController.text) ?? 1.0;
+//     setState(() {
+//       _pendingServices.add(
+//         ServiceDetail(
+//           type: _builderServiceType,
+//           duration: dur,
+//           employeeId: _builderEmployee!.id,
+//         ),
+//       );
+//       _builderEmployee = null;
+//     });
+//   }
+//
+//   Future<void> _handleSave() async {
+//     final selectedDate = ref.read(selectedDateProvider);
+//     await ref
+//         .read(sessionServiceProvider)
+//         .bookSession(
+//           clientId: _selectedClient!.id,
+//           timeSlotId: widget.timeSlotId,
+//           sessionType: _sessionType,
+//           services: _pendingServices,
+//           date: selectedDate,
+//         );
+//     if (mounted) Navigator.pop(context);
+//   }
+//
+//   Future<Employee?> _getEmployee(String id) async {
+//     final employees = ref.read(employeesProvider).value ?? [];
+//     return employees.where((e) => e.id == id).firstOrNull;
+//   }
+//
+//   InputDecoration _inputDecoration({String? label, String? suffix}) {
+//     return InputDecoration(
+//       labelText: label,
+//       suffixText: suffix,
+//       border: const OutlineInputBorder(),
+//       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+//     );
+//   }
+// }

@@ -5,6 +5,7 @@ abstract class IClientRepository {
   Stream<Client?> getClientById(String id);
   Future<void> addClient({
     required String name,
+    required String nickName,
     required String mobileNo,
     required String email,
     required String address,

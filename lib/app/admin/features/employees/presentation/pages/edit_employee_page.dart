@@ -279,7 +279,7 @@ class _EditEmployeePageState extends ConsumerState<EditEmployeePage> {
                 return ButtonTheme(
                   alignedDropdown: true,
                   child: DropdownButtonFormField<String>(
-                    value: _selectedDepartment,
+                    initialValue: _selectedDepartment,
                     items: uniqueItems
                         .map((d) => DropdownMenuItem(value: d, child: Text(d)))
                         .toList(),
@@ -323,7 +323,7 @@ class _EditEmployeePageState extends ConsumerState<EditEmployeePage> {
                 return ButtonTheme(
                   alignedDropdown: true,
                   child: DropdownButtonFormField<String>(
-                    value: _selectedDesignation,
+                    initialValue: _selectedDesignation,
                     items: filtered
                         .map(
                           (name) =>
@@ -354,7 +354,7 @@ class _EditEmployeePageState extends ConsumerState<EditEmployeePage> {
         ButtonTheme(
           alignedDropdown: true,
           child: DropdownButtonFormField<String>(
-            value: _selectedGender,
+            initialValue: _selectedGender,
             items: const [
               DropdownMenuItem(value: 'male', child: Text('MALE')),
               DropdownMenuItem(value: 'female', child: Text('FEMALE')),
@@ -491,12 +491,13 @@ class _EditEmployeePageState extends ConsumerState<EditEmployeePage> {
     required bool isMobile,
     required List<Widget> children,
   }) {
-    if (isMobile)
+    if (isMobile) {
       return Column(
         children:
             children.expand((w) => [w, const SizedBox(height: 20)]).toList()
               ..removeLast(),
       );
+    }
     return Row(
       children:
           children

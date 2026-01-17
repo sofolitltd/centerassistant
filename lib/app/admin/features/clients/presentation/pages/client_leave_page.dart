@@ -7,23 +7,21 @@ import 'package:table_calendar/table_calendar.dart';
 
 import '/core/providers/client_unavailability_providers.dart';
 
-class ClientAvailabilityPage extends ConsumerStatefulWidget {
+class ClientLeavePage extends ConsumerStatefulWidget {
   final String clientId;
   final String clientName;
 
-  const ClientAvailabilityPage({
+  const ClientLeavePage({
     super.key,
     required this.clientId,
     required this.clientName,
   });
 
   @override
-  ConsumerState<ClientAvailabilityPage> createState() =>
-      _ClientAvailabilityPageState();
+  ConsumerState<ClientLeavePage> createState() => _ClientLeavePageState();
 }
 
-class _ClientAvailabilityPageState
-    extends ConsumerState<ClientAvailabilityPage> {
+class _ClientLeavePageState extends ConsumerState<ClientLeavePage> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   DateTime? _rangeStart;

@@ -80,7 +80,7 @@ class EmployeeClientsPage extends ConsumerWidget {
                                 final time = slot != null
                                     ? ' (${slot.startTime} - ${slot.endTime})'
                                     : '';
-                                return '${r.dayOfWeek}$time';
+                                return '${r.daysOfWeek}$time';
                               })
                               .toList();
 
