@@ -1,3 +1,5 @@
+import 'dart:ui' show PointerDeviceKind;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -39,6 +41,7 @@ class DailyView extends ConsumerWidget {
                     // --- DEFAULT TAB BAR ---
                     TabBar(
                       isScrollable: true,
+                      physics: NeverScrollableScrollPhysics(),
                       tabAlignment: TabAlignment.start,
                       padding: EdgeInsets.zero,
                       labelColor: Theme.of(context).primaryColor,
@@ -51,6 +54,7 @@ class DailyView extends ConsumerWidget {
                       unselectedLabelStyle: const TextStyle(fontSize: 13),
                       tabs: sortedSlots.map((slot) {
                         return Tab(
+                          height: 40,
                           text:
                               "${_formatTime(slot.startTime)} - ${_formatTime(slot.endTime)}",
                         );
@@ -60,6 +64,7 @@ class DailyView extends ConsumerWidget {
                     // --- TAB BAR VIEW ---
                     Expanded(
                       child: TabBarView(
+                        physics: const NeverScrollableScrollPhysics(),
                         children: sortedSlots.map((slot) {
                           return _buildSessionTable(
                             context,
@@ -128,135 +133,186 @@ class DailyView extends ConsumerWidget {
                   border: Border.all(color: Colors.grey.shade300, width: 0.5),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Table(
-                  border: .all(color: Colors.grey, width: .5),
-                  columnWidths: const {
-                    0: FixedColumnWidth(32), // #
-                    1: FlexColumnWidth(1.5), // Name(ID)
-                    2: FlexColumnWidth(1), // Therapist
-                    3: FlexColumnWidth(1), // Services
-                    4: FixedColumnWidth(140), // Hour
-                    5: FixedColumnWidth(50), // Dur.
-                    6: FixedColumnWidth(70), // Inc/Exc
-                    7: FixedColumnWidth(80), // Type
-                    8: FixedColumnWidth(100), // Status
-                    9: FixedColumnWidth(100), // Action
-                  },
-                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                  children: [
-                    // --- HEADER ROW ---
-                    TableRow(
-                      decoration: BoxDecoration(color: Colors.grey.shade100),
-                      children: [
-                        _buildHeaderCell('#'),
-                        _buildHeaderCell('Name(ID)'),
-                        _buildHeaderCell('Therapist'),
-                        _buildHeaderCell('Services'),
-                        _buildHeaderCell('Hour'),
-                        _buildHeaderCell('Dur.'),
-                        _buildHeaderCell('Inc/Exc'),
-                        _buildHeaderCell('Type'),
-                        _buildHeaderCell('Status'),
-                        _buildHeaderCell('Action', align: TextAlign.center),
-                      ],
-                    ),
-                    // --- DATA ROWS ---
-                    ...List.generate(sessions.length, (index) {
-                      final s = sessions[index];
-                      final bool isEven = index % 2 == 0;
-                      return TableRow(
-                        decoration: BoxDecoration(
-                          color: isEven ? Colors.white : Colors.grey.shade50,
-                        ),
-                        children: [
-                          _buildDataCell(
-                            Center(
-                              child: Text(
-                                '${index + 1}',
-                                style: const TextStyle(fontSize: 11),
+                child: ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context).copyWith(
+                    dragDevices: {
+                      PointerDeviceKind.touch,
+                      PointerDeviceKind.mouse,
+                      PointerDeviceKind.trackpad,
+                    },
+                  ),
+                  child: Scrollbar(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.vertical,
+                        child: Table(
+                          border: .all(color: Colors.grey, width: .5),
+                          columnWidths: const {
+                            0: FixedColumnWidth(32), // #
+                            1: IntrinsicColumnWidth(), // Name(ID)
+                            2: IntrinsicColumnWidth(), // Therapist
+                            3: IntrinsicColumnWidth(), // Services
+                            4: FixedColumnWidth(150), // Hour
+                            5: FixedColumnWidth(80), // Dur.
+                            6: FixedColumnWidth(100), // Inc/Exc
+                            7: FixedColumnWidth(100), // Type
+                            8: FixedColumnWidth(100), // Status
+                            9: FixedColumnWidth(100), // Action
+                          },
+                          defaultVerticalAlignment:
+                              TableCellVerticalAlignment.middle,
+                          children: [
+                            // --- HEADER ROW ---
+                            TableRow(
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
                               ),
-                            ),
-                          ),
-                          _buildDataCell(
-                            Padding(
-                              padding: const .symmetric(horizontal: 8.0),
-                              child: Text(
-                                s.displayFullName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ),
-                          _buildDataCell(_buildMultiServiceCell(s.therapists)),
-                          _buildDataCell(
-                            _buildMultiServiceCell(s.serviceNames),
-                          ),
-                          _buildDataCell(
-                            _buildMultiServiceCell(s.hours, formatTime: true),
-                          ),
-                          _buildDataCell(_buildMultiServiceCell(s.durations)),
-                          _buildDataCell(
-                            _buildMultiServiceCell(s.inclusiveStatus),
-                          ),
-                          _buildDataCell(
-                            Padding(
-                              padding: const .symmetric(horizontal: 8.0),
-                              child: Container(
-                                padding: const .symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.shade50,
-                                  border: Border.all(
-                                    color: Colors.green,
-                                    width: 0.5,
-                                  ),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  _getSessionCategory(s.sessionType),
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(fontSize: 11),
-                                ),
-                              ),
-                            ),
-                          ),
-                          _buildDataCell(
-                            _buildStatusBadge(_getSessionStatus(s.sessionType)),
-                          ),
-                          _buildDataCell(
-                            Row(
-                              mainAxisAlignment: .center,
                               children: [
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.edit_outlined,
-                                    size: 18,
-                                  ),
-                                  onPressed: () => context.push(
-                                    '/admin/schedule/edit/${s.id}',
-                                  ),
-                                  visualDensity: VisualDensity.compact,
+                                _buildHeaderCell('#'),
+                                Container(
+                                  constraints: BoxConstraints(minWidth: 250),
+
+                                  child: _buildHeaderCell('Name(ID)'),
                                 ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    size: 18,
-                                    color: Colors.redAccent,
-                                  ),
-                                  onPressed: () => _handleDelete(s.id),
-                                  visualDensity: VisualDensity.compact,
+                                Container(
+                                  constraints: BoxConstraints(minWidth: 150),
+                                  child: _buildHeaderCell('Therapist'),
+                                ),
+                                Container(
+                                  constraints: BoxConstraints(minWidth: 100),
+
+                                  child: _buildHeaderCell('Services'),
+                                ),
+                                _buildHeaderCell('Hour'),
+                                _buildHeaderCell('Dur.'),
+                                _buildHeaderCell('Inc/Exc'),
+                                _buildHeaderCell('Type'),
+                                _buildHeaderCell('Status'),
+                                _buildHeaderCell(
+                                  'Action',
+                                  align: TextAlign.center,
                                 ),
                               ],
                             ),
-                          ),
-                        ],
-                      );
-                    }),
-                  ],
+                            // --- DATA ROWS ---
+                            ...List.generate(sessions.length, (index) {
+                              final s = sessions[index];
+                              final bool isEven = index % 2 == 0;
+                              return TableRow(
+                                decoration: BoxDecoration(
+                                  color: isEven
+                                      ? Colors.white
+                                      : Colors.grey.shade50,
+                                ),
+                                children: [
+                                  _buildDataCell(
+                                    Center(
+                                      child: Text(
+                                        '${index + 1}',
+                                        style: const TextStyle(fontSize: 11),
+                                      ),
+                                    ),
+                                  ),
+                                  _buildDataCell(
+                                    Padding(
+                                      padding: const .symmetric(
+                                        horizontal: 8.0,
+                                      ),
+                                      child: Text(
+                                        s.displayFullName,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  _buildDataCell(
+                                    _buildMultiServiceCell(s.therapists),
+                                  ),
+                                  _buildDataCell(
+                                    _buildMultiServiceCell(s.serviceNames),
+                                  ),
+                                  _buildDataCell(
+                                    _buildMultiServiceCell(
+                                      s.hours,
+                                      formatTime: true,
+                                    ),
+                                  ),
+                                  _buildDataCell(
+                                    _buildMultiServiceCell(s.durations),
+                                  ),
+                                  _buildDataCell(
+                                    _buildMultiServiceCell(s.inclusiveStatus),
+                                  ),
+                                  _buildDataCell(
+                                    Padding(
+                                      padding: const .symmetric(
+                                        horizontal: 8.0,
+                                      ),
+                                      child: Container(
+                                        padding: const .symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green.shade50,
+                                          border: Border.all(
+                                            color: Colors.green,
+                                            width: 0.5,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          _getSessionCategory(s.sessionType),
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(fontSize: 11),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  _buildDataCell(
+                                    _buildStatusBadge(
+                                      _getSessionStatus(s.sessionType),
+                                    ),
+                                  ),
+                                  _buildDataCell(
+                                    Row(
+                                      mainAxisAlignment: .center,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.edit_outlined,
+                                            size: 18,
+                                          ),
+                                          onPressed: () => context.push(
+                                            '/admin/schedule/edit/${s.id}',
+                                          ),
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete_outline,
+                                            size: 18,
+                                            color: Colors.redAccent,
+                                          ),
+                                          onPressed: () => _handleDelete(s.id),
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),

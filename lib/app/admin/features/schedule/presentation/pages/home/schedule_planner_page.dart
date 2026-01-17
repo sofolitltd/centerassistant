@@ -208,18 +208,7 @@ class _SchedulePlannerPageState extends ConsumerState<SchedulePlannerPage> {
                     },
                     icon: const Icon(LucideIcons.plus, size: 16),
                     label: const Text('Add Schedule'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade700,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
-                      ),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
+                    style: ElevatedButton.styleFrom(),
                   ),
                 ],
               ),

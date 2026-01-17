@@ -1,8 +1,5 @@
 import 'dart:convert';
 import 'dart:io' as io;
-import 'dart:js_interop';
-
-import 'package:csv/csv.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -10,6 +7,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:csv/csv.dart';
+import 'dart:js_interop';
 import 'package:web/web.dart' as web;
 
 import '../../app/admin/features/schedule/presentation/pages/add/add_schedule_utils.dart';
@@ -40,6 +39,10 @@ class BillingExportHelper {
     ]);
 
     double totalBill = 0;
+    double totalHours = 0;
+    int completedCount = 0;
+    int clientCancelledCount = 0;
+    int centerCancelledCount = 0;
 
     for (final s in sessions) {
       double sessionBill = 0;
@@ -52,8 +55,13 @@ class BillingExportHelper {
           })
           .join('; ');
 
-      if (s.sessionType != SessionType.cancelledCenter &&
-          s.sessionType != SessionType.cancelledClient) {
+      if (s.sessionType == SessionType.completed ||
+          s.sessionType == SessionType.regular ||
+          s.sessionType == SessionType.makeup ||
+          s.sessionType == SessionType.extra ||
+          s.sessionType == SessionType.cover) {
+        completedCount++;
+        totalHours += s.totalDuration;
         for (var service in s.services) {
           final rate = rateMap[service.type] ?? 0.0;
           sessionBill += service.duration * rate;
@@ -65,6 +73,10 @@ class BillingExportHelper {
             )
             .toSet()
             .join('; ');
+      } else if (s.sessionType == SessionType.cancelledCenter) {
+        centerCancelledCount++;
+      } else if (s.sessionType == SessionType.cancelledClient) {
+        clientCancelledCount++;
       }
 
       totalBill += sessionBill;
@@ -80,21 +92,19 @@ class BillingExportHelper {
     }
 
     rows.add([]);
+    rows.add(['', '', '', '', 'Total Hours:', totalHours.toStringAsFixed(1)]);
+    rows.add(['', '', '', '', 'Completed Sessions:', completedCount]);
+    rows.add(['', '', '', '', 'Client Cancelled:', clientCancelledCount]);
+    rows.add(['', '', '', '', 'Center Cancelled:', centerCancelledCount]);
+    rows.add(['', '', '', '', 'Total Monthly Bill:', totalBill.toStringAsFixed(0)]);
+    rows.add(['', '', '', '', 'Current Balance:', client.walletBalance.toStringAsFixed(0)]);
     rows.add([
       '',
       '',
       '',
       '',
-      'Total Monthly Bill:',
-      totalBill.toStringAsFixed(0),
-    ]);
-    rows.add([
-      '',
-      '',
-      '',
-      '',
-      'Current Balance:',
-      client.walletBalance.toStringAsFixed(0),
+      'Remaining Balance:',
+      (client.walletBalance - totalBill).toStringAsFixed(0)
     ]);
 
     String csvData = const ListToCsvConverter().convert(rows);
@@ -105,7 +115,6 @@ class BillingExportHelper {
         '${safeName}_${DateFormat('MMMM_yyyy').format(monthDate)}.csv';
 
     if (kIsWeb) {
-      // Direct browser download for Web using package:web
       final bytes = utf8.encode(csvData);
       final blob = web.Blob(
         [bytes.toJS].toJS,
@@ -118,7 +127,6 @@ class BillingExportHelper {
       anchor.click();
       web.URL.revokeObjectURL(url);
     } else {
-      // Mobile logic: Save to file and share
       final directory = await getTemporaryDirectory();
       final file = io.File('${directory.path}/$fileName');
       await file.writeAsString(csvData);
@@ -140,6 +148,26 @@ class BillingExportHelper {
     final pdf = pw.Document();
     final netBalance = client.walletBalance - totalMonthlyBill;
 
+    double totalHours = 0;
+    int completedCount = 0;
+    int clientCancelledCount = 0;
+    int centerCancelledCount = 0;
+
+    for (var s in sessions) {
+      if (s.sessionType == SessionType.completed ||
+          s.sessionType == SessionType.regular ||
+          s.sessionType == SessionType.makeup ||
+          s.sessionType == SessionType.extra ||
+          s.sessionType == SessionType.cover) {
+        completedCount++;
+        totalHours += s.totalDuration;
+      } else if (s.sessionType == SessionType.cancelledCenter) {
+        centerCancelledCount++;
+      } else if (s.sessionType == SessionType.cancelledClient) {
+        clientCancelledCount++;
+      }
+    }
+
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
@@ -151,7 +179,15 @@ class BillingExportHelper {
           pw.SizedBox(height: 20),
           _buildSessionsTable(sessions, rateMap),
           pw.SizedBox(height: 20),
-          _buildSummary(client, totalMonthlyBill, netBalance),
+          _buildSummary(
+            client: client,
+            totalBill: totalMonthlyBill,
+            netBalance: netBalance,
+            totalHours: totalHours,
+            completedCount: completedCount,
+            clientCancelledCount: clientCancelledCount,
+            centerCancelledCount: centerCancelledCount,
+          ),
           _buildFooter(),
         ],
       ),
@@ -182,7 +218,6 @@ class BillingExportHelper {
         '${safeName}_${DateFormat('MMMM_yyyy').format(monthDate)}.pdf';
 
     if (kIsWeb) {
-      // For Web, direct download ensures the filename is correctly applied by the browser
       final bytes = await pdf.save();
       final blob = web.Blob(
         [bytes.toJS].toJS,
@@ -195,7 +230,6 @@ class BillingExportHelper {
       anchor.click();
       web.URL.revokeObjectURL(url);
     } else {
-      // For Mobile, layoutPdf provides a print/share preview
       await Printing.layoutPdf(
         onLayout: (PdfPageFormat format) async => pdf.save(),
         name: fileName,
@@ -225,7 +259,6 @@ class BillingExportHelper {
     final fileName =
         '${safeName}_${DateFormat('MMMM_yyyy').format(monthDate)}.pdf';
 
-    // layoutPdf opens the system print dialog on all platforms (including web preview)
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
       name: fileName,
@@ -256,7 +289,6 @@ class BillingExportHelper {
         '${safeName}_${DateFormat('MMMM_yyyy').format(monthDate)}.pdf';
 
     if (kIsWeb) {
-      // Web sharing is limited, fallback to generateInvoicePdf (Download)
       await generateInvoicePdf(
         client: client,
         sessions: sessions,
@@ -410,11 +442,15 @@ class BillingExportHelper {
     );
   }
 
-  static pw.Widget _buildSummary(
-    Client client,
-    double totalBill,
-    double netBalance,
-  ) {
+  static pw.Widget _buildSummary({
+    required Client client,
+    required double totalBill,
+    required double netBalance,
+    required double totalHours,
+    required int completedCount,
+    required int clientCancelledCount,
+    required int centerCancelledCount,
+  }) {
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.end,
       children: [
@@ -422,11 +458,16 @@ class BillingExportHelper {
           width: 250,
           child: pw.Column(
             children: [
+              _summaryRow('Total Hours:', '${totalHours.toStringAsFixed(1)} h'),
+              _summaryRow('Completed Sessions:', '$completedCount'),
+              _summaryRow('Client Cancelled:', '$clientCancelledCount'),
+              _summaryRow('Center Cancelled:', '$centerCancelledCount'),
+              pw.SizedBox(height: 5),
+              pw.Divider(),
               _summaryRow(
                 'Current Prepaid Balance:',
                 'Tk ${_currencyFormat.format(client.walletBalance)}',
               ),
-              pw.Divider(),
               _summaryRow(
                 'Total Monthly Bill:',
                 '- Tk ${_currencyFormat.format(totalBill)}',

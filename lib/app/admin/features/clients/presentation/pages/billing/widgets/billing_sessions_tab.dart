@@ -38,6 +38,7 @@ class BillingSessionsTab extends ConsumerWidget {
             double totalMonthlyBill = 0;
             double totalHours = 0;
             int completedCount = 0;
+            int clientCancelledCount = 0;
             int centerCancelledCount = 0;
 
             for (var s in sessions) {
@@ -54,6 +55,8 @@ class BillingSessionsTab extends ConsumerWidget {
                 }
               } else if (s.sessionType == SessionType.cancelledCenter) {
                 centerCancelledCount++;
+              } else if (s.sessionType == SessionType.cancelledClient) {
+                clientCancelledCount++;
               }
             }
 
@@ -98,8 +101,8 @@ class BillingSessionsTab extends ConsumerWidget {
                                 Colors.grey.shade50,
                               ),
                               headingRowHeight: 40,
-                              dataRowMaxHeight: 60,
-                              dataRowMinHeight: 40,
+                              // dataRowMaxHeight: 60,
+                              // dataRowMinHeight: 24,
                               columnSpacing: 24,
                               border: TableBorder.all(
                                 color: Colors.grey.shade200,
@@ -147,7 +150,7 @@ class BillingSessionsTab extends ConsumerWidget {
                                   ),
                                 ),
                                 DataColumn(
-                                  headingRowAlignment: .end,
+                                  headingRowAlignment: MainAxisAlignment.end,
                                   label: Text(
                                     'Bill',
                                     style: TextStyle(
@@ -194,7 +197,7 @@ class BillingSessionsTab extends ConsumerWidget {
                                             CrossAxisAlignment.start,
                                         children: s.services.map((sv) {
                                           return Text(
-                                            '${AddScheduleUtils.formatTimeToAmPm(sv.startTime)}-${AddScheduleUtils.formatTimeToAmPm(sv.endTime)} ${sv.type}',
+                                            ' ${sv.type} | ${AddScheduleUtils.formatTimeToAmPm(sv.startTime)}-${AddScheduleUtils.formatTimeToAmPm(sv.endTime)}',
                                             style: const TextStyle(
                                               fontSize: 12,
                                             ),
@@ -237,6 +240,28 @@ class BillingSessionsTab extends ConsumerWidget {
                             ),
                             child: Column(
                               children: [
+                                _buildSummaryRow(
+                                  'Total Hours',
+                                  '${totalHours.toStringAsFixed(1)} h',
+                                ),
+                                const SizedBox(height: 4),
+                                _buildSummaryRow(
+                                  'Completed Sessions',
+                                  '$completedCount',
+                                ),
+                                const SizedBox(height: 4),
+                                _buildSummaryRow(
+                                  'Client Cancelled',
+                                  '$clientCancelledCount',
+                                ),
+                                const SizedBox(height: 4),
+                                _buildSummaryRow(
+                                  'Center Cancelled',
+                                  '$centerCancelledCount',
+                                ),
+                                const SizedBox(height: 8),
+                                const Divider(),
+                                const SizedBox(height: 8),
                                 _buildSummaryRow(
                                   'Current Prepaid Balance',
                                   '৳ ${currencyFormat.format(client.walletBalance)}',
@@ -375,51 +400,66 @@ class BillingSessionsTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatusBadge(SessionType type) {
-    Color color = _getSessionColor(type);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        type.name.toUpperCase(),
-        style: TextStyle(
-          fontSize: 9,
-          fontWeight: FontWeight.bold,
-          color: color,
-        ),
+  Widget _buildEmptyState(String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(LucideIcons.calendarX, size: 48, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          Text(message, style: const TextStyle(color: Colors.grey)),
+        ],
       ),
     );
   }
 
-  Color _getSessionColor(SessionType type) {
+  Widget _buildStatusBadge(SessionType type) {
+    Color color;
+    String label;
+
     switch (type) {
       case SessionType.completed:
-        return Colors.green;
-      case SessionType.makeup:
-        return Colors.purple;
-      case SessionType.extra:
-        return Colors.orange;
+        color = Colors.green;
+        label = 'Completed';
+        break;
       case SessionType.cancelledCenter:
-        return Colors.red;
+        color = Colors.red;
+        label = 'Cancelled (Center)';
+        break;
+      case SessionType.cancelledClient:
+        color = Colors.orange;
+        label = 'Cancelled (Client)';
+        break;
+      case SessionType.makeup:
+        color = Colors.blue;
+        label = 'Makeup';
+        break;
+      case SessionType.extra:
+        color = Colors.purple;
+        label = 'Extra';
+        break;
+      case SessionType.cover:
+        color = Colors.teal;
+        label = 'Cover';
+        break;
       default:
-        return Colors.blue;
+        color = Colors.grey;
+        label = 'Scheduled';
     }
-  }
 
-  Widget _buildEmptyState(String msg) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 300),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(LucideIcons.inbox, size: 48, color: Colors.grey.shade300),
-            const SizedBox(height: 16),
-            Text(msg, style: TextStyle(color: Colors.grey.shade500)),
-          ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );
