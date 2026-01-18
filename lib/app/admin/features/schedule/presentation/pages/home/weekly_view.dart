@@ -6,14 +6,14 @@ import 'package:table_calendar/table_calendar.dart';
 import '/core/providers/office_settings_providers.dart';
 import '/core/providers/session_providers.dart';
 import '/core/providers/time_slot_providers.dart';
-import '../schedule_planner_page.dart'
+import 'schedule_planner_page.dart'
     show
         gridBorderColor,
         headerBgColor,
         cellBgColor,
         plannerViewNotifierProvider,
         PlannerView;
-import 'compact_card.dart';
+import 'widgets/compact_card.dart';
 
 class WeeklyView extends ConsumerWidget {
   const WeeklyView({super.key});
@@ -203,6 +203,7 @@ class _WeeklyDayCell extends ConsumerWidget {
   final DateTime day;
   final String slotId;
   final bool isWeekend;
+
   const _WeeklyDayCell({
     required this.day,
     required this.slotId,

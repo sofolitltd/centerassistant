@@ -194,7 +194,7 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
                                     ),
                                   ),
                                   OutlinedButton.icon(
-                                    onPressed: _handleOpenServiceDialog,
+                                    onPressed: () => _handleOpenServiceDialog(),
                                     icon: const Icon(
                                       LucideIcons.plus,
                                       size: 18,
@@ -213,6 +213,11 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
                                 onRemoveService: (index) => setState(
                                   () => _pendingServices.removeAt(index),
                                 ),
+                                onEditService: (index, service) =>
+                                    _handleOpenServiceDialog(
+                                      index: index,
+                                      initialService: service,
+                                    ),
                               ),
 
                               const SizedBox(height: 32),
@@ -266,7 +271,10 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
     );
   }
 
-  Future<void> _handleOpenServiceDialog() async {
+  Future<void> _handleOpenServiceDialog({
+    int? index,
+    ServiceDetail? initialService,
+  }) async {
     if (_selectedTimeSlotId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a time slot first')),
@@ -274,22 +282,34 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
       return;
     }
 
-    final result = await showDialog<ServiceDetail>(
-      context: context,
-      builder: (context) => AddScheduleServiceDialog(
-        selectedTimeSlotId: _selectedTimeSlotId,
-        initialStartTime: _builderStartTime,
-        initialEndTime: _builderEndTime,
-        initialEmployee: _builderEmployee,
-        selectedClient: _selectedClient,
-      ),
-    );
+    Employee? initialEmployee;
+    if (initialService != null) {
+      initialEmployee = await _getEmployee(initialService.employeeId);
+    }
 
-    if (result != null) {
-      setState(() {
-        _pendingServices.add(result);
-        _builderEmployee = null;
-      });
+    if (mounted) {
+      final result = await showDialog<ServiceDetail>(
+        context: context,
+        builder: (context) => AddScheduleServiceDialog(
+          selectedTimeSlotId: _selectedTimeSlotId,
+          initialStartTime: initialService?.startTime ?? _builderStartTime,
+          initialEndTime: initialService?.endTime ?? _builderEndTime,
+          initialEmployee: initialEmployee ?? _builderEmployee,
+          selectedClient: _selectedClient,
+          initialService: initialService,
+        ),
+      );
+
+      if (result != null) {
+        setState(() {
+          if (index != null) {
+            _pendingServices[index] = result;
+          } else {
+            _pendingServices.add(result);
+          }
+          _builderEmployee = null;
+        });
+      }
     }
   }
 
@@ -299,9 +319,7 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
 
     try {
       final selectedDate = ref.read(selectedDateProvider);
-      await ref
-          .read(sessionServiceProvider)
-          .bookSession(
+      await ref.read(sessionServiceProvider).bookSession(
             clientId: _selectedClient!.id,
             timeSlotId: _selectedTimeSlotId!,
             status: SessionStatus.scheduled,
@@ -321,9 +339,9 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error saving schedule: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving schedule: $e')),
+        );
       }
     } finally {
       if (mounted) {

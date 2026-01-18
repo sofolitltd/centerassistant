@@ -16,6 +16,7 @@ class AddScheduleServiceDialog extends ConsumerStatefulWidget {
   final String? initialEndTime;
   final Employee? initialEmployee;
   final Client? selectedClient;
+  final ServiceDetail? initialService;
 
   const AddScheduleServiceDialog({
     super.key,
@@ -24,6 +25,7 @@ class AddScheduleServiceDialog extends ConsumerStatefulWidget {
     this.initialEndTime,
     this.initialEmployee,
     this.selectedClient,
+    this.initialService,
   });
 
   @override
@@ -43,11 +45,22 @@ class _AddScheduleServiceDialogState
   @override
   void initState() {
     super.initState();
-    _startTime = widget.initialStartTime;
-    _endTime = widget.initialEndTime;
-    _employee = widget.initialEmployee;
-    if (_employee != null) {
-      _serviceType = _employee!.department;
+    if (widget.initialService != null) {
+      final s = widget.initialService!;
+      _startTime = s.startTime;
+      _endTime = s.endTime;
+      _serviceType = s.type;
+      _sessionType = s.sessionType;
+      _isInclusive = s.isInclusive;
+      // Note: _employee is set via widget.initialEmployee in the parent call
+      _employee = widget.initialEmployee;
+    } else {
+      _startTime = widget.initialStartTime;
+      _endTime = widget.initialEndTime;
+      _employee = widget.initialEmployee;
+      if (_employee != null) {
+        _serviceType = _employee!.department;
+      }
     }
   }
 
@@ -80,11 +93,13 @@ class _AddScheduleServiceDialogState
       }
     }
 
+    final bool isEdit = widget.initialService != null;
+
     return AlertDialog(
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text('Add Service'),
+          Text(isEdit ? 'Edit Service' : 'Add Service'),
           IconButton(
             onPressed: () => Navigator.pop(context),
             icon: const Icon(Icons.close),
@@ -100,37 +115,6 @@ class _AddScheduleServiceDialogState
               spacing: 2,
               mainAxisSize: MainAxisSize.min,
               children: [
-                deptsAsync.when(
-                  data: (depts) {
-                    final items = depts.toList()..sort();
-
-                    return DropdownButtonFormField<String>(
-                      isExpanded: true,
-                      initialValue: depts.contains(_serviceType)
-                          ? _serviceType
-                          : null,
-                      hint: const Text('Service'),
-                      onChanged: (v) {
-                        setState(() {
-                          _serviceType = v;
-                          if (_employee != null && _employee!.department != v) {
-                            _employee = null;
-                          }
-                        });
-                      },
-                      items: items
-                          .map(
-                            (s) => DropdownMenuItem(value: s, child: Text(s)),
-                          )
-                          .toList(),
-                      decoration: _inputDecoration(label: 'Service'),
-                    );
-                  },
-                  loading: () => const LinearProgressIndicator(),
-                  error: (_, __) => const Text('Error loading services'),
-                ),
-                const SizedBox(height: 16),
-
                 //
                 employeesAsync.when(
                   data: (employees) => deptsAsync.when(
@@ -143,6 +127,12 @@ class _AddScheduleServiceDialogState
                                 e.department == _serviceType);
 
                         if (!matchesDept) return false;
+
+                        // If it's edit mode, don't filter out the current employee
+                        if (isEdit &&
+                            e.id == widget.initialService?.employeeId) {
+                          return true;
+                        }
 
                         final busyTherapists =
                             scheduleAsync
@@ -205,6 +195,35 @@ class _AddScheduleServiceDialogState
                 ),
 
                 const SizedBox(height: 16),
+                //
+                deptsAsync.when(
+                  data: (depts) {
+                    final items = depts.toList()..sort();
+
+                    return DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      value: depts.contains(_serviceType) ? _serviceType : null,
+                      hint: const Text('Service'),
+                      onChanged: (v) {
+                        setState(() {
+                          _serviceType = v;
+                          if (_employee != null && _employee!.department != v) {
+                            _employee = null;
+                          }
+                        });
+                      },
+                      items: items
+                          .map(
+                            (s) => DropdownMenuItem(value: s, child: Text(s)),
+                          )
+                          .toList(),
+                      decoration: _inputDecoration(label: 'Service'),
+                    );
+                  },
+                  loading: () => const LinearProgressIndicator(),
+                  error: (_, __) => const Text('Error loading services'),
+                ),
+                const SizedBox(height: 16),
 
                 //
                 Row(
@@ -213,7 +232,7 @@ class _AddScheduleServiceDialogState
                     Expanded(
                       flex: 4,
                       child: DropdownButtonFormField<String>(
-                        initialValue: _startTime,
+                        value: _startTime,
                         hint: const Text('Start'),
                         onChanged: (v) {
                           setState(() {
@@ -242,7 +261,7 @@ class _AddScheduleServiceDialogState
                     Expanded(
                       flex: 4,
                       child: DropdownButtonFormField<String>(
-                        initialValue: _endTime,
+                        value: _endTime,
                         hint: const Text('End'),
                         onChanged: (v) => setState(() => _endTime = v),
                         items: endTimes.map((t) {
@@ -270,7 +289,7 @@ class _AddScheduleServiceDialogState
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<SessionType>(
-                        initialValue: _sessionType,
+                        value: _sessionType,
                         onChanged: (v) => setState(() => _sessionType = v!),
                         items: SessionType.values
                             .map(
@@ -285,7 +304,7 @@ class _AddScheduleServiceDialogState
                     ),
                     Expanded(
                       child: DropdownButtonFormField<bool>(
-                        initialValue: _isInclusive,
+                        value: _isInclusive,
                         onChanged: (v) => setState(() => _isInclusive = v!),
                         items: const [
                           DropdownMenuItem(
@@ -312,7 +331,10 @@ class _AddScheduleServiceDialogState
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        ElevatedButton(onPressed: _onAdd, child: const Text('Add Service')),
+        ElevatedButton(
+          onPressed: _onAdd,
+          child: Text(isEdit ? 'Update Service' : 'Add Service'),
+        ),
       ],
     );
   }

@@ -5,14 +5,14 @@ import 'package:table_calendar/table_calendar.dart' show isSameDay;
 
 import '/core/providers/office_settings_providers.dart';
 import '/core/providers/session_providers.dart';
-import '../schedule_planner_page.dart'
+import 'schedule_planner_page.dart'
     show
         headerBgColor,
         gridBorderColor,
         plannerViewNotifierProvider,
         PlannerView,
         cellBgColor;
-import 'compact_card.dart';
+import 'widgets/compact_card.dart';
 
 class MonthlyView extends ConsumerWidget {
   const MonthlyView({super.key});

@@ -7,9 +7,9 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '/core/providers/client_providers.dart';
 import '/core/providers/employee_providers.dart';
 import '/core/providers/session_providers.dart';
-import 'widget/daily_view.dart';
-import 'widget/monthly_view.dart';
-import 'widget/weekly_view.dart';
+import 'daily_view.dart';
+import 'monthly_view.dart';
+import 'weekly_view.dart';
 
 enum PlannerView { daily, weekly, monthly }
 

@@ -45,8 +45,10 @@ class _AddScheduleRecurringSectionState
     'Tuesday',
     'Wednesday',
     'Thursday',
-    'Friday',
-    'Saturday',
+
+    //todo: fetch from db instead
+    // 'Friday',
+    // 'Saturday',
   ];
 
   @override
@@ -104,7 +106,9 @@ class _AddScheduleRecurringSectionState
             const SizedBox(height: 12),
             Row(
               spacing: 16,
-              children: List.generate(7, (index) {
+
+              //todo: fetch from db instead
+              children: List.generate(5, (index) {
                 final day = _dayNames[index];
                 final isSelected = widget.selectedDays.contains(day);
                 final label = day.substring(0, 1);
