@@ -27,7 +27,7 @@ class AddScheduleDateTimeSection extends StatelessWidget {
       children: [
         //
         Expanded(
-          flex: 6,
+          flex: 1,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -46,7 +46,9 @@ class AddScheduleDateTimeSection extends StatelessWidget {
                           firstDate: DateTime.now().subtract(
                             const Duration(days: 365),
                           ),
-                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                          lastDate: DateTime.now().add(
+                            const Duration(days: 365),
+                          ),
                         );
                         if (picked != null) {
                           onDateChanged!(picked);
@@ -58,7 +60,9 @@ class AddScheduleDateTimeSection extends StatelessWidget {
                       vertical: 16,
                       horizontal: 14,
                     ),
-                    fillColor: onDateChanged == null ? Colors.grey.shade100 : Colors.grey.shade50,
+                    fillColor: onDateChanged == null
+                        ? Colors.grey.shade100
+                        : Colors.grey.shade50,
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -66,13 +70,17 @@ class AddScheduleDateTimeSection extends StatelessWidget {
                       Text(
                         DateFormat('EEEE, MMM d, yyyy').format(selectedDate),
                         style: TextStyle(
-                          color: onDateChanged == null ? Colors.black54 : Colors.black87,
+                          color: onDateChanged == null
+                              ? Colors.black54
+                              : Colors.black87,
                         ),
                       ),
                       Icon(
                         Icons.calendar_today,
                         size: 18,
-                        color: onDateChanged == null ? Colors.grey : Colors.black87,
+                        color: onDateChanged == null
+                            ? Colors.grey
+                            : Colors.black87,
                       ),
                     ],
                   ),
@@ -84,7 +92,7 @@ class AddScheduleDateTimeSection extends StatelessWidget {
 
         //
         Expanded(
-          flex: 5,
+          flex: 1,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -94,29 +102,38 @@ class AddScheduleDateTimeSection extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               timeSlotsAsync.when(
-                data: (slots) => DropdownButtonFormField<String>(
-                  initialValue: selectedTimeSlotId,
-                  hint: const Text('Select Slot'),
-                  onChanged: onTimeSlotChanged == null
-                      ? null
-                      : (v) {
-                          final slot = slots.where((s) => s.id == v).firstOrNull;
-                          onTimeSlotChanged!(v, slot);
-                        },
-                  items: slots
-                      .map(
-                        (s) => DropdownMenuItem<String>(
-                          value: s.id,
-                          child: Text(
-                            '${formatTimeToAmPm(s.startTime)} - ${formatTimeToAmPm(s.endTime)} (${s.label})',
+                data: (slots) {
+                  final sortedSlots = List<dynamic>.from(slots)
+                    ..sort((a, b) => a.startTime.compareTo(b.startTime));
+
+                  return DropdownButtonFormField<String>(
+                    initialValue: selectedTimeSlotId,
+                    hint: const Text('Select Slot'),
+                    onChanged: onTimeSlotChanged == null
+                        ? null
+                        : (v) {
+                            final slot = sortedSlots
+                                .where((s) => s.id == v)
+                                .firstOrNull;
+                            onTimeSlotChanged!(v, slot);
+                          },
+                    items: sortedSlots
+                        .map(
+                          (s) => DropdownMenuItem<String>(
+                            value: s.id,
+                            child: Text(
+                              '${formatTimeToAmPm(s.startTime)} - ${formatTimeToAmPm(s.endTime)} (${s.label})',
+                            ),
                           ),
-                        ),
-                      )
-                      .toList(),
-                  decoration: _inputDecoration().copyWith(
-                    fillColor: onTimeSlotChanged == null ? Colors.grey.shade100 : Colors.grey.shade50,
-                  ),
-                ),
+                        )
+                        .toList(),
+                    decoration: _inputDecoration().copyWith(
+                      fillColor: onTimeSlotChanged == null
+                          ? Colors.grey.shade100
+                          : Colors.grey.shade50,
+                    ),
+                  );
+                },
                 loading: () => const LinearProgressIndicator(),
                 error: (_, __) => const Text('Error loading time slots'),
               ),

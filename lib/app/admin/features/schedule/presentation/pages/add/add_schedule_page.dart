@@ -42,16 +42,14 @@ class AddSchedulePage extends ConsumerStatefulWidget {
 class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
   Client? _selectedClient;
   Employee? _builderEmployee;
-  String? _builderServiceType;
 
   // Time selection defaults for service builder
   String? _builderStartTime;
   String? _builderEndTime;
 
   final List<ServiceDetail> _pendingServices = [];
-  SessionType _sessionType = SessionType.regular;
   String? _selectedTimeSlotId;
-  bool _isRecurring = false;
+  bool _isRecurring = true;
 
   // Simplified Recurring State (Weekly Only)
   final int _interval = 1;
@@ -98,9 +96,6 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
         _builderEmployee = employees
             .where((e) => e.id == widget.initialEmployeeId)
             .firstOrNull;
-        if (_builderEmployee != null) {
-          _builderServiceType = _builderEmployee!.department;
-        }
       }
       if (widget.initialDate != null) {
         Future.microtask(() {
@@ -135,7 +130,6 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              //
                               AddScheduleDateTimeSection(
                                 selectedDate: selectedDate,
                                 timeSlotsAsync: timeSlotsAsync,
@@ -148,7 +142,6 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
                                     _selectedDays = [
                                       DateFormat('EEEE').format(picked),
                                     ];
-                                    // Update default end date when month changes
                                     _endDate = DateTime(
                                       picked.year,
                                       picked.month + 1,
@@ -181,18 +174,14 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
                               AddScheduleClientSection(
                                 clientsAsync: clientsAsync,
                                 selectedClient: _selectedClient,
-                                sessionType: _sessionType,
                                 onClientChanged: (c) =>
                                     setState(() => _selectedClient = c),
-                                onSessionTypeChanged: (v) =>
-                                    setState(() => _sessionType = v!),
                                 selectedTimeSlotId: _selectedTimeSlotId,
                                 scheduleAsync: scheduleAsync,
                               ),
 
                               const SizedBox(height: 32),
 
-                              // Services Section
                               Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
@@ -216,7 +205,6 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
                               ),
                               const SizedBox(height: 16),
 
-                              //
                               AddSchedulePendingList(
                                 pendingServices: _pendingServices,
                                 getEmployee: _getEmployee,
@@ -229,7 +217,6 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
 
                               const SizedBox(height: 32),
 
-                              // Simplified Recurring Section
                               AddScheduleRecurringSection(
                                 isRecurring: _isRecurring,
                                 onRecurringChanged: (v) =>
@@ -250,7 +237,6 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
 
                               const SizedBox(height: 24),
 
-                              //
                               AddScheduleFooter(
                                 isSaveEnabled:
                                     !(_selectedClient == null ||
@@ -303,7 +289,6 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
       setState(() {
         _pendingServices.add(result);
         _builderEmployee = null;
-        _builderServiceType = null;
       });
     }
   }
@@ -319,7 +304,7 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
           .bookSession(
             clientId: _selectedClient!.id,
             timeSlotId: _selectedTimeSlotId!,
-            sessionType: _sessionType,
+            status: SessionStatus.scheduled,
             services: _pendingServices,
             date: selectedDate,
             isRecurring: _isRecurring,

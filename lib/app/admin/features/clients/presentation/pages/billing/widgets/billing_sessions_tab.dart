@@ -42,20 +42,19 @@ class BillingSessionsTab extends ConsumerWidget {
             int centerCancelledCount = 0;
 
             for (var s in sessions) {
-              if (s.sessionType == SessionType.completed ||
-                  s.sessionType == SessionType.regular ||
-                  s.sessionType == SessionType.makeup ||
-                  s.sessionType == SessionType.extra ||
-                  s.sessionType == SessionType.cover) {
-                completedCount++;
+              if (s.status == SessionStatus.completed ||
+                  s.status == SessionStatus.scheduled) {
+                if (s.status == SessionStatus.completed) {
+                  completedCount++;
+                }
                 totalHours += s.totalDuration;
                 for (var service in s.services) {
                   final rate = rateMap[service.type] ?? 0.0;
                   totalMonthlyBill += service.duration * rate;
                 }
-              } else if (s.sessionType == SessionType.cancelledCenter) {
+              } else if (s.status == SessionStatus.cancelledCenter) {
                 centerCancelledCount++;
-              } else if (s.sessionType == SessionType.cancelledClient) {
+              } else if (s.status == SessionStatus.cancelledClient) {
                 clientCancelledCount++;
               }
             }
@@ -101,8 +100,6 @@ class BillingSessionsTab extends ConsumerWidget {
                                 Colors.grey.shade50,
                               ),
                               headingRowHeight: 40,
-                              // dataRowMaxHeight: 60,
-                              // dataRowMinHeight: 24,
                               columnSpacing: 24,
                               border: TableBorder.all(
                                 color: Colors.grey.shade200,
@@ -119,7 +116,7 @@ class BillingSessionsTab extends ConsumerWidget {
                                 ),
                                 DataColumn(
                                   label: Text(
-                                    'Service',
+                                    'Service & Type',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -163,10 +160,8 @@ class BillingSessionsTab extends ConsumerWidget {
                                 double sessionBill = 0;
                                 String ratesDisplay = '';
 
-                                if (s.sessionType !=
-                                        SessionType.cancelledCenter &&
-                                    s.sessionType !=
-                                        SessionType.cancelledClient) {
+                                if (s.status == SessionStatus.completed ||
+                                    s.status == SessionStatus.scheduled) {
                                   for (var service in s.services) {
                                     final rate = rateMap[service.type] ?? 0.0;
                                     sessionBill += service.duration * rate;
@@ -197,7 +192,7 @@ class BillingSessionsTab extends ConsumerWidget {
                                             CrossAxisAlignment.start,
                                         children: s.services.map((sv) {
                                           return Text(
-                                            ' ${sv.type} | ${AddScheduleUtils.formatTimeToAmPm(sv.startTime)}-${AddScheduleUtils.formatTimeToAmPm(sv.endTime)}',
+                                            '${sv.type} (${sv.sessionType.displayName}) | ${AddScheduleUtils.formatTimeToAmPm(sv.startTime)}-${AddScheduleUtils.formatTimeToAmPm(sv.endTime)}',
                                             style: const TextStyle(
                                               fontSize: 12,
                                             ),
@@ -212,7 +207,7 @@ class BillingSessionsTab extends ConsumerWidget {
                                         style: const TextStyle(fontSize: 10),
                                       ),
                                     ),
-                                    DataCell(_buildStatusBadge(s.sessionType)),
+                                    DataCell(_buildStatusBadge(s.status)),
                                     DataCell(
                                       Align(
                                         alignment: Alignment.centerRight,
@@ -413,38 +408,31 @@ class BillingSessionsTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatusBadge(SessionType type) {
+  Widget _buildStatusBadge(SessionStatus status) {
     Color color;
     String label;
 
-    switch (type) {
-      case SessionType.completed:
+    switch (status) {
+      case SessionStatus.completed:
         color = Colors.green;
         label = 'Completed';
         break;
-      case SessionType.cancelledCenter:
+      case SessionStatus.cancelledCenter:
         color = Colors.red;
         label = 'Cancelled (Center)';
         break;
-      case SessionType.cancelledClient:
+      case SessionStatus.cancelledClient:
         color = Colors.orange;
         label = 'Cancelled (Client)';
         break;
-      case SessionType.makeup:
+      case SessionStatus.pending:
+        color = Colors.yellow;
+        label = 'Pending';
+        break;
+      case SessionStatus.scheduled:
         color = Colors.blue;
-        label = 'Makeup';
-        break;
-      case SessionType.extra:
-        color = Colors.purple;
-        label = 'Extra';
-        break;
-      case SessionType.cover:
-        color = Colors.teal;
-        label = 'Cover';
-        break;
-      default:
-        color = Colors.grey;
         label = 'Scheduled';
+        break;
     }
 
     return Container(

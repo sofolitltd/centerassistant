@@ -1,5 +1,8 @@
 import 'dart:convert';
 import 'dart:io' as io;
+import 'dart:js_interop';
+
+import 'package:csv/csv.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -7,8 +10,6 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:csv/csv.dart';
-import 'dart:js_interop';
 import 'package:web/web.dart' as web;
 
 import '../../app/admin/features/schedule/presentation/pages/add/add_schedule_utils.dart';
@@ -34,6 +35,7 @@ class BillingExportHelper {
       'Service & Time',
       'Hour',
       'Rate Details (Tk)',
+      'Type',
       'Status',
       'Bill (Tk)',
     ]);
@@ -55,12 +57,9 @@ class BillingExportHelper {
           })
           .join('; ');
 
-      if (s.sessionType == SessionType.completed ||
-          s.sessionType == SessionType.regular ||
-          s.sessionType == SessionType.makeup ||
-          s.sessionType == SessionType.extra ||
-          s.sessionType == SessionType.cover) {
-        completedCount++;
+      if (s.status == SessionStatus.completed ||
+          s.status == SessionStatus.scheduled) {
+        if (s.status == SessionStatus.completed) completedCount++;
         totalHours += s.totalDuration;
         for (var service in s.services) {
           final rate = rateMap[service.type] ?? 0.0;
@@ -73,38 +72,70 @@ class BillingExportHelper {
             )
             .toSet()
             .join('; ');
-      } else if (s.sessionType == SessionType.cancelledCenter) {
+      } else if (s.status == SessionStatus.cancelledCenter) {
         centerCancelledCount++;
-      } else if (s.sessionType == SessionType.cancelledClient) {
+      } else if (s.status == SessionStatus.cancelledClient) {
         clientCancelledCount++;
       }
 
       totalBill += sessionBill;
+
+      // Derived Type display from individual services
+      final typesDisplay = s.services
+          .map((sv) => sv.sessionType.displayName)
+          .toSet()
+          .join('; ');
 
       rows.add([
         _dateFormat.format(s.date.toDate()),
         servicesWithTime,
         '${s.totalDuration}h',
         ratesDisplay,
-        s.sessionType.name.toUpperCase(),
+        typesDisplay,
+        s.status.displayName.toUpperCase(),
         sessionBill.toStringAsFixed(0),
       ]);
     }
 
     rows.add([]);
-    rows.add(['', '', '', '', 'Total Hours:', totalHours.toStringAsFixed(1)]);
-    rows.add(['', '', '', '', 'Completed Sessions:', completedCount]);
-    rows.add(['', '', '', '', 'Client Cancelled:', clientCancelledCount]);
-    rows.add(['', '', '', '', 'Center Cancelled:', centerCancelledCount]);
-    rows.add(['', '', '', '', 'Total Monthly Bill:', totalBill.toStringAsFixed(0)]);
-    rows.add(['', '', '', '', 'Current Balance:', client.walletBalance.toStringAsFixed(0)]);
     rows.add([
       '',
       '',
       '',
       '',
+      '',
+      'Total Hours:',
+      totalHours.toStringAsFixed(1),
+    ]);
+    rows.add(['', '', '', '', '', 'Completed Sessions:', completedCount]);
+    rows.add(['', '', '', '', '', 'Client Cancelled:', clientCancelledCount]);
+    rows.add(['', '', '', '', '', 'Center Cancelled:', centerCancelledCount]);
+    rows.add([
+      '',
+      '',
+      '',
+      '',
+      '',
+      'Total Monthly Bill:',
+      totalBill.toStringAsFixed(0),
+    ]);
+    rows.add([
+      '',
+      '',
+      '',
+      '',
+      '',
+      'Current Balance:',
+      client.walletBalance.toStringAsFixed(0),
+    ]);
+    rows.add([
+      '',
+      '',
+      '',
+      '',
+      '',
       'Remaining Balance:',
-      (client.walletBalance - totalBill).toStringAsFixed(0)
+      (client.walletBalance - totalBill).toStringAsFixed(0),
     ]);
 
     String csvData = const ListToCsvConverter().convert(rows);
@@ -154,16 +185,13 @@ class BillingExportHelper {
     int centerCancelledCount = 0;
 
     for (var s in sessions) {
-      if (s.sessionType == SessionType.completed ||
-          s.sessionType == SessionType.regular ||
-          s.sessionType == SessionType.makeup ||
-          s.sessionType == SessionType.extra ||
-          s.sessionType == SessionType.cover) {
-        completedCount++;
+      if (s.status == SessionStatus.completed ||
+          s.status == SessionStatus.scheduled) {
+        if (s.status == SessionStatus.completed) completedCount++;
         totalHours += s.totalDuration;
-      } else if (s.sessionType == SessionType.cancelledCenter) {
+      } else if (s.status == SessionStatus.cancelledCenter) {
         centerCancelledCount++;
-      } else if (s.sessionType == SessionType.cancelledClient) {
+      } else if (s.status == SessionStatus.cancelledClient) {
         clientCancelledCount++;
       }
     }
@@ -391,13 +419,15 @@ class BillingExportHelper {
       'Service (Time)',
       'Hours',
       'Rate (Tk)',
+      'Type',
+      'Status',
       'Total (Tk)',
     ];
 
     final data = sessions.map((s) {
       double sessionBill = 0;
-      if (s.sessionType != SessionType.cancelledCenter &&
-          s.sessionType != SessionType.cancelledClient) {
+      if (s.status == SessionStatus.completed ||
+          s.status == SessionStatus.scheduled) {
         for (var service in s.services) {
           sessionBill += service.duration * (rateMap[service.type] ?? 0.0);
         }
@@ -410,6 +440,11 @@ class BillingExportHelper {
           })
           .join('\n');
 
+      final typesDisplay = s.services
+          .map((sv) => sv.sessionType.displayName)
+          .toSet()
+          .join('\n');
+
       return [
         _dateFormat.format(s.date.toDate()),
         servicesWithTime,
@@ -418,6 +453,8 @@ class BillingExportHelper {
             .map((sv) => _currencyFormat.format(rateMap[sv.type] ?? 0))
             .toSet()
             .join('\n'),
+        typesDisplay,
+        s.status.displayName,
         _currencyFormat.format(sessionBill),
       ];
     }).toList();
@@ -437,7 +474,9 @@ class BillingExportHelper {
         1: pw.Alignment.centerLeft,
         2: pw.Alignment.center,
         3: pw.Alignment.centerRight,
-        4: pw.Alignment.centerRight,
+        4: pw.Alignment.centerLeft,
+        5: pw.Alignment.centerLeft,
+        6: pw.Alignment.centerRight,
       },
     );
   }

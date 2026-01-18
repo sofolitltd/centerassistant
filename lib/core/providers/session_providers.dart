@@ -6,7 +6,6 @@ import '/core/models/schedule_template.dart';
 import '/core/models/session.dart';
 import '/core/providers/client_providers.dart';
 import '/core/providers/employee_providers.dart';
-import '/core/providers/leave_providers.dart';
 import '/core/providers/schedule_template_providers.dart';
 import '/core/providers/time_slot_providers.dart';
 import '/services/firebase_service.dart';
@@ -79,7 +78,7 @@ class SessionCardData {
   final String clientId; // Sequential ID (e.g., 1)
   final String clientName;
   final String? clientNickName;
-  final SessionType sessionType;
+  final SessionStatus status;
   final List<ServiceDetail> services;
   final String? notes;
   final String? templateEmployeeId;
@@ -92,7 +91,7 @@ class SessionCardData {
     required this.clientId,
     required this.clientName,
     this.clientNickName,
-    required this.sessionType,
+    required this.status,
     required this.services,
     this.notes,
     this.templateEmployeeId,
@@ -115,15 +114,21 @@ class SessionCardData {
 
   // Helpers for DailyView
   String get serviceNames => services.map((s) => s.type).join('\n');
-  String get therapists => services.map((s) {
-    final name = employeeNames[s.employeeId];
-    return name ?? '-';
-  }).join('\n');
-  String get hours => services.map((s) => '${s.startTime}-${s.endTime}').join('\n');
-  String get durations => services.map((s) => '${s.duration.toStringAsFixed(1)}h').join('\n');
-  String get inclusiveStatus => services.map((s) => s.isInclusive ? 'Inc' : 'Exc').join('\n');
-  
-  String get status => sessionType.name;
+  String get therapists => services
+      .map((s) {
+        final name = employeeNames[s.employeeId];
+        return name ?? '-';
+      })
+      .join('\n');
+  String get hours =>
+      services.map((s) => '${s.startTime}-${s.endTime}').join('\n');
+  String get durations =>
+      services.map((s) => '${s.duration.toStringAsFixed(1)}h').join('\n');
+  String get inclusiveStatus =>
+      services.map((s) => s.isInclusive ? 'Inclusive' : 'Exclusive').join('\n');
+  String get typeDisplay =>
+      services.map((s) => s.sessionType.displayName).toSet().join('\n');
+
   String get id => sessionId ?? '';
 }
 
@@ -133,200 +138,56 @@ final scheduleByDateProvider = FutureProvider.autoDispose
       final timeSlots = await ref.watch(timeSlotsProvider.future);
       final clients = await ref.watch(clientsProvider.future);
       final employees = await ref.watch(employeesProvider.future);
-      final templates = await ref.watch(allScheduleTemplatesProvider.future);
+
+      // We only show real instances from the schedule collection
       final sessions = await ref
           .watch(sessionRepositoryProvider)
           .getSessionsByDate(date);
-      final leaves = await ref.watch(leavesByDateProvider(date).future);
 
       final clientMap = {for (var c in clients) c.id: c};
       final employeeMap = {for (var t in employees) t.id: t};
-      final slotMap = {for (var s in timeSlots) s.id: s};
 
-      final dayLeaves = {for (var l in leaves) l.employeeId: l};
-
-      final dayOfWeek = DateFormat('EEEE').format(date);
       final sessionsByTimeSlot = <String, List<SessionCardData>>{};
 
-      final templateEmployeeMap = <String, Map<String, String>>{};
-
-      final normalizedDate = DateTime(date.year, date.month, date.day);
-
-      String getDeterministicId(DateTime d, String cId, String tId) {
-        final dateStr = DateFormat('yyyy-MM-dd').format(d);
-        return '${dateStr}_${cId}_$tId';
-      }
-
-      for (final template in templates) {
-        if (filter.clientId != null && template.clientId != filter.clientId) {
-          continue;
-        }
-
-        for (final rule in template.rules) {
-          if (filter.employeeId != null &&
-              rule.employeeId != filter.employeeId) {
-            continue;
-          }
-
-          // Robust Start Date Check
-          if (rule.startDate != null) {
-            final normalizedStart = DateTime(
-              rule.startDate!.year,
-              rule.startDate!.month,
-              rule.startDate!.day,
-            );
-            if (normalizedDate.isBefore(normalizedStart)) continue;
-          }
-
-          // Robust End Date Check
-          if (rule.endType == RecurrenceEndType.onDate &&
-              rule.untilDate != null) {
-            final normalizedUntil = DateTime(
-              rule.untilDate!.year,
-              rule.untilDate!.month,
-              rule.untilDate!.day,
-            );
-            if (normalizedDate.isAfter(normalizedUntil)) continue;
-          }
-
-          bool isMatch = false;
-          if (rule.frequency == RecurrenceFrequency.daily) {
-            isMatch = true;
-          } else if (rule.frequency == RecurrenceFrequency.weekly &&
-              rule.daysOfWeek.contains(dayOfWeek)) {
-            isMatch = true;
-          } else if (rule.frequency == RecurrenceFrequency.monthly &&
-              rule.dayOfMonth == date.day) {
-            isMatch = true;
-          }
-
-          if (isMatch) {
-            final client = clientMap[template.clientId];
-            final employee = employeeMap[rule.employeeId];
-            final slot = slotMap[rule.timeSlotId];
-
-            if (client != null && employee != null) {
-              templateEmployeeMap.putIfAbsent(
-                rule.timeSlotId,
-                () => {},
-              )[client.id] = employee.id;
-
-              final bool isEmployeeOnLeave = dayLeaves.containsKey(employee.id);
-              final bool isClientOnLeave = dayLeaves.containsKey(client.id);
-
-              final service = ServiceDetail(
-                type: rule.serviceType,
-                employeeId: employee.id,
-                startTime: rule.startTime.isNotEmpty
-                    ? rule.startTime
-                    : (slot?.startTime ?? ''),
-                endTime: rule.endTime.isNotEmpty
-                    ? rule.endTime
-                    : (slot?.endTime ?? ''),
-                isInclusive: false, // Defaulting to false, should ideally come from rule if available
-              );
-
-              final list = sessionsByTimeSlot.putIfAbsent(rule.timeSlotId, () => []);
-              final existingIndex = list.indexWhere((s) => s.clientDocId == client.id);
-
-              if (existingIndex != -1) {
-                final existing = list[existingIndex];
-                list[existingIndex] = SessionCardData(
-                  sessionId: existing.sessionId,
-                  clientDocId: existing.clientDocId,
-                  clientId: existing.clientId,
-                  clientName: existing.clientName,
-                  clientNickName: existing.clientNickName,
-                  sessionType: existing.sessionType,
-                  services: [...existing.services, service],
-                  templateEmployeeId: existing.templateEmployeeId,
-                  isAutoGenerated: existing.isAutoGenerated,
-                  employeeNames: {
-                    ...existing.employeeNames,
-                    employee.id: employee.nickName.isNotEmpty ? employee.nickName : employee.name,
-                  },
-                );
-              } else {
-                list.add(
-                  SessionCardData(
-                    sessionId: getDeterministicId(date, client.id, rule.timeSlotId),
-                    clientDocId: client.id,
-                    clientId: client.clientId,
-                    clientNickName: client.nickName,
-                    clientName: client.name,
-                    sessionType: (isEmployeeOnLeave || isClientOnLeave)
-                        ? SessionType.cancelled
-                        : SessionType.regular,
-                    services: [service],
-                    templateEmployeeId: employee.id,
-                    isAutoGenerated: true,
-                    employeeNames: {
-                      employee.id: employee.nickName.isNotEmpty ? employee.nickName : employee.name,
-                    },
-                    notes: isEmployeeOnLeave
-                        ? 'Employee on leave'
-                        : (isClientOnLeave ? 'Client on leave' : null),
-                  ),
-                );
-              }
-            }
-          }
-        }
-      }
-
-      for (final exception in sessions) {
-        if (filter.clientId != null && exception.clientId != filter.clientId) {
+      for (final session in sessions) {
+        if (filter.clientId != null && session.clientId != filter.clientId) {
           continue;
         }
 
         if (filter.employeeId != null &&
-            !exception.services.any((s) => s.employeeId == filter.employeeId)) {
+            !session.services.any((s) => s.employeeId == filter.employeeId)) {
           continue;
         }
 
-        final client = clientMap[exception.clientId];
+        final client = clientMap[session.clientId];
 
         if (client != null) {
-          final tId = templateEmployeeMap[exception.timeSlotId]?[client.id];
-
           final names = <String, String>{};
-          for (final s in exception.services) {
+          for (final s in session.services) {
             final emp = employeeMap[s.employeeId];
             if (emp != null) {
-              names[s.employeeId] = emp.nickName.isNotEmpty ? emp.nickName : emp.name;
+              names[s.employeeId] = emp.nickName.isNotEmpty
+                  ? emp.nickName
+                  : emp.name;
             }
           }
 
           final card = SessionCardData(
-            sessionId: exception.id,
+            sessionId: session.id,
             clientDocId: client.id,
             clientId: client.clientId,
             clientNickName: client.nickName,
             clientName: client.name,
-            sessionType: exception.sessionType,
-            services: exception.services,
-            notes: exception.notes,
-            templateEmployeeId: tId,
-            isAutoGenerated: exception.isAutoGenerated,
+            status: session.status,
+            services: session.services,
+            notes: session.notes,
+            isAutoGenerated: session.isAutoGenerated,
             employeeNames: names,
           );
 
-          if (sessionsByTimeSlot.containsKey(exception.timeSlotId)) {
-            final index = sessionsByTimeSlot[exception.timeSlotId]!.indexWhere(
-              (s) => s.clientDocId == exception.clientId,
-            );
-            if (index != -1) {
-              sessionsByTimeSlot[exception.timeSlotId]![index] = card;
-            } else {
-              sessionsByTimeSlot
-                  .putIfAbsent(exception.timeSlotId, () => [])
-                  .add(card);
-            }
-          } else {
-            sessionsByTimeSlot
-                .putIfAbsent(exception.timeSlotId, () => [])
-                .add(card);
-          }
+          sessionsByTimeSlot
+              .putIfAbsent(session.timeSlotId, () => [])
+              .add(card);
         }
       }
       return ScheduleView(
@@ -360,7 +221,7 @@ class SessionActionService {
   Future<void> bookSession({
     required String clientId,
     required String timeSlotId,
-    required SessionType sessionType,
+    required SessionStatus status,
     required List<ServiceDetail> services,
     required DateTime date,
     bool isAutoGenerated = false,
@@ -379,7 +240,7 @@ class SessionActionService {
       clientId: clientId,
       timeSlotId: timeSlotId,
       date: Timestamp.fromDate(date),
-      sessionType: sessionType,
+      status: status,
       services: services,
       isAutoGenerated: isAutoGenerated,
       createdAt: Timestamp.now(),
@@ -454,13 +315,18 @@ class SessionActionService {
     }
 
     final updatedServices = services
-        .map((s) => s.copyWith(employeeId: newEmployeeId))
+        .map(
+          (s) => s.copyWith(
+            employeeId: newEmployeeId,
+            sessionType: SessionType.cover,
+          ),
+        )
         .toList();
 
     return bookSession(
       clientId: clientId,
       timeSlotId: timeSlotId,
-      sessionType: SessionType.cover,
+      status: SessionStatus.scheduled,
       services: updatedServices,
       date: selectedDate,
       endType: RecurrenceEndType.onDate, // Default for non-recurring
@@ -472,24 +338,29 @@ class SessionActionService {
     String timeSlotId,
     String employeeId,
     List<ServiceDetail> services,
-  ) => bookSession(
-    clientId: clientId,
-    timeSlotId: timeSlotId,
-    sessionType: SessionType.makeup,
-    services: services,
-    date: _ref.read(selectedDateProvider),
-    endType: RecurrenceEndType.onDate,
-  );
+  ) {
+    final updatedServices = services
+        .map((s) => s.copyWith(sessionType: SessionType.makeup))
+        .toList();
+    return bookSession(
+      clientId: clientId,
+      timeSlotId: timeSlotId,
+      status: SessionStatus.scheduled,
+      services: updatedServices,
+      date: _ref.read(selectedDateProvider),
+      endType: RecurrenceEndType.onDate,
+    );
+  }
 
   Future<void> cancelSession(
     String clientId,
     String timeSlotId,
-    SessionType type,
+    SessionStatus status,
     List<ServiceDetail> services,
   ) => bookSession(
     clientId: clientId,
     timeSlotId: timeSlotId,
-    sessionType: type,
+    status: status,
     services: services,
     date: _ref.read(selectedDateProvider),
     endType: RecurrenceEndType.onDate,
@@ -502,7 +373,7 @@ class SessionActionService {
   ) => bookSession(
     clientId: clientId,
     timeSlotId: timeSlotId,
-    sessionType: SessionType.completed,
+    status: SessionStatus.completed,
     services: services,
     date: _ref.read(selectedDateProvider),
     endType: RecurrenceEndType.onDate,
@@ -513,14 +384,223 @@ class SessionActionService {
     String timeSlotId,
     String employeeId,
     List<ServiceDetail> services,
-  ) => bookSession(
-    clientId: clientId,
-    timeSlotId: timeSlotId,
-    sessionType: SessionType.extra,
-    services: services,
-    date: _ref.read(selectedDateProvider),
-    endType: RecurrenceEndType.onDate,
-  );
+  ) {
+    final updatedServices = services
+        .map((s) => s.copyWith(sessionType: SessionType.extra))
+        .toList();
+    return bookSession(
+      clientId: clientId,
+      timeSlotId: timeSlotId,
+      status: SessionStatus.scheduled,
+      services: updatedServices,
+      date: _ref.read(selectedDateProvider),
+      endType: RecurrenceEndType.onDate,
+    );
+  }
+
+  Future<void> updateSessionStatus({
+    required String clientId,
+    required String timeSlotId,
+    required List<ServiceDetail> services,
+    required SessionStatus newStatus,
+    required DateTime date,
+    required String mode, // 'this_only', 'this_and_following', 'all'
+  }) async {
+    final firestore = _ref.read(firestoreProvider);
+
+    if (mode == 'this_only') {
+      await bookSession(
+        clientId: clientId,
+        timeSlotId: timeSlotId,
+        status: newStatus,
+        services: services,
+        date: date,
+        endType: RecurrenceEndType.onDate,
+      );
+    } else {
+      // mode is 'this_and_following' or 'all'
+      var query = firestore
+          .collection('schedule')
+          .where('clientId', isEqualTo: clientId)
+          .where('timeSlotId', isEqualTo: timeSlotId);
+
+      if (mode == 'this_and_following') {
+        final startOfDay = DateTime(date.year, date.month, date.day);
+        query = query.where(
+          'date',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+        );
+      }
+
+      try {
+        final snapshots = await query.get();
+        print(
+          'Updating ${snapshots.docs.length} sessions for clientId: $clientId, timeSlotId: $timeSlotId, mode: $mode',
+        );
+        final batch = firestore.batch();
+        for (var doc in snapshots.docs) {
+          batch.update(doc.reference, {'status': newStatus.name});
+        }
+        await batch.commit();
+      } catch (e) {
+        print('Error in updateSessionStatus query: $e');
+        // If it's an index error, the error message from Firebase will contain the link.
+        rethrow;
+      }
+    }
+
+    _ref.invalidate(scheduleByDateProvider);
+    _ref.invalidate(scheduleViewProvider);
+  }
+
+  Future<void> softDeleteSession({
+    required String clientId,
+    required String timeSlotId,
+    required List<ServiceDetail> services,
+    required DateTime date,
+    required String mode, // 'this_only', 'this_and_following', 'all'
+  }) async {
+    final firestore = _ref.read(firestoreProvider);
+
+    if (mode == 'this_only') {
+      await bookSession(
+        clientId: clientId,
+        timeSlotId: timeSlotId,
+        status: SessionStatus.cancelledCenter,
+        services: services,
+        date: date,
+        endType: RecurrenceEndType.onDate,
+      );
+    } else {
+      var query = firestore
+          .collection('schedule')
+          .where('clientId', isEqualTo: clientId)
+          .where('timeSlotId', isEqualTo: timeSlotId);
+
+      if (mode == 'this_and_following') {
+        final startOfDay = DateTime(date.year, date.month, date.day);
+        query = query.where(
+          'date',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+        );
+      }
+
+      final snapshots = await query.get();
+      final batch = firestore.batch();
+      for (var doc in snapshots.docs) {
+        batch.update(doc.reference, {
+          'status': SessionStatus.cancelledCenter.name,
+        });
+      }
+      await batch.commit();
+    }
+
+    _ref.invalidate(scheduleByDateProvider);
+    _ref.invalidate(scheduleViewProvider);
+  }
+
+  Future<void> hardDeleteSession({
+    required String clientId,
+    required String timeSlotId,
+    required DateTime date,
+    required String mode, // 'this_only', 'this_and_following', 'all'
+  }) async {
+    final firestore = _ref.read(firestoreProvider);
+
+    if (mode == 'this_only') {
+      final id = _getDeterministicId(date, clientId, timeSlotId);
+      await _ref.read(sessionRepositoryProvider).deleteSessionException(id);
+    } else {
+      // 1. Clean up schedule instances in Firestore
+      var query = firestore
+          .collection('schedule')
+          .where('clientId', isEqualTo: clientId)
+          .where('timeSlotId', isEqualTo: timeSlotId);
+
+      if (mode == 'this_and_following') {
+        final startOfDay = DateTime(date.year, date.month, date.day);
+        query = query.where(
+          'date',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+        );
+      }
+
+      final snapshots = await query.get();
+      final batch = firestore.batch();
+      for (var doc in snapshots.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+
+      // 2. Update/Delete from Schedule Templates
+      if (mode == 'all' || mode == 'this_and_following') {
+        final templateQuery = await firestore
+            .collection('schedule_templates')
+            .where('clientId', isEqualTo: clientId)
+            .limit(1)
+            .get();
+
+        if (templateQuery.docs.isNotEmpty) {
+          final doc = templateQuery.docs.first;
+          final templateData = doc.data();
+          final List<dynamic> rulesJson = templateData['rules'] ?? [];
+
+          final List<Map<String, dynamic>> updatedRules = [];
+          bool changed = false;
+
+          for (var ruleJson in rulesJson) {
+            final ruleMap = ruleJson as Map<String, dynamic>;
+            final rule = ScheduleRule.fromJson(ruleMap);
+
+            if (rule.timeSlotId == timeSlotId) {
+              changed = true;
+              if (mode == 'all') {
+                // Remove rule entirely
+                continue;
+              } else {
+                // mode == 'this_and_following'
+                // End the rule on the day before the selected date
+                final dayBefore = DateTime(
+                  date.year,
+                  date.month,
+                  date.day,
+                ).subtract(const Duration(days: 1));
+
+                final updatedRule = ScheduleRule(
+                  timeSlotId: rule.timeSlotId,
+                  employeeId: rule.employeeId,
+                  serviceType: rule.serviceType,
+                  startTime: rule.startTime,
+                  endTime: rule.endTime,
+                  frequency: rule.frequency,
+                  interval: rule.interval,
+                  daysOfWeek: rule.daysOfWeek,
+                  endType: RecurrenceEndType.onDate,
+                  untilDate: dayBefore,
+                  dayOfMonth: rule.dayOfMonth,
+                  startDate: rule.startDate,
+                );
+                updatedRules.add(updatedRule.toJson());
+              }
+            } else {
+              updatedRules.add(ruleMap);
+            }
+          }
+
+          if (changed) {
+            await doc.reference.update({
+              'rules': updatedRules,
+              'updatedAt': Timestamp.now(),
+            });
+          }
+        }
+      }
+    }
+
+    _ref.invalidate(scheduleByDateProvider);
+    _ref.invalidate(scheduleViewProvider);
+    _ref.invalidate(allScheduleTemplatesProvider);
+  }
 
   Future<void> syncTemplatesToInstances(DateTime monthDate) async {
     final templates = await _ref.read(allScheduleTemplatesProvider.future);
@@ -600,10 +680,11 @@ class SessionActionService {
               clientId: template.clientId,
               timeSlotId: rule.timeSlotId,
               date: Timestamp.fromDate(date),
-              sessionType: SessionType.regular,
+              status: SessionStatus.scheduled,
               services: [
                 ServiceDetail(
                   type: rule.serviceType,
+                  sessionType: SessionType.regular,
                   employeeId: rule.employeeId,
                   startTime: rule.startTime.isNotEmpty
                       ? rule.startTime

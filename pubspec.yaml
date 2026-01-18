@@ -40,6 +40,7 @@ dependencies:
   printing: ^5.14.2
   path_provider: ^2.1.5
   data_table_2: ^2.7.2
+  dropdown_search: ^6.0.2
 
 dev_dependencies:
   flutter_test:

@@ -103,11 +103,9 @@ class _EditSchedulePageState extends ConsumerState<EditSchedulePage> {
                               AddScheduleClientSection(
                                 clientsAsync: clientsAsync,
                                 selectedClient: _selectedClient,
-                                sessionType: _sessionType,
                                 onClientChanged: (c) =>
                                     setState(() => _selectedClient = c),
-                                onSessionTypeChanged: (v) =>
-                                    setState(() => _sessionType = v!),
+
                                 selectedTimeSlotId: _selectedTimeSlotId,
                                 scheduleAsync: scheduleAsync,
                               ),
@@ -203,7 +201,7 @@ class _EditSchedulePageState extends ConsumerState<EditSchedulePage> {
     setState(() {
       _date = date;
       _selectedTimeSlotId = timeSlotId;
-      _sessionType = session.sessionType;
+      _sessionType = session.services.first.sessionType;
       _pendingServices = List.from(session.services);
 
       final clients = ref.read(clientsProvider).value ?? [];
@@ -243,19 +241,7 @@ class _EditSchedulePageState extends ConsumerState<EditSchedulePage> {
     setState(() => _isSaving = true);
 
     try {
-      //todo:
-      // await ref
-      //     .read(sessionServiceProvider)
-      //     .bookSession(
-      //       clientId: _selectedClient!.id,
-      //       timeSlotId: _selectedTimeSlotId!,
-      //       sessionType: _sessionType,
-      //       services: _pendingServices,
-      //       date: _date!, endType: _,
-      //       // Note: In edit mode, we typically only update the instance exception,
-      //       // not the recurring template unless specified.
-      //     );
-
+      // Logic for saving edits
       if (mounted) {
         context.go('/admin/schedule');
       }

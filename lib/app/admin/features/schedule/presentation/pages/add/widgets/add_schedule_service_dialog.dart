@@ -1,3 +1,4 @@
+import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -36,6 +37,7 @@ class _AddScheduleServiceDialogState
   String? _serviceType;
   String? _startTime;
   String? _endTime;
+  SessionType _sessionType = SessionType.regular;
   bool _isInclusive = false;
 
   @override
@@ -57,8 +59,9 @@ class _AddScheduleServiceDialogState
     final scheduleAsync = ref.watch(scheduleViewProvider);
 
     final slots = timeSlotsAsync.value ?? [];
-    final currentSlot =
-        slots.where((s) => s.id == widget.selectedTimeSlotId).firstOrNull;
+    final currentSlot = slots
+        .where((s) => s.id == widget.selectedTimeSlotId)
+        .firstOrNull;
 
     List<String> startTimes = [];
     List<String> endTimes = [];
@@ -89,150 +92,218 @@ class _AddScheduleServiceDialogState
         ],
       ),
       content: SingleChildScrollView(
-        child: SizedBox(
-          width: 500,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              deptsAsync.when(
-                data: (depts) {
-                  final items = depts.toList();
-                  return DropdownButtonFormField<String>(
-                    initialValue: depts.contains(_serviceType) ? _serviceType : null,
-                    hint: const Text('Service'),
-                    onChanged: (v) {
-                      setState(() {
-                        _serviceType = v;
-                        if (_employee != null && _employee!.department != v) {
-                          _employee = null;
-                        }
-                      });
-                    },
-                    items: items
-                        .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                        .toList(),
-                    decoration: _inputDecoration(label: 'Service'),
-                  );
-                },
-                loading: () => const LinearProgressIndicator(),
-                error: (_, __) => const Text('Error loading services'),
-              ),
-              const SizedBox(height: 16),
-              employeesAsync.when(
-                data: (employees) => deptsAsync.when(
+        child: ButtonTheme(
+          alignedDropdown: true,
+          child: SizedBox(
+            width: 400,
+            child: Column(
+              spacing: 2,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                deptsAsync.when(
                   data: (depts) {
-                    final available = employees.where((e) {
-                      final bool matchesDept = depts.contains(e.department) &&
-                          (_serviceType == null || e.department == _serviceType);
-                      
-                      if (!matchesDept) return false;
+                    final items = depts.toList()..sort();
 
-                      // --- Therapist Conflict Check ---
-                      // Check if therapist is already busy in this time slot
-                      final busyTherapists = scheduleAsync.value?.sessionsByTimeSlot[widget.selectedTimeSlotId]
-                          ?.expand((session) => session.services)
-                          .map((service) => service.employeeId)
-                          .toSet() ?? {};
-                      
-                      return !busyTherapists.contains(e.id);
-                    }).toList();
-
-                    return DropdownButtonFormField<Employee>(
+                    return DropdownButtonFormField<String>(
                       isExpanded: true,
-                      hint: const Text('Select Therapist'),
-                      initialValue: _employee,
-                      onChanged: (e) {
+                      initialValue: depts.contains(_serviceType)
+                          ? _serviceType
+                          : null,
+                      hint: const Text('Service'),
+                      onChanged: (v) {
                         setState(() {
-                          _employee = e;
-                          if (e != null) {
-                            _serviceType = e.department;
+                          _serviceType = v;
+                          if (_employee != null && _employee!.department != v) {
+                            _employee = null;
                           }
                         });
                       },
-                      items: available
+                      items: items
                           .map(
-                            (e) =>
-                                DropdownMenuItem(value: e, child: Text(e.name)),
+                            (s) => DropdownMenuItem(value: s, child: Text(s)),
                           )
                           .toList(),
-                      decoration: _inputDecoration(label: 'Therapist'),
+                      decoration: _inputDecoration(label: 'Service'),
                     );
                   },
+                  loading: () => const LinearProgressIndicator(),
+                  error: (_, __) => const Text('Error loading services'),
+                ),
+                const SizedBox(height: 16),
+
+                //
+                employeesAsync.when(
+                  data: (employees) => deptsAsync.when(
+                    data: (depts) {
+                      // 1. Filter the employees
+                      final available = employees.where((e) {
+                        final bool matchesDept =
+                            depts.contains(e.department) &&
+                            (_serviceType == null ||
+                                e.department == _serviceType);
+
+                        if (!matchesDept) return false;
+
+                        final busyTherapists =
+                            scheduleAsync
+                                .value
+                                ?.sessionsByTimeSlot[widget.selectedTimeSlotId]
+                                ?.expand((session) => session.services)
+                                .map((service) => service.employeeId)
+                                .toSet() ??
+                            {};
+
+                        return !busyTherapists.contains(e.id);
+                      }).toList();
+
+                      // 2. Sort A-Z by name
+                      available.sort(
+                        (a, b) => a.name.toLowerCase().compareTo(
+                          b.name.toLowerCase(),
+                        ),
+                      );
+
+                      // 3. Searchable Dropdown
+                      return DropdownSearch<Employee>(
+                        items: (filter, loadProps) => available,
+                        itemAsString: (Employee e) => e.name,
+                        selectedItem: _employee,
+                        compareFn: (a, b) => a.id == b.id,
+                        onChanged: (e) {
+                          setState(() {
+                            _employee = e;
+                            if (e != null) {
+                              _serviceType = e.department;
+                            }
+                          });
+                        },
+                        decoratorProps: DropDownDecoratorProps(
+                          decoration: _inputDecoration(label: 'Therapist'),
+                        ),
+                        popupProps: const PopupProps.menu(
+                          showSearchBox: true,
+                          fit: FlexFit.loose,
+                          constraints: BoxConstraints(maxHeight: 400),
+                          searchFieldProps: TextFieldProps(
+                            decoration: InputDecoration(
+                              hintText: 'Search therapist...',
+                              prefixIcon: Icon(Icons.search, size: 20),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 10,
+                              ),
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    loading: () => const SizedBox(),
+                    error: (_, __) => const SizedBox(),
+                  ),
                   loading: () => const SizedBox(),
                   error: (_, __) => const SizedBox(),
                 ),
-                loading: () => const SizedBox(),
-                error: (_, __) => const SizedBox(),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    flex: 4,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _startTime,
-                      hint: const Text('Start'),
-                      onChanged: (v) {
-                        setState(() {
-                          _startTime = v;
-                          if (_endTime != null &&
-                              AddScheduleUtils.timeToDouble(_endTime!) <=
-                                  AddScheduleUtils.timeToDouble(v!)) {
-                            _endTime = null;
-                          }
-                        });
-                      },
-                      items: startTimes
-                          .map(
-                            (t) => DropdownMenuItem(
-                              value: t,
-                              child: Text(AddScheduleUtils.formatTimeToAmPm(t)),
+
+                const SizedBox(height: 16),
+
+                //
+                Row(
+                  spacing: 16,
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _startTime,
+                        hint: const Text('Start'),
+                        onChanged: (v) {
+                          setState(() {
+                            _startTime = v;
+                            if (_endTime != null &&
+                                AddScheduleUtils.timeToDouble(_endTime!) <=
+                                    AddScheduleUtils.timeToDouble(v!)) {
+                              _endTime = null;
+                            }
+                          });
+                        },
+                        items: startTimes
+                            .map(
+                              (t) => DropdownMenuItem(
+                                value: t,
+                                child: Text(
+                                  AddScheduleUtils.formatTimeToAmPm(t),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        decoration: _inputDecoration(label: 'Start Time'),
+                      ),
+                    ),
+
+                    Expanded(
+                      flex: 4,
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _endTime,
+                        hint: const Text('End'),
+                        onChanged: (v) => setState(() => _endTime = v),
+                        items: endTimes.map((t) {
+                          final duration = _startTime != null
+                              ? AddScheduleUtils.calculateDurationLabel(
+                                  _startTime!,
+                                  t,
+                                )
+                              : '';
+                          return DropdownMenuItem(
+                            value: t,
+                            child: Text(
+                              '${AddScheduleUtils.formatTimeToAmPm(t)} ($duration)',
                             ),
-                          )
-                          .toList(),
-                      decoration: _inputDecoration(label: 'Start Time'),
+                          );
+                        }).toList(),
+                        decoration: _inputDecoration(label: 'End Time'),
+                      ),
                     ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text('—', style: TextStyle(color: Colors.grey)),
-                  ),
-                  Expanded(
-                    flex: 4,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _endTime,
-                      hint: const Text('End'),
-                      onChanged: (v) => setState(() => _endTime = v),
-                      items: endTimes.map((t) {
-                        final duration = _startTime != null
-                            ? AddScheduleUtils.calculateDurationLabel(
-                                _startTime!,
-                                t,
-                              )
-                            : '';
-                        return DropdownMenuItem(
-                          value: t,
-                          child: Text(
-                            '${AddScheduleUtils.formatTimeToAmPm(t)} ($duration)',
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  spacing: 16,
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<SessionType>(
+                        initialValue: _sessionType,
+                        onChanged: (v) => setState(() => _sessionType = v!),
+                        items: SessionType.values
+                            .map(
+                              (t) => DropdownMenuItem(
+                                value: t,
+                                child: Text(t.displayName),
+                              ),
+                            )
+                            .toList(),
+                        decoration: _inputDecoration(label: 'Type'),
+                      ),
+                    ),
+                    Expanded(
+                      child: DropdownButtonFormField<bool>(
+                        initialValue: _isInclusive,
+                        onChanged: (v) => setState(() => _isInclusive = v!),
+                        items: const [
+                          DropdownMenuItem(
+                            value: false,
+                            child: Text('Exclusive'),
                           ),
-                        );
-                      }).toList(),
-                      decoration: _inputDecoration(label: 'End Time'),
+                          DropdownMenuItem(
+                            value: true,
+                            child: Text('Inclusive'),
+                          ),
+                        ],
+                        decoration: _inputDecoration(label: 'Session'),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<bool>(
-                initialValue: _isInclusive,
-                onChanged: (v) => setState(() => _isInclusive = v!),
-                items: const [
-                  DropdownMenuItem(value: false, child: Text('EXCLUSIVE')),
-                  DropdownMenuItem(value: true, child: Text('INCLUSIVE')),
-                ],
-                decoration: _inputDecoration(label: 'Session Type'),
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -268,6 +339,7 @@ class _AddScheduleServiceDialogState
       endTime: _endTime!,
       employeeId: _employee!.id,
       isInclusive: _isInclusive,
+      sessionType: _sessionType,
     );
 
     Navigator.pop(context, service);
