@@ -22,19 +22,48 @@ class SelectedDateNotifier extends Notifier<DateTime> {
   void setDate(DateTime newDate) {
     state = DateTime(newDate.year, newDate.month, newDate.day);
   }
+
+  void reset() {
+    final now = DateTime.now();
+    state = DateTime(now.year, now.month, now.day);
+  }
 }
 
 final selectedDateProvider = NotifierProvider<SelectedDateNotifier, DateTime>(
-  () {
-    return SelectedDateNotifier();
-  },
+  () => SelectedDateNotifier(),
 );
 
 class ScheduleFilter {
   final String? clientId;
   final String? employeeId;
+  final String? serviceType;
+  final SessionStatus? status;
+  final bool? isInclusive;
 
-  const ScheduleFilter({this.clientId, this.employeeId});
+  const ScheduleFilter({
+    this.clientId,
+    this.employeeId,
+    this.serviceType,
+    this.status,
+    this.isInclusive,
+  });
+
+  /// Senior Pattern: Use function wrappers to allow setting fields to null.
+  ScheduleFilter copyWith({
+    String? Function()? clientId,
+    String? Function()? employeeId,
+    String? Function()? serviceType,
+    SessionStatus? Function()? status,
+    bool? Function()? isInclusive,
+  }) {
+    return ScheduleFilter(
+      clientId: clientId != null ? clientId() : this.clientId,
+      employeeId: employeeId != null ? employeeId() : this.employeeId,
+      serviceType: serviceType != null ? serviceType() : this.serviceType,
+      status: status != null ? status() : this.status,
+      isInclusive: isInclusive != null ? isInclusive() : this.isInclusive,
+    );
+  }
 
   @override
   bool operator ==(Object other) =>
@@ -42,10 +71,18 @@ class ScheduleFilter {
       other is ScheduleFilter &&
           runtimeType == other.runtimeType &&
           clientId == other.clientId &&
-          employeeId == other.employeeId;
+          employeeId == other.employeeId &&
+          serviceType == other.serviceType &&
+          status == other.status &&
+          isInclusive == other.isInclusive;
 
   @override
-  int get hashCode => clientId.hashCode ^ employeeId.hashCode;
+  int get hashCode =>
+      clientId.hashCode ^
+      employeeId.hashCode ^
+      serviceType.hashCode ^
+      status.hashCode ^
+      isInclusive.hashCode;
 }
 
 class ScheduleFilterNotifier extends Notifier<ScheduleFilter> {
@@ -150,14 +187,35 @@ final scheduleByDateProvider = FutureProvider.autoDispose
       final sessionsByTimeSlot = <String, List<SessionCardData>>{};
 
       for (final session in sessions) {
+        // Filter by Client
         if (filter.clientId != null && session.clientId != filter.clientId) {
           continue;
         }
 
-        if (filter.employeeId != null &&
-            !session.services.any((s) => s.employeeId == filter.employeeId)) {
+        // Filter by Status
+        if (filter.status != null && session.status != filter.status) {
           continue;
         }
+
+        // Complex filters within services array
+        bool matchesServices = true;
+        if (filter.employeeId != null ||
+            filter.serviceType != null ||
+            filter.isInclusive != null) {
+          matchesServices = session.services.any((s) {
+            bool match = true;
+            if (filter.employeeId != null && s.employeeId != filter.employeeId)
+              match = false;
+            if (filter.serviceType != null && s.type != filter.serviceType)
+              match = false;
+            if (filter.isInclusive != null &&
+                s.isInclusive != filter.isInclusive)
+              match = false;
+            return match;
+          });
+        }
+
+        if (!matchesServices) continue;
 
         final client = clientMap[session.clientId];
 
@@ -382,7 +440,7 @@ class SessionActionService {
       status: SessionStatus.scheduled,
       services: updatedServices,
       date: selectedDate,
-      endType: RecurrenceEndType.onDate,
+      endType: RecurrenceEndType.onDate, // Default for non-recurring
     );
   }
 
@@ -457,7 +515,7 @@ class SessionActionService {
     required List<ServiceDetail> services,
     required SessionStatus newStatus,
     required DateTime date,
-    required String mode,
+    required String mode, // 'this_only', 'this_and_following', 'all'
   }) async {
     final firestore = _ref.read(firestoreProvider);
 
@@ -466,6 +524,55 @@ class SessionActionService {
         clientId: clientId,
         timeSlotId: timeSlotId,
         status: newStatus,
+        services: services,
+        date: date,
+        endType: RecurrenceEndType.onDate,
+      );
+    } else {
+      // mode is 'this_and_following' or 'all'
+      var query = firestore
+          .collection('schedule')
+          .where('clientId', isEqualTo: clientId)
+          .where('timeSlotId', isEqualTo: timeSlotId);
+
+      if (mode == 'this_and_following') {
+        final startOfDay = DateTime(date.year, date.month, date.day);
+        query = query.where(
+          'date',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+        );
+      }
+
+      try {
+        final snapshots = await query.get();
+        final batch = firestore.batch();
+        for (var doc in snapshots.docs) {
+          batch.update(doc.reference, {'status': newStatus.name});
+        }
+        await batch.commit();
+      } catch (e) {
+        rethrow;
+      }
+    }
+
+    _ref.invalidate(scheduleByDateProvider);
+    _ref.invalidate(scheduleViewProvider);
+  }
+
+  Future<void> softDeleteSession({
+    required String clientId,
+    required String timeSlotId,
+    required List<ServiceDetail> services,
+    required DateTime date,
+    required String mode, // 'this_only', 'this_and_following', 'all'
+  }) async {
+    final firestore = _ref.read(firestoreProvider);
+
+    if (mode == 'this_only') {
+      await bookSession(
+        clientId: clientId,
+        timeSlotId: timeSlotId,
+        status: SessionStatus.cancelledCenter,
         services: services,
         date: date,
         endType: RecurrenceEndType.onDate,
@@ -487,7 +594,9 @@ class SessionActionService {
       final snapshots = await query.get();
       final batch = firestore.batch();
       for (var doc in snapshots.docs) {
-        batch.update(doc.reference, {'status': newStatus.name});
+        batch.update(doc.reference, {
+          'status': SessionStatus.cancelledCenter.name,
+        });
       }
       await batch.commit();
     }
@@ -500,7 +609,7 @@ class SessionActionService {
     required String clientId,
     required String timeSlotId,
     required DateTime date,
-    required String mode,
+    required String mode, // 'this_only', 'this_and_following', 'all'
   }) async {
     final firestore = _ref.read(firestoreProvider);
 
@@ -508,6 +617,7 @@ class SessionActionService {
       final id = _getDeterministicId(date, clientId, timeSlotId);
       await _ref.read(sessionRepositoryProvider).deleteSessionException(id);
     } else {
+      // 1. Clean up schedule instances in Firestore
       var query = firestore
           .collection('schedule')
           .where('clientId', isEqualTo: clientId)
@@ -528,6 +638,7 @@ class SessionActionService {
       }
       await batch.commit();
 
+      // 2. Update/Delete from Schedule Templates
       if (mode == 'all' || mode == 'this_and_following') {
         final templateQuery = await firestore
             .collection('schedule_templates')
@@ -549,27 +660,33 @@ class SessionActionService {
 
             if (rule.timeSlotId == timeSlotId) {
               changed = true;
-              if (mode == 'all') continue;
-              final dayBefore = DateTime(
-                date.year,
-                date.month,
-                date.day,
-              ).subtract(const Duration(days: 1));
-              final updatedRule = ScheduleRule(
-                timeSlotId: rule.timeSlotId,
-                employeeId: rule.employeeId,
-                serviceType: rule.serviceType,
-                startTime: rule.startTime,
-                endTime: rule.endTime,
-                frequency: rule.frequency,
-                interval: rule.interval,
-                daysOfWeek: rule.daysOfWeek,
-                endType: RecurrenceEndType.onDate,
-                untilDate: dayBefore,
-                dayOfMonth: rule.dayOfMonth,
-                startDate: rule.startDate,
-              );
-              updatedRules.add(updatedRule.toJson());
+              if (mode == 'all') {
+                // Remove rule entirely
+                continue;
+              } else {
+                // mode == 'this_and_following'
+                final dayBefore = DateTime(
+                  date.year,
+                  date.month,
+                  date.day,
+                ).subtract(const Duration(days: 1));
+
+                final updatedRule = ScheduleRule(
+                  timeSlotId: rule.timeSlotId,
+                  employeeId: rule.employeeId,
+                  serviceType: rule.serviceType,
+                  startTime: rule.startTime,
+                  endTime: rule.endTime,
+                  frequency: rule.frequency,
+                  interval: rule.interval,
+                  daysOfWeek: rule.daysOfWeek,
+                  endType: RecurrenceEndType.onDate,
+                  untilDate: dayBefore,
+                  dayOfMonth: rule.dayOfMonth,
+                  startDate: rule.startDate,
+                );
+                updatedRules.add(updatedRule.toJson());
+              }
             } else {
               updatedRules.add(ruleMap);
             }
@@ -577,6 +694,7 @@ class SessionActionService {
 
           if (changed) {
             if (updatedRules.isEmpty) {
+              // Delete entire document if no rules left
               await doc.reference.delete();
             } else {
               await doc.reference.update({
@@ -589,7 +707,7 @@ class SessionActionService {
       }
     }
 
-    _ref.invalidate(scheduleByDateProvider);
+    _ref.invalidate(scheduleByDateProvider(date));
     _ref.invalidate(scheduleViewProvider);
     _ref.invalidate(allScheduleTemplatesProvider);
   }
@@ -607,12 +725,14 @@ class SessionActionService {
     final firstDayOfMonth = DateTime(monthDate.year, monthDate.month, 1);
     final lastDayOfMonth = DateTime(monthDate.year, monthDate.month + 1, 0);
 
+    // Filter templates if targetClientId is provided
     final filteredTemplates = targetClientId != null
         ? templates.where((t) => t.clientId == targetClientId).toList()
         : templates;
 
     if (filteredTemplates.isEmpty) return;
 
+    // Fetch existing sessions for these templates in this month
     var query = firestore
         .collection('schedule')
         .where(
@@ -636,9 +756,11 @@ class SessionActionService {
       final dayOfWeek = DateFormat('EEEE').format(date);
 
       for (final template in filteredTemplates) {
+        // Group rules by timeSlotId for THIS day
         final Map<String, List<ScheduleRule>> rulesBySlotForDay = {};
 
         for (final rule in template.rules) {
+          // Date range check
           if (rule.startDate != null) {
             final normalizedStart = DateTime(
               rule.startDate!.year,
@@ -657,6 +779,7 @@ class SessionActionService {
             if (date.isAfter(normalizedUntil)) continue;
           }
 
+          // Frequency check
           bool matches = false;
           if (rule.frequency == RecurrenceFrequency.daily)
             matches = true;
@@ -672,6 +795,7 @@ class SessionActionService {
           }
         }
 
+        // Now create sessions for each slot
         for (final slotId in rulesBySlotForDay.keys) {
           final id = _getDeterministicId(date, template.clientId, slotId);
           if (existingIds.contains(id)) continue;

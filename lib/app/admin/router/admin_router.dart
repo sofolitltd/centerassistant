@@ -23,7 +23,7 @@ import '../features/clients/presentation/pages/billing/client_billing_page.dart'
 import '../features/contact/presentation/pages/employee_contact_page.dart';
 import '../features/schedule/presentation/pages/add/add_schedule_page.dart';
 import '../features/schedule/presentation/pages/edit/edit_schedule_page.dart';
-import '../features/schedule/presentation/pages/home/schedule_planner_page.dart';
+import '../features/schedule/presentation/pages/home/schedule_all_page.dart';
 
 List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
   return [
@@ -60,16 +60,11 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
         GoRoute(
           path: '/admin/schedule',
           pageBuilder: (context, state) {
-            final clientId = state.uri.queryParameters['clientId'];
-            final employeeId = state.uri.queryParameters['employeeId'];
             return NoTransitionPage(
               child: Title(
                 title: 'Schedule | Center Assistant',
                 color: Colors.black,
-                child: SchedulePlannerPage(
-                  clientId: clientId,
-                  employeeId: employeeId,
-                ),
+                child: ScheduleAllPage(),
               ),
             );
           },

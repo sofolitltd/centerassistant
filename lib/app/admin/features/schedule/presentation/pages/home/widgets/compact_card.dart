@@ -9,18 +9,18 @@ class CompactCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
       decoration: BoxDecoration(
         color: Colors.white,
         border: .all(color: Colors.grey, width: .8),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(2),
       ),
       child: Text(
         session.displayNickName.toUpperCase(),
         style: const TextStyle(
           fontSize: 10,
           height: 1.25,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w500,
           color: Colors.black87,
         ),
       ),

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '/core/models/client.dart';
 import '/core/providers/client_providers.dart';
+import '../../../schedule/presentation/pages/home/schedule_specific_page.dart';
 import 'billing/client_billing_page.dart';
 
 class ClientDetailsPage extends ConsumerStatefulWidget {
@@ -84,15 +85,15 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: .circular(8),
+                        borderRadius: BorderRadius.circular(8),
                       ),
 
-                      padding: .fromLTRB(8, 8, 8, 8),
-                      margin: .symmetric(horizontal: 16),
+                      padding: const EdgeInsets.all(8),
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
                       child: _buildTabSwitcher(),
                     ),
 
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     //
                     Expanded(child: _buildTabContent(client)),
                   ],
@@ -123,9 +124,9 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
         ),
         const SizedBox(width: 8),
         _TabButton(
-          label: 'Availability',
-          isSelected: widget.initialTab == 'availability',
-          onTap: () => _onTabChanged('availability'),
+          label: 'Leaves',
+          isSelected: widget.initialTab == 'leaves',
+          onTap: () => _onTabChanged('leaves'),
         ),
         const SizedBox(width: 8),
         _TabButton(
@@ -144,16 +145,15 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: ClientInformationPage(client: client),
         );
+
       case 'schedule':
+        return ScheduleSpecificPage(clientId: client.id);
+
+      case 'leaves':
         return _buildPlaceholder(
-          'Schedule',
-          () => context.go('/admin/schedule?clientId=${client.id}'),
-        );
-      case 'availability':
-        return _buildPlaceholder(
-          'Availability',
+          'Leaves',
           () => context.go(
-            '/admin/clients/${client.id}/availability?name=${Uri.encodeComponent(client.name)}',
+            '/admin/clients/${client.id}/leaves?name=${Uri.encodeComponent(client.name)}',
           ),
         );
       case 'billing':

@@ -6,13 +6,8 @@ import 'package:table_calendar/table_calendar.dart';
 import '/core/providers/office_settings_providers.dart';
 import '/core/providers/session_providers.dart';
 import '/core/providers/time_slot_providers.dart';
-import 'schedule_planner_page.dart'
-    show
-        gridBorderColor,
-        headerBgColor,
-        cellBgColor,
-        plannerViewNotifierProvider,
-        PlannerView;
+import 'schedule_all_page.dart' show plannerViewNotifierProvider, PlannerView;
+import 'schedule_utils.dart';
 import 'widgets/compact_card.dart';
 
 class WeeklyView extends ConsumerWidget {
@@ -48,145 +43,172 @@ class WeeklyView extends ConsumerWidget {
               columnWidths[i + 1] = FlexColumnWidth(isWeekend ? 0.3 : 1.0);
             }
 
-            return Container(
-              padding: const EdgeInsets.all(16),
-              child: SingleChildScrollView(
-                child: Table(
-                  columnWidths: columnWidths,
-                  border: const TableBorder(
-                    verticalInside: BorderSide(
-                      color: gridBorderColor,
-                      width: 1,
-                    ),
-                    horizontalInside: BorderSide(
-                      color: gridBorderColor,
-                      width: 1,
-                    ),
-                    top: BorderSide(color: gridBorderColor, width: 1),
-                    right: BorderSide(color: gridBorderColor, width: 1),
-                    left: BorderSide(color: gridBorderColor, width: 1),
-                    bottom: BorderSide(color: gridBorderColor, width: 1),
-                  ),
-                  children: [
-                    TableRow(
-                      decoration: const BoxDecoration(color: headerBgColor),
-                      children: [
-                        const SizedBox.shrink(),
-                        ...weekDays.map((day) {
-                          final isToday = isSameDay(day, DateTime.now());
-                          final dayName = DateFormat('EEEE').format(day);
-                          final isWeekend = settings.weeklyOffDays.contains(
-                            dayName,
-                          );
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                const double headerHeight = 60.0;
+                final double availableHeight = constraints.maxHeight - 32;
+                final double rowHeight =
+                    (availableHeight - headerHeight) / slots.length;
 
-                          return InkWell(
-                            onTap: () {
-                              ref
-                                  .read(selectedDateProvider.notifier)
-                                  .setDate(day);
-                              ref
-                                  .read(plannerViewNotifierProvider.notifier)
-                                  .setView(PlannerView.daily);
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              color: isWeekend ? Colors.grey.shade50 : null,
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  child: Table(
+                    columnWidths: columnWidths,
+                    border: const TableBorder(
+                      verticalInside: BorderSide(
+                        color: ScheduleStyles.gridBorderColor,
+                        width: 1,
+                      ),
+                      horizontalInside: BorderSide(
+                        color: ScheduleStyles.gridBorderColor,
+                        width: 1,
+                      ),
+                      top: BorderSide(
+                        color: ScheduleStyles.gridBorderColor,
+                        width: 1,
+                      ),
+                      right: BorderSide(
+                        color: ScheduleStyles.gridBorderColor,
+                        width: 1,
+                      ),
+                      left: BorderSide(
+                        color: ScheduleStyles.gridBorderColor,
+                        width: 1,
+                      ),
+                      bottom: BorderSide(
+                        color: ScheduleStyles.gridBorderColor,
+                        width: 1,
+                      ),
+                    ),
+                    children: [
+                      TableRow(
+                        decoration: const BoxDecoration(
+                          color: ScheduleStyles.headerBgColor,
+                        ),
+                        children: [
+                          const SizedBox.shrink(),
+                          ...weekDays.map((day) {
+                            final isToday = isSameDay(day, DateTime.now());
+                            final dayName = DateFormat('EEEE').format(day);
+                            final isWeekend = settings.weeklyOffDays.contains(
+                              dayName,
+                            );
+
+                            return InkWell(
+                              onTap: () {
+                                ref
+                                    .read(selectedDateProvider.notifier)
+                                    .setDate(day);
+                                ref
+                                    .read(plannerViewNotifierProvider.notifier)
+                                    .setView(PlannerView.daily);
+                              },
+                              child: Container(
+                                height: headerHeight,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
+                                color: isWeekend ? Colors.grey.shade50 : null,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      DateFormat(
+                                        'EEE',
+                                      ).format(day).toUpperCase(),
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: isToday
+                                            ? Colors.blue.shade700
+                                            : (isWeekend
+                                                  ? Colors.red.shade300
+                                                  : Colors.black54),
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Container(
+                                      width: 24,
+                                      height: 24,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: isToday
+                                            ? Colors.blue.shade700
+                                            : Colors.transparent,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Text(
+                                        DateFormat('dd').format(day),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: isToday
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                          color: isToday
+                                              ? Colors.white
+                                              : Colors.black87,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                      ...slots.map((slot) {
+                        return TableRow(
+                          children: [
+                            Container(
+                              height: rowHeight,
+                              alignment: Alignment.center,
                               child: Column(
-                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
-                                    DateFormat('EEE').format(day).toUpperCase(),
-                                    style: TextStyle(
+                                    slot.startTime,
+                                    style: const TextStyle(
                                       fontSize: 10,
-                                      color: isToday
-                                          ? Colors.blue.shade700
-                                          : (isWeekend
-                                                ? Colors.red.shade300
-                                                : Colors.black54),
+                                      color: Colors.black45,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Container(
-                                    width: 24,
-                                    height: 24,
-                                    alignment: Alignment.center,
-                                    decoration: BoxDecoration(
-                                      color: isToday
-                                          ? Colors.blue.shade700
-                                          : Colors.transparent,
-                                      shape: BoxShape.circle,
+                                  const Text(
+                                    "to",
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      color: Colors.black26,
                                     ),
-                                    child: Text(
-                                      DateFormat('dd').format(day),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: isToday
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                        color: isToday
-                                            ? Colors.white
-                                            : Colors.black87,
-                                      ),
+                                  ),
+                                  Text(
+                                    slot.endTime,
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.black45,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          );
-                        }),
-                      ],
-                    ),
-                    ...slots.map((slot) {
-                      return TableRow(
-                        children: [
-                          Container(
-                            height: 150,
-                            alignment: Alignment.center,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  slot.startTime,
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.black45,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                            ...weekDays.map(
+                              (day) => _WeeklyDayCell(
+                                day: day,
+                                slotId: slot.id,
+                                rowHeight: rowHeight,
+                                isWeekend: settings.weeklyOffDays.contains(
+                                  DateFormat('EEEE').format(day),
                                 ),
-                                const Text(
-                                  "to",
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.black26,
-                                  ),
-                                ),
-                                Text(
-                                  slot.endTime,
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.black45,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          ...weekDays.map(
-                            (day) => _WeeklyDayCell(
-                              day: day,
-                              slotId: slot.id,
-                              isWeekend: settings.weeklyOffDays.contains(
-                                DateFormat('EEEE').format(day),
                               ),
                             ),
-                          ),
-                        ],
-                      );
-                    }),
-                  ],
-                ),
-              ),
+                          ],
+                        );
+                      }),
+                    ],
+                  ),
+                );
+              },
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -202,11 +224,13 @@ class WeeklyView extends ConsumerWidget {
 class _WeeklyDayCell extends ConsumerWidget {
   final DateTime day;
   final String slotId;
+  final double rowHeight;
   final bool isWeekend;
 
   const _WeeklyDayCell({
     required this.day,
     required this.slotId,
+    required this.rowHeight,
     required this.isWeekend,
   });
 
@@ -240,39 +264,41 @@ class _WeeklyDayCell extends ConsumerWidget {
             }
 
             return Container(
-              height: 150,
+              height: rowHeight,
               color: Colors.red.withOpacity(0.02),
               child: Center(child: textWidget),
             );
           }
 
           return Container(
-            height: 150,
+            height: rowHeight,
             padding: const EdgeInsets.all(4),
-            color: cellBgColor,
+            color: ScheduleStyles.cellBgColor,
             child: scheduleAsync.when(
               data: (view) {
                 final sessions = view.sessionsByTimeSlot[slotId] ?? [];
                 if (sessions.isEmpty) return const SizedBox.shrink();
 
-                return Wrap(
-                  spacing: 2,
-                  runSpacing: 2,
-                  children: [
-                    ...sessions.take(10).map((s) => CompactCard(session: s)),
-                    if (sessions.length > 10)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4, top: 2),
-                        child: Text(
-                          '+${sessions.length - 10}',
-                          style: const TextStyle(
-                            fontSize: 7,
-                            color: Colors.black38,
-                            fontWeight: FontWeight.bold,
+                return SingleChildScrollView(
+                  child: Wrap(
+                    spacing: 2,
+                    runSpacing: 2,
+                    children: [
+                      ...sessions.take(10).map((s) => CompactCard(session: s)),
+                      if (sessions.length > 10)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4, top: 2),
+                          child: Text(
+                            '+${sessions.length - 10}',
+                            style: const TextStyle(
+                              fontSize: 7,
+                              color: Colors.black38,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 );
               },
               loading: () => const SizedBox.shrink(),

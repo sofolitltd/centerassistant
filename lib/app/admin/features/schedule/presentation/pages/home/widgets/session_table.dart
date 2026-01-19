@@ -59,7 +59,7 @@ class SessionTable extends ConsumerWidget {
                 ),
                 child: Table(
                   border: TableBorder.all(
-                    color: Colors.grey.shade200,
+                    color: Colors.grey.shade300,
                     width: 1,
                   ),
                   columnWidths: const {
@@ -78,7 +78,7 @@ class SessionTable extends ConsumerWidget {
                   children: [
                     TableRow(
                       decoration: BoxDecoration(
-                        color: Colors.blue.withValues(alpha: .05),
+                        color: Colors.green.withValues(alpha: .05),
                       ),
                       children: [
                         _buildHeaderCell('#'),
@@ -88,8 +88,11 @@ class SessionTable extends ConsumerWidget {
                         _buildHeaderCell('Hour'),
                         _buildHeaderCell('Duration'),
                         _buildHeaderCell('Inc/Exc'),
-                        _buildHeaderCell('Type'),
-                        _buildHeaderCell('Session Status'),
+                        _buildHeaderCell('Type', align: TextAlign.center),
+                        _buildHeaderCell(
+                          'Session Status',
+                          align: TextAlign.center,
+                        ),
                         _buildHeaderCell('Action', align: TextAlign.center),
                       ],
                     ),
@@ -100,7 +103,9 @@ class SessionTable extends ConsumerWidget {
                       final bool isEven = index % 2 == 0;
                       return TableRow(
                         decoration: BoxDecoration(
-                          color: isEven ? Colors.white : Colors.grey.shade50,
+                          color: isEven
+                              ? Colors.white
+                              : Colors.blueGrey.shade50,
                         ),
                         children: [
                           _buildDataCell(

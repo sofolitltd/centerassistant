@@ -5,13 +5,8 @@ import 'package:table_calendar/table_calendar.dart' show isSameDay;
 
 import '/core/providers/office_settings_providers.dart';
 import '/core/providers/session_providers.dart';
-import 'schedule_planner_page.dart'
-    show
-        headerBgColor,
-        gridBorderColor,
-        plannerViewNotifierProvider,
-        PlannerView,
-        cellBgColor;
+import 'schedule_all_page.dart' show plannerViewNotifierProvider, PlannerView;
+import 'schedule_utils.dart';
 import 'widgets/compact_card.dart';
 
 class MonthlyView extends ConsumerWidget {
@@ -43,131 +38,161 @@ class MonthlyView extends ConsumerWidget {
           columnWidths[i] = FlexColumnWidth(isWeekend ? 0.3 : 1.0);
         }
 
-        return Container(
-          padding: const EdgeInsets.all(16),
-          child: SingleChildScrollView(
-            child: Table(
-              columnWidths: columnWidths,
-              border: const TableBorder(
-                verticalInside: BorderSide(color: gridBorderColor, width: 1),
-                horizontalInside: BorderSide(color: gridBorderColor, width: 1),
-                top: BorderSide(color: gridBorderColor, width: 1),
-                right: BorderSide(color: gridBorderColor, width: 1),
-                left: BorderSide(color: gridBorderColor, width: 1),
-                bottom: BorderSide(color: gridBorderColor, width: 1),
-              ),
-              children: [
-                TableRow(
-                  decoration: BoxDecoration(color: headerBgColor),
-                  children: weekLabels.asMap().entries.map((entry) {
-                    final i = entry.key;
-                    final label = entry.value;
-                    final fullDayName = DateFormat(
-                      'EEEE',
-                    ).format(DateTime(2024, 1, 7 + i));
-                    final isWeekend = settings.weeklyOffDays.contains(
-                      fullDayName,
-                    );
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            // Calculate height per row to fill the available space
+            const double headerHeight = 48.0;
+            final double availableHeight =
+                constraints.maxHeight - 32; // Vertical padding (16 * 2)
+            final double rowHeight =
+                (availableHeight - headerHeight) / weeks.length;
 
-                    return Container(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      alignment: Alignment.center,
-                      color: isWeekend ? Colors.grey.shade50 : null,
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: isWeekend
-                              ? Colors.red.shade300
-                              : Colors.black54,
-                        ),
-                      ),
-                    );
-                  }).toList(),
+            return Container(
+              padding: const EdgeInsets.all(16),
+              child: Table(
+                columnWidths: columnWidths,
+                border: const TableBorder(
+                  verticalInside: BorderSide(
+                    color: ScheduleStyles.gridBorderColor,
+                    width: 1,
+                  ),
+                  horizontalInside: BorderSide(
+                    color: ScheduleStyles.gridBorderColor,
+                    width: 1,
+                  ),
+                  top: BorderSide(
+                    color: ScheduleStyles.gridBorderColor,
+                    width: 1,
+                  ),
+                  right: BorderSide(
+                    color: ScheduleStyles.gridBorderColor,
+                    width: 1,
+                  ),
+                  left: BorderSide(
+                    color: ScheduleStyles.gridBorderColor,
+                    width: 1,
+                  ),
+                  bottom: BorderSide(
+                    color: ScheduleStyles.gridBorderColor,
+                    width: 1,
+                  ),
                 ),
-                ...weeks.map((week) {
-                  return TableRow(
-                    children: week.map((day) {
-                      final isOutside = day.month != selectedDate.month;
-                      if (isOutside) {
-                        return Container(height: 140, color: cellBgColor);
-                      }
-
-                      final isToday = isSameDay(day, DateTime.now());
-                      final isSelected = isSameDay(day, selectedDate);
-                      final closedReasonAsync = ref.watch(
-                        isOfficeClosedProvider(day),
-                      );
-
-                      final fullDayName = DateFormat('EEEE').format(day);
+                children: [
+                  TableRow(
+                    decoration: const BoxDecoration(
+                      color: ScheduleStyles.headerBgColor,
+                    ),
+                    children: weekLabels.asMap().entries.map((entry) {
+                      final i = entry.key;
+                      final label = entry.value;
+                      final fullDayName = DateFormat(
+                        'EEEE',
+                      ).format(DateTime(2024, 1, 7 + i));
                       final isWeekend = settings.weeklyOffDays.contains(
                         fullDayName,
                       );
 
-                      return InkWell(
-                        onTap: () {
-                          ref.read(selectedDateProvider.notifier).setDate(day);
-                          ref
-                              .read(plannerViewNotifierProvider.notifier)
-                              .setView(PlannerView.daily);
-                        },
-                        child: Container(
-                          height: 140,
-                          color: isSelected
-                              ? Colors.blue.withOpacity(0.05)
-                              : cellBgColor,
-                          child: closedReasonAsync.when(
-                            data: (reason) {
-                              if (reason != null) {
-                                Widget textWidget = Text(
-                                  reason.toUpperCase(),
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.red.withOpacity(0.3),
-                                    letterSpacing: 1,
-                                  ),
-                                );
-
-                                if (isWeekend) {
-                                  textWidget = RotatedBox(
-                                    quarterTurns: 3,
-                                    child: textWidget,
-                                  );
-                                }
-
-                                return Container(
-                                  width: double.infinity,
-                                  color: Colors.red.withOpacity(0.02),
-                                  child: Column(
-                                    children: [
-                                      _DayChip(day: day, isToday: isToday),
-                                      Expanded(
-                                        child: Center(child: textWidget),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }
-
-                              return _MonthlyCellContent(
-                                day: day,
-                                isToday: isToday,
-                              );
-                            },
-                            loading: () => const SizedBox(),
-                            error: (_, __) => const SizedBox(),
-                          ),
+                      return Container(
+                        height: headerHeight,
+                        alignment: Alignment.center,
+                        color: isWeekend ? Colors.grey.shade50 : null,
+                        child: Text(
+                          label,
+                          style: isWeekend
+                              ? ScheduleStyles.weekendLabelStyle
+                              : ScheduleStyles.weekdayLabelStyle,
                         ),
                       );
                     }).toList(),
-                  );
-                }),
-              ],
-            ),
-          ),
+                  ),
+                  ...weeks.map((week) {
+                    return TableRow(
+                      children: week.map((day) {
+                        final isOutside = day.month != selectedDate.month;
+                        if (isOutside) {
+                          return Container(
+                            height: rowHeight,
+                            color: ScheduleStyles.cellBgColor,
+                          );
+                        }
+
+                        final isToday = isSameDay(day, DateTime.now());
+                        final isSelected = isSameDay(day, selectedDate);
+                        final closedReasonAsync = ref.watch(
+                          isOfficeClosedProvider(day),
+                        );
+
+                        final fullDayName = DateFormat('EEEE').format(day);
+                        final isWeekend = settings.weeklyOffDays.contains(
+                          fullDayName,
+                        );
+
+                        return InkWell(
+                          onTap: () {
+                            ref
+                                .read(selectedDateProvider.notifier)
+                                .setDate(day);
+                            ref
+                                .read(plannerViewNotifierProvider.notifier)
+                                .setView(PlannerView.daily);
+                          },
+                          child: Container(
+                            height: rowHeight,
+                            color: isSelected
+                                ? Colors.blue.withOpacity(0.05)
+                                : ScheduleStyles.cellBgColor,
+                            child: closedReasonAsync.when(
+                              data: (reason) {
+                                if (reason != null) {
+                                  Widget textWidget = Text(
+                                    reason.toUpperCase(),
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.red.withOpacity(0.3),
+                                      letterSpacing: 1,
+                                    ),
+                                  );
+
+                                  if (isWeekend) {
+                                    textWidget = RotatedBox(
+                                      quarterTurns: 3,
+                                      child: textWidget,
+                                    );
+                                  }
+
+                                  return Container(
+                                    width: double.infinity,
+                                    color: Colors.red.withOpacity(0.02),
+                                    child: Column(
+                                      children: [
+                                        _DayChip(day: day, isToday: isToday),
+                                        Expanded(
+                                          child: Center(child: textWidget),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+
+                                return _MonthlyCellContent(
+                                  day: day,
+                                  isToday: isToday,
+                                );
+                              },
+                              loading: () => const SizedBox(),
+                              error: (_, __) => const SizedBox(),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  }),
+                ],
+              ),
+            );
+          },
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -191,32 +216,37 @@ class _MonthlyCellContent extends ConsumerWidget {
             .toList();
 
         return Padding(
-          padding: .fromLTRB(4, 4, 4, 4),
+          padding: const EdgeInsets.all(4),
           child: Column(
-            spacing: 8,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _DayChip(day: day, isToday: isToday),
-
-              //
-              Wrap(
-                alignment: WrapAlignment.start,
-                spacing: 2,
-                runSpacing: 2,
-                children: [
-                  ...allSessions.take(10).map((s) => CompactCard(session: s)),
-                  if (allSessions.length > 10)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4, top: 2),
-                      child: Text(
-                        '+${allSessions.length - 10}',
-                        style: const TextStyle(
-                          fontSize: 7,
-                          color: Colors.black38,
-                          fontWeight: FontWeight.bold,
+              const SizedBox(height: 4),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Wrap(
+                    alignment: WrapAlignment.start,
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: [
+                      ...allSessions
+                          .take(10)
+                          .map((s) => CompactCard(session: s)),
+                      if (allSessions.length > 10)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4, top: 2),
+                          child: Text(
+                            '+${allSessions.length - 10}',
+                            style: const TextStyle(
+                              fontSize: 7,
+                              color: Colors.black38,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                ],
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
@@ -242,7 +272,7 @@ class _DayChip extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: isToday ? Colors.blue.shade700 : Colors.grey.shade200,
-        borderRadius: .circular(32),
+        borderRadius: BorderRadius.circular(32),
       ),
       child: Text(
         '${day.day}',
