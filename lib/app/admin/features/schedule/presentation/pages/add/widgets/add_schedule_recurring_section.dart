@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '/core/models/schedule_template.dart';
+import '/core/providers/office_settings_providers.dart';
 
-class AddScheduleRecurringSection extends StatefulWidget {
+class AddScheduleRecurringSection extends ConsumerStatefulWidget {
   final bool isRecurring;
   final ValueChanged<bool> onRecurringChanged;
   final List<String> selectedDays;
@@ -12,7 +14,6 @@ class AddScheduleRecurringSection extends StatefulWidget {
   final DateTime? endDate;
   final int occurrences;
 
-  // Pass callbacks to update parent state
   final Function(List<String>) onDaysChanged;
   final Function(RecurrenceEndType) onEndTypeChanged;
   final Function(DateTime?) onEndDateChanged;
@@ -33,26 +34,26 @@ class AddScheduleRecurringSection extends StatefulWidget {
   });
 
   @override
-  State<AddScheduleRecurringSection> createState() =>
+  ConsumerState<AddScheduleRecurringSection> createState() =>
       _AddScheduleRecurringSectionState();
 }
 
 class _AddScheduleRecurringSectionState
-    extends State<AddScheduleRecurringSection> {
-  final List<String> _dayNames = [
+    extends ConsumerState<AddScheduleRecurringSection> {
+  final List<String> _allDays = [
     'Sunday',
     'Monday',
     'Tuesday',
     'Wednesday',
     'Thursday',
-
-    //todo: fetch from db instead
-    // 'Friday',
-    // 'Saturday',
+    'Friday',
+    'Saturday',
   ];
 
   @override
   Widget build(BuildContext context) {
+    final settingsAsync = ref.watch(officeSettingsProvider);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -63,7 +64,6 @@ class _AddScheduleRecurringSectionState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Toggle Switch
           Row(
             children: [
               const Icon(LucideIcons.repeat, size: 20, color: Colors.blue),
@@ -93,52 +93,69 @@ class _AddScheduleRecurringSectionState
               ),
             ],
           ),
-
           if (widget.isRecurring) ...[
             const SizedBox(height: 8),
-            Divider(thickness: 1),
+            const Divider(thickness: 1),
             const SizedBox(height: 16),
-
             const Text(
               'Repeat on',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
             ),
             const SizedBox(height: 12),
-            Row(
-              spacing: 16,
+            settingsAsync.when(
+              data: (settings) {
+                final workingDays = _allDays
+                    .where((day) => !settings.weeklyOffDays.contains(day))
+                    .toList();
 
-              //todo: fetch from db instead
-              children: List.generate(5, (index) {
-                final day = _dayNames[index];
-                final isSelected = widget.selectedDays.contains(day);
-                final label = day.substring(0, 1);
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: workingDays.map((day) {
+                    final isSelected = widget.selectedDays.contains(day);
+                    final label = day.substring(0, 3);
 
-                return InkWell(
-                  onTap: () {
-                    final newDays = List<String>.from(widget.selectedDays);
-                    if (isSelected) {
-                      if (newDays.length > 1) newDays.remove(day);
-                    } else {
-                      newDays.add(day);
-                    }
-                    widget.onDaysChanged(newDays);
-                  },
-                  child: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: isSelected ? Colors.blue : Colors.white,
-                    child: Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isSelected ? Colors.white : Colors.black87,
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                    return InkWell(
+                      onTap: () {
+                        final newDays = List<String>.from(widget.selectedDays);
+                        if (isSelected) {
+                          if (newDays.length > 1) newDays.remove(day);
+                        } else {
+                          newDays.add(day);
+                        }
+                        widget.onDaysChanged(newDays);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected ? Colors.blue : Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isSelected
+                                ? Colors.blue
+                                : Colors.grey.shade300,
+                          ),
+                        ),
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isSelected ? Colors.white : Colors.black87,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  }).toList(),
                 );
-              }),
+              },
+              loading: () => const Center(child: LinearProgressIndicator()),
+              error: (e, _) => Text('Error loading days: $e'),
             ),
             const SizedBox(height: 32),
             const Text(
@@ -146,8 +163,6 @@ class _AddScheduleRecurringSectionState
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
             ),
             const SizedBox(height: 8),
-
-            // End on Date
             RadioListTile<RecurrenceEndType>(
               value: RecurrenceEndType.onDate,
               groupValue: widget.endType,
@@ -195,15 +210,11 @@ class _AddScheduleRecurringSectionState
               ),
               onChanged: (v) => widget.onEndTypeChanged(v!),
             ),
-
-            // End after Occurrences
             RadioListTile<RecurrenceEndType>(
               value: RecurrenceEndType.afterOccurrences,
               groupValue: widget.endType,
               contentPadding: EdgeInsets.zero,
               title: Row(
-                mainAxisAlignment: .start,
-                // crossAxisAlignment: .start,
                 children: [
                   const Text('After', style: TextStyle(fontSize: 14)),
                   const SizedBox(width: 16),

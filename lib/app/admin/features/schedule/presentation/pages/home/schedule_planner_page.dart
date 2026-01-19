@@ -204,7 +204,7 @@ class _SchedulePlannerPageState extends ConsumerState<SchedulePlannerPage> {
                       if (filter.employeeId != null) {
                         path += '?employeeId=${filter.employeeId}';
                       }
-                      context.push(path);
+                      context.go(path);
                     },
                     icon: const Icon(LucideIcons.plus, size: 16),
                     label: const Text('Add Schedule'),

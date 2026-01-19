@@ -192,25 +192,32 @@ class _MonthlyCellContent extends ConsumerWidget {
 
         return Padding(
           padding: .fromLTRB(4, 4, 4, 4),
-          child: Wrap(
-            alignment: WrapAlignment.start,
-            spacing: 2,
-            runSpacing: 2,
+          child: Column(
+            spacing: 8,
             children: [
               _DayChip(day: day, isToday: isToday),
-              ...allSessions.take(10).map((s) => CompactCard(session: s)),
-              if (allSessions.length > 10)
-                Padding(
-                  padding: const EdgeInsets.only(left: 4, top: 2),
-                  child: Text(
-                    '+${allSessions.length - 10}',
-                    style: const TextStyle(
-                      fontSize: 7,
-                      color: Colors.black38,
-                      fontWeight: FontWeight.bold,
+
+              //
+              Wrap(
+                alignment: WrapAlignment.start,
+                spacing: 2,
+                runSpacing: 2,
+                children: [
+                  ...allSessions.take(10).map((s) => CompactCard(session: s)),
+                  if (allSessions.length > 10)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4, top: 2),
+                      child: Text(
+                        '+${allSessions.length - 10}',
+                        style: const TextStyle(
+                          fontSize: 7,
+                          color: Colors.black38,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                ],
+              ),
             ],
           ),
         );
@@ -230,7 +237,7 @@ class _DayChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 24,
-      height: 16.5,
+      height: 24,
       margin: const EdgeInsets.only(bottom: 2, right: 2),
       alignment: Alignment.center,
       decoration: BoxDecoration(

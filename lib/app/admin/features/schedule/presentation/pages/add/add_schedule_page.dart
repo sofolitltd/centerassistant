@@ -121,6 +121,8 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
                   children: [
                     const AddScheduleHeader(),
                     const SizedBox(height: 32),
+
+                    //
                     Card(
                       margin: EdgeInsets.zero,
                       child: Padding(
@@ -130,6 +132,7 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              //
                               AddScheduleDateTimeSection(
                                 selectedDate: selectedDate,
                                 timeSlotsAsync: timeSlotsAsync,
@@ -205,6 +208,7 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
                               ),
                               const SizedBox(height: 16),
 
+                              //
                               AddSchedulePendingList(
                                 pendingServices: _pendingServices,
                                 getEmployee: _getEmployee,
@@ -222,6 +226,7 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
 
                               const SizedBox(height: 32),
 
+                              //
                               AddScheduleRecurringSection(
                                 isRecurring: _isRecurring,
                                 onRecurringChanged: (v) =>
@@ -319,7 +324,9 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
 
     try {
       final selectedDate = ref.read(selectedDateProvider);
-      await ref.read(sessionServiceProvider).bookSession(
+      await ref
+          .read(sessionServiceProvider)
+          .bookSession(
             clientId: _selectedClient!.id,
             timeSlotId: _selectedTimeSlotId!,
             status: SessionStatus.scheduled,
@@ -339,9 +346,9 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving schedule: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error saving schedule: $e')));
       }
     } finally {
       if (mounted) {

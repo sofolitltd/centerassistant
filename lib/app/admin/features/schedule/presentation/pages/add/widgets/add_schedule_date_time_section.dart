@@ -101,6 +101,8 @@ class AddScheduleDateTimeSection extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
               const SizedBox(height: 8),
+
+              //
               timeSlotsAsync.when(
                 data: (slots) {
                   final sortedSlots = List<dynamic>.from(slots)
@@ -108,6 +110,7 @@ class AddScheduleDateTimeSection extends StatelessWidget {
 
                   return DropdownButtonFormField<String>(
                     initialValue: selectedTimeSlotId,
+                    isExpanded: true,
                     hint: const Text('Select Slot'),
                     onChanged: onTimeSlotChanged == null
                         ? null

@@ -10,7 +10,7 @@ class AddScheduleHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Add New Schedule',
+          'Add Schedule',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 28),
         ),
         const SizedBox(height: 8),
