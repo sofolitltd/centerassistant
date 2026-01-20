@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class AddScheduleUtils {
   static List<String> generateTimeOptions(
@@ -31,9 +32,8 @@ class AddScheduleUtils {
       final hour = int.parse(parts[0]);
       final minute = int.parse(parts[1]);
 
-      final period = hour >= 12 ? 'pm' : 'am';
-      final h = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-      return '$h:${minute.toString().padLeft(2, '0')}$period';
+      final dt = DateTime(2024, 1, 1, hour, minute);
+      return DateFormat('hh:mm a').format(dt);
     } catch (_) {
       return time;
     }

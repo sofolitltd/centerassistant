@@ -24,7 +24,7 @@ class BillingExportHelper {
   static final _dateFormat = DateFormat('d-MMM-yy');
 
   /// Find applicable global rate for a service on a specific date
-  static ServiceRate? _getApplicableRate(
+  static ServiceRate? getApplicableRate(
     List<ServiceRate> rates,
     String serviceType,
     DateTime date,
@@ -40,7 +40,7 @@ class BillingExportHelper {
   }
 
   /// Find applicable client discount for a service on a specific date
-  static ClientDiscount? _getApplicableDiscount(
+  static ClientDiscount? getApplicableDiscount(
     List<ClientDiscount> discounts,
     String serviceType,
     DateTime date,
@@ -58,7 +58,7 @@ class BillingExportHelper {
     return validDiscounts.first;
   }
 
-  /// Exports session data to CSV matching the design requirements
+  /// Exports session data to CSV matching the Breakdown design
   static Future<void> exportToCsv({
     required Client client,
     required List<Session> sessions,
@@ -94,16 +94,16 @@ class BillingExportHelper {
           s.status == SessionStatus.scheduled) {
         for (var sv in s.services) {
           final rate =
-              _getApplicableRate(allRates, sv.type, date)?.hourlyRate ?? 0.0;
+              getApplicableRate(allRates, sv.type, date)?.hourlyRate ?? 0.0;
           final discount =
-              _getApplicableDiscount(
+              getApplicableDiscount(
                 allDiscounts,
                 sv.type,
                 date,
               )?.discountPerHour ??
               0.0;
           sessionAmount += sv.duration * (rate - discount);
-          avgRate = rate; // Simplified: showing last service rate if multiple
+          avgRate = rate;
           avgDiscount = discount;
         }
       }
@@ -177,6 +177,7 @@ class BillingExportHelper {
     required List<ClientDiscount> allDiscounts,
     required DateTime monthDate,
     required double totalMonthlyBill,
+    bool isDraft = true,
   }) async {
     final pdf = pw.Document();
 
@@ -205,6 +206,23 @@ class BillingExportHelper {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
+              if (isDraft)
+                pw.Container(
+                  width: double.infinity,
+                  padding: const pw.EdgeInsets.all(4),
+                  color: PdfColors.orange50,
+                  child: pw.Center(
+                    child: pw.Text(
+                      'PRO-FORMA INVOICE (DRAFT)',
+                      style: pw.TextStyle(
+                        color: PdfColors.orange900,
+                        fontSize: 10,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              pw.SizedBox(height: 10),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: pw.CrossAxisAlignment.end,
@@ -212,7 +230,10 @@ class BillingExportHelper {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      if (logo != null) pw.Image(logo, width: 120),
+                      if (logo != null)
+                        pw.Image(logo, width: 120)
+                      else
+                        pw.SizedBox(height: 60),
                       pw.SizedBox(height: 10),
                       pw.Text(
                         'A1, House 13, Road 34, Gulshan 1',
@@ -236,7 +257,7 @@ class BillingExportHelper {
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
                       pw.Text(
-                        'Monthly Invoice',
+                        isDraft ? 'Pro-forma Invoice' : 'Monthly Invoice',
                         style: pw.TextStyle(
                           fontSize: 24,
                           fontWeight: pw.FontWeight.bold,
@@ -349,7 +370,6 @@ class BillingExportHelper {
     List<ServiceRate> allRates,
     List<ClientDiscount> allDiscounts,
   ) {
-    // Group by Service Type
     final Map<String, _SummaryData> summary = {};
     for (var s in sessions) {
       if (s.status == SessionStatus.completed ||
@@ -357,9 +377,9 @@ class BillingExportHelper {
         final date = s.date.toDate();
         for (var sv in s.services) {
           final rate =
-              _getApplicableRate(allRates, sv.type, date)?.hourlyRate ?? 0.0;
+              getApplicableRate(allRates, sv.type, date)?.hourlyRate ?? 0.0;
           final discount =
-              _getApplicableDiscount(
+              getApplicableDiscount(
                 allDiscounts,
                 sv.type,
                 date,
@@ -518,10 +538,9 @@ class BillingExportHelper {
               s.status == SessionStatus.scheduled) {
             for (var sv in s.services) {
               rate =
-                  _getApplicableRate(allRates, sv.type, date)?.hourlyRate ??
-                  0.0;
+                  getApplicableRate(allRates, sv.type, date)?.hourlyRate ?? 0.0;
               discount =
-                  _getApplicableDiscount(
+                  getApplicableDiscount(
                     allDiscounts,
                     sv.type,
                     date,
@@ -653,6 +672,7 @@ class BillingExportHelper {
     required List<ClientDiscount> allDiscounts,
     required DateTime monthDate,
     required double totalMonthlyBill,
+    bool isDraft = true,
   }) async {
     final pdf = await _buildInvoiceDocument(
       client: client,
@@ -661,7 +681,9 @@ class BillingExportHelper {
       allDiscounts: allDiscounts,
       monthDate: monthDate,
       totalMonthlyBill: totalMonthlyBill,
+      isDraft: isDraft,
     );
+
     final fileName =
         '${client.name.replaceAll(' ', '_')}_Invoice_${DateFormat('MMM_yyyy').format(monthDate)}.pdf';
     if (kIsWeb) {
@@ -691,6 +713,7 @@ class BillingExportHelper {
     required List<ClientDiscount> allDiscounts,
     required DateTime monthDate,
     required double totalMonthlyBill,
+    bool isDraft = true,
   }) async {
     final pdf = await _buildInvoiceDocument(
       client: client,
@@ -699,6 +722,7 @@ class BillingExportHelper {
       allDiscounts: allDiscounts,
       monthDate: monthDate,
       totalMonthlyBill: totalMonthlyBill,
+      isDraft: isDraft,
     );
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
@@ -712,6 +736,7 @@ class BillingExportHelper {
     required List<ClientDiscount> allDiscounts,
     required DateTime monthDate,
     required double totalMonthlyBill,
+    bool isDraft = true,
   }) async {
     final pdf = await _buildInvoiceDocument(
       client: client,
@@ -720,6 +745,7 @@ class BillingExportHelper {
       allDiscounts: allDiscounts,
       monthDate: monthDate,
       totalMonthlyBill: totalMonthlyBill,
+      isDraft: isDraft,
     );
     final bytes = await pdf.save();
     final fileName = '${client.name.replaceAll(' ', '_')}_Invoice.pdf';
@@ -731,6 +757,7 @@ class BillingExportHelper {
         allDiscounts: allDiscounts,
         monthDate: monthDate,
         totalMonthlyBill: totalMonthlyBill,
+        isDraft: isDraft,
       );
     } else {
       final directory = await getTemporaryDirectory();

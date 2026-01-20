@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
+import '/app/admin/features/schedule/presentation/pages/add/add_schedule_utils.dart';
+import '/app/admin/features/schedule/presentation/pages/home/widgets/status_update_dialog.dart';
 import '/core/models/client.dart';
 import '/core/models/client_discount.dart';
+import '/core/models/invoice_snapshot.dart';
 import '/core/models/service_rate.dart';
 import '/core/models/session.dart';
 import '/core/providers/billing_providers.dart';
 import '/core/providers/client_discount_providers.dart';
+import '/core/providers/employee_providers.dart';
+import '/core/providers/invoice_snapshot_providers.dart';
 import '/core/providers/service_rate_providers.dart';
+import '/core/providers/session_providers.dart';
 import '/core/utils/billing_export_helper.dart';
 import 'billing_month_navigator.dart';
+import 'billing_snapshots_tab.dart';
 
 class BillingSessionsTab extends ConsumerWidget {
   final Client client;
@@ -25,249 +31,257 @@ class BillingSessionsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final allServiceRatesAsync = ref.watch(allServiceRatesProvider);
-    final allDiscountsAsync = ref.watch(clientDiscountsProvider(client.id));
+    return DefaultTabController(
+      length: 3,
+      child: Column(
+        children: [
+          // Header with Tools
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [BillingMonthNavigator()],
+            ),
+          ),
+
+          //
+          Expanded(
+            child: TabBarView(
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                //
+                _LiveSessionsView(client: client, sessionsAsync: sessionsAsync),
+
+                //
+                BillingSnapshotsTab(clientId: client.id, type: InvoiceType.pre),
+
+                //
+                BillingSnapshotsTab(
+                  clientId: client.id,
+                  type: InvoiceType.post,
+                ),
+              ],
+            ),
+          ),
+
+          // Bottom Excel-style Tabs
+          Container(
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              border: Border(top: BorderSide(color: Colors.grey.shade300)),
+            ),
+            child: TabBar(
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              indicatorSize: TabBarIndicatorSize.label,
+              labelColor: Colors.blue,
+              unselectedLabelColor: Colors.black54,
+              indicator: const UnderlineTabIndicator(
+                borderSide: BorderSide(width: 3, color: Colors.blue),
+                insets: EdgeInsets.symmetric(horizontal: 16),
+              ),
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+              unselectedLabelStyle: const TextStyle(fontSize: 13),
+              tabs: const [
+                Tab(text: 'Live'),
+                Tab(text: 'Pre Invoice'),
+                Tab(text: 'Post Invoice'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LiveSessionsView extends ConsumerWidget {
+  final Client client;
+  final AsyncValue<List<Session>> sessionsAsync;
+  const _LiveSessionsView({required this.client, required this.sessionsAsync});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final allRates = ref.watch(allServiceRatesProvider).value ?? [];
+    final allDiscounts =
+        ref.watch(clientDiscountsProvider(client.id)).value ?? [];
+    final selectedMonth = ref.watch(selectedBillingMonthProvider);
+    final monthKey = DateFormat('yyyy-MM').format(selectedMonth);
     final currencyFormat = NumberFormat('#,###');
 
     return sessionsAsync.when(
       data: (sessions) {
+        if (sessions.isEmpty) {
+          return const Center(child: Text('No live sessions found.'));
+        }
         final sorted = List<Session>.from(sessions)
           ..sort((a, b) => b.date.compareTo(a.date));
 
-        return allServiceRatesAsync.when(
-          data: (allRates) {
-            return allDiscountsAsync.when(
-              data: (allDiscounts) {
-                double totalMonthlyBill = 0;
-                double totalHours = 0;
-                int completedCount = 0;
-                int clientCancelledCount = 0;
-                int centerCancelledCount = 0;
+        // Calculate Summary Data
+        double totalHours = 0;
+        double totalGross = 0;
+        double totalDiscount = 0;
+        int completedCount = 0;
+        int clientCancelledCount = 0;
+        int centerCancelledCount = 0;
 
-                // Pre-calculate session bills to pass to export helper later if needed
-                // but for now we'll just calculate here.
+        for (var s in sessions) {
+          if (s.status == SessionStatus.completed) completedCount++;
+          if (s.status == SessionStatus.cancelledClient) clientCancelledCount++;
+          if (s.status == SessionStatus.cancelledCenter) centerCancelledCount++;
 
-                final selectedMonth = ref.read(selectedBillingMonthProvider);
+          if (s.status == SessionStatus.completed ||
+              s.status == SessionStatus.scheduled) {
+            totalHours += s.totalDuration;
+            final date = s.date.toDate();
+            for (var sv in s.services) {
+              final r =
+                  BillingExportHelper.getApplicableRate(
+                    allRates,
+                    sv.type,
+                    date,
+                  )?.hourlyRate ??
+                  0.0;
+              final d =
+                  BillingExportHelper.getApplicableDiscount(
+                    allDiscounts,
+                    sv.type,
+                    date,
+                  )?.discountPerHour ??
+                  0.0;
+              totalGross += sv.duration * r;
+              totalDiscount += sv.duration * d;
+            }
+          }
+        }
+        final totalNet = totalGross - totalDiscount;
 
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+        return SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Card(
+                elevation: 0,
+                margin: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(color: Colors.grey.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _DataTableWidget(
+                      client: client,
+                      sorted: sorted,
+                      allRates: allRates,
+                      allDiscounts: allDiscounts,
+                      currencyFormat: currencyFormat,
+                    ),
+                    _buildSummarySection(
+                      totalHours: totalHours,
+                      completedCount: completedCount,
+                      clientCancelledCount: clientCancelledCount,
+                      centerCancelledCount: centerCancelledCount,
+                      totalGross: totalGross,
+                      totalDiscount: totalDiscount,
+                      totalNet: totalNet,
+                      walletBalance: client.walletBalance,
+                      currencyFormat: currencyFormat,
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+              Consumer(
+                builder: (context, ref, child) {
+                  final hasPreAsync = ref.watch(
+                    hasPreSnapshotProvider((
+                      clientId: client.id,
+                      monthKey: monthKey,
+                    )),
+                  );
+                  final isBilledAsync = ref.watch(
+                    checkMonthBilledProvider((
+                      clientId: client.id,
+                      monthKey: monthKey,
+                    )),
+                  );
+
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Monthly Sessions',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const BillingMonthNavigator(),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      if (sessions.isEmpty)
-                        _buildEmptyState('No sessions found for this month.')
-                      else ...[
-                        Card(
-                          margin: EdgeInsets.zero,
-                          clipBehavior: Clip.antiAlias,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            side: BorderSide(color: Colors.grey.shade200),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: DataTable(
-                                  headingRowColor: WidgetStateProperty.all(
-                                    Colors.grey.shade50,
-                                  ),
-                                  headingRowHeight: 40,
-                                  columnSpacing: 20,
-                                  border: TableBorder.all(
-                                    color: Colors.grey.shade200,
-                                    width: 1,
-                                  ),
-                                  columns: const [
-                                    DataColumn(label: _HeaderCell('Date')),
-                                    DataColumn(label: _HeaderCell('Service')),
-                                    DataColumn(label: _HeaderCell('Hour')),
-                                    DataColumn(label: _HeaderCell('Rate')),
-                                    DataColumn(label: _HeaderCell('Discount')),
-                                    DataColumn(label: _HeaderCell('Status')),
-                                    DataColumn(
-                                      label: _HeaderCell('Bill'),
-                                      numeric: true,
-                                    ),
-                                  ],
-                                  rows: sorted.map((s) {
-                                    double sessionTotalBill = 0;
-                                    double sessionTotalDiscount = 0;
-
-                                    final sessionDate = s.date.toDate();
-
-                                    List<Widget> serviceDetails = [];
-                                    List<String> ratesText = [];
-                                    List<String> discountsText = [];
-
-                                    for (var service in s.services) {
-                                      // Get applicable global rate
-                                      final applicableRate = _getApplicableRate(
-                                        allRates,
-                                        service.type,
-                                        sessionDate,
-                                      );
-                                      // Get applicable client discount
-                                      final applicableDiscount =
-                                          _getApplicableDiscount(
-                                            allDiscounts,
-                                            service.type,
-                                            sessionDate,
-                                          );
-
-                                      final double rate =
-                                          applicableRate?.hourlyRate ?? 0.0;
-                                      final double discount =
-                                          applicableDiscount?.discountPerHour ??
-                                          0.0;
-                                      final double netRate = rate - discount;
-
-                                      if (s.status == SessionStatus.completed ||
-                                          s.status == SessionStatus.scheduled) {
-                                        sessionTotalBill +=
-                                            service.duration * netRate;
-                                        sessionTotalDiscount +=
-                                            service.duration * discount;
-                                      }
-
-                                      serviceDetails.add(
-                                        Text(
-                                          '${service.type} (${service.sessionType.displayName})',
-                                          style: const TextStyle(fontSize: 11),
-                                        ),
-                                      );
-                                      ratesText.add(
-                                        '৳${currencyFormat.format(rate)}',
-                                      );
-                                      discountsText.add(
-                                        '৳${currencyFormat.format(discount)}',
-                                      );
-                                    }
-
-                                    if (s.status == SessionStatus.completed ||
-                                        s.status == SessionStatus.scheduled) {
-                                      if (s.status == SessionStatus.completed)
-                                        completedCount++;
-                                      totalHours += s.totalDuration;
-                                      totalMonthlyBill += sessionTotalBill;
-                                    } else if (s.status ==
-                                        SessionStatus.cancelledCenter) {
-                                      centerCancelledCount++;
-                                    } else if (s.status ==
-                                        SessionStatus.cancelledClient) {
-                                      clientCancelledCount++;
-                                    }
-
-                                    return DataRow(
-                                      cells: [
-                                        DataCell(
-                                          Text(
-                                            DateFormat(
-                                              'dd-MM-yy',
-                                            ).format(sessionDate),
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                            ),
-                                          ),
-                                        ),
-                                        DataCell(
-                                          Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: serviceDetails,
-                                          ),
-                                        ),
-                                        DataCell(
-                                          Text(
-                                            '${s.totalDuration}h',
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                            ),
-                                          ),
-                                        ),
-                                        DataCell(
-                                          Text(
-                                            ratesText.join('\n'),
-                                            style: const TextStyle(
-                                              fontSize: 10,
-                                            ),
-                                          ),
-                                        ),
-                                        DataCell(
-                                          Text(
-                                            discountsText.join('\n'),
-                                            style: const TextStyle(
-                                              fontSize: 10,
-                                              color: Colors.redAccent,
-                                            ),
-                                          ),
-                                        ),
-                                        DataCell(_buildStatusBadge(s.status)),
-                                        DataCell(
-                                          Text(
-                                            '৳${currencyFormat.format(sessionTotalBill)}',
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  }).toList(),
+                      hasPreAsync.maybeWhen(
+                        data: (hasPre) => !hasPre
+                            ? ElevatedButton.icon(
+                                onPressed: () => _handleTakeSnapshot(
+                                  ref,
+                                  context,
+                                  totalNet,
+                                  totalHours,
+                                  sessions,
                                 ),
-                              ),
-                              // Summary section
-                              _buildSummarySection(
-                                client,
-                                totalHours,
-                                completedCount,
-                                clientCancelledCount,
-                                centerCancelledCount,
-                                totalMonthlyBill,
-                                currencyFormat,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        _buildExportButtons(
-                          client,
-                          sessions,
-                          allRates,
-                          allDiscounts,
-                          selectedMonth,
-                          totalMonthlyBill,
-                        ),
-                      ],
+                                icon: const Icon(Icons.drafts, size: 16),
+                                label: const Text('Save Pre Invoice'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange.shade700,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                        orElse: () => const SizedBox.shrink(),
+                      ),
+                      const SizedBox(width: 12),
+                      isBilledAsync.maybeWhen(
+                        data: (isBilled) => !isBilled
+                            ? ElevatedButton.icon(
+                                onPressed: () => _showConfirmFinalizeDialog(
+                                  context,
+                                  ref,
+                                  totalNet,
+                                  totalHours,
+                                  sessions,
+                                ),
+                                icon: const Icon(Icons.check_circle, size: 16),
+                                label: const Text('Save Post Invoice'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue.shade800,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                        orElse: () => const SizedBox.shrink(),
+                      ),
                     ],
-                  ),
-                );
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) =>
-                  Center(child: Text('Error loading discounts: $e')),
-            );
-          },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Error loading rates: $e')),
+                  );
+                },
+              ),
+              const SizedBox(height: 32),
+            ],
+          ),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -275,50 +289,17 @@ class BillingSessionsTab extends ConsumerWidget {
     );
   }
 
-  ServiceRate? _getApplicableRate(
-    List<ServiceRate> rates,
-    String serviceType,
-    DateTime date,
-  ) {
-    // Find all rates for this service type that were effective ON OR BEFORE the session date
-    final validRates = rates
-        .where(
-          (r) => r.serviceType == serviceType && !r.effectiveDate.isAfter(date),
-        )
-        .toList();
-    if (validRates.isEmpty) return null;
-    // Pick the most recent one
-    validRates.sort((a, b) => b.effectiveDate.compareTo(a.effectiveDate));
-    return validRates.first;
-  }
-
-  ClientDiscount? _getApplicableDiscount(
-    List<ClientDiscount> discounts,
-    String serviceType,
-    DateTime date,
-  ) {
-    final validDiscounts = discounts
-        .where(
-          (d) =>
-              d.serviceType == serviceType &&
-              d.isActive &&
-              !d.effectiveDate.isAfter(date),
-        )
-        .toList();
-    if (validDiscounts.isEmpty) return null;
-    validDiscounts.sort((a, b) => b.effectiveDate.compareTo(a.effectiveDate));
-    return validDiscounts.first;
-  }
-
-  Widget _buildSummarySection(
-    Client client,
-    double totalHours,
-    int completedCount,
-    int clientCancelledCount,
-    int centerCancelledCount,
-    double totalMonthlyBill,
-    NumberFormat currencyFormat,
-  ) {
+  Widget _buildSummarySection({
+    required double totalHours,
+    required int completedCount,
+    required int clientCancelledCount,
+    required int centerCancelledCount,
+    required double totalGross,
+    required double totalDiscount,
+    required double totalNet,
+    required double walletBalance,
+    required NumberFormat currencyFormat,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
@@ -328,112 +309,42 @@ class BillingSessionsTab extends ConsumerWidget {
       child: Column(
         children: [
           _buildSummaryRow('Total Hours', '${totalHours.toStringAsFixed(1)} h'),
-          const SizedBox(height: 4),
-          _buildSummaryRow('Completed Sessions', '$completedCount'),
-          const SizedBox(height: 4),
-          _buildSummaryRow('Client Cancelled', '$clientCancelledCount'),
-          const SizedBox(height: 4),
-          _buildSummaryRow('Center Cancelled', '$centerCancelledCount'),
-          const SizedBox(height: 8),
-          const Divider(),
-          const SizedBox(height: 8),
+          _buildSummaryRow('Completed', '$completedCount'),
+          _buildSummaryRow('Cancelled (Client)', '$clientCancelledCount'),
+          _buildSummaryRow('Cancelled (Center)', '$centerCancelledCount'),
+
+          const Divider(height: 24),
           _buildSummaryRow(
-            'Current Prepaid Balance',
-            '৳ ${currencyFormat.format(client.walletBalance)}',
+            'Gross Amount',
+            '৳ ${currencyFormat.format(totalGross)}',
           ),
-          const SizedBox(height: 4),
           _buildSummaryRow(
-            'Monthly Bill (Subtract)',
-            '- ৳ ${currencyFormat.format(totalMonthlyBill)}',
+            'Total Discount',
+            '- ৳ ${currencyFormat.format(totalDiscount)}',
+            color: Colors.red,
+          ),
+
+          const Divider(height: 24),
+          _buildSummaryRow(
+            'Total Monthly Bill',
+            '- ৳ ${currencyFormat.format(totalNet)}',
             color: Colors.red.shade700,
+            isBold: true,
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Divider(),
+
+          const Divider(height: 24),
+          _buildSummaryRow(
+            'Advances/Previous Due',
+            '৳ ${currencyFormat.format(walletBalance)}',
           ),
           _buildSummaryRow(
-            'Remaining Balance',
-            '৳ ${currencyFormat.format(client.walletBalance - totalMonthlyBill)}',
+            'Net Payable / Remaining Balance',
+            '৳ ${currencyFormat.format(walletBalance - totalNet)}',
             isBold: true,
             color: Colors.blue.shade800,
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildExportButtons(
-    Client client,
-    List<Session> sessions,
-    List<ServiceRate> allRates,
-    List<ClientDiscount> allDiscounts,
-    DateTime selectedMonth,
-    double totalMonthlyBill,
-  ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        ElevatedButton.icon(
-          onPressed: () => BillingExportHelper.exportToCsv(
-            client: client,
-            sessions: sessions,
-            allRates: allRates,
-            allDiscounts: allDiscounts,
-            monthDate: selectedMonth,
-          ),
-          icon: const Icon(LucideIcons.download, size: 18),
-          label: const Text('Export CSV'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green.shade700,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          ),
-        ),
-        const SizedBox(width: 12),
-        ElevatedButton.icon(
-          onPressed: () => BillingExportHelper.generateInvoicePdf(
-            client: client,
-            sessions: sessions,
-            allRates: allRates,
-            allDiscounts: allDiscounts,
-            monthDate: selectedMonth,
-            totalMonthlyBill: totalMonthlyBill,
-          ),
-          icon: const Icon(LucideIcons.fileText, size: 18),
-          label: const Text('Download Invoice'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue.shade800,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          ),
-        ),
-        const SizedBox(width: 12),
-        IconButton.filledTonal(
-          onPressed: () => BillingExportHelper.printInvoice(
-            client: client,
-            sessions: sessions,
-            allRates: allRates,
-            allDiscounts: allDiscounts,
-            monthDate: selectedMonth,
-            totalMonthlyBill: totalMonthlyBill,
-          ),
-          icon: const Icon(LucideIcons.printer, size: 18),
-          tooltip: 'Print Invoice',
-        ),
-        const SizedBox(width: 8),
-        IconButton.filledTonal(
-          onPressed: () => BillingExportHelper.shareInvoice(
-            client: client,
-            sessions: sessions,
-            allRates: allRates,
-            allDiscounts: allDiscounts,
-            monthDate: selectedMonth,
-            totalMonthlyBill: totalMonthlyBill,
-          ),
-          icon: const Icon(LucideIcons.share2, size: 18),
-          tooltip: 'Share Invoice',
-        ),
-      ],
     );
   }
 
@@ -443,80 +354,344 @@ class BillingSessionsTab extends ConsumerWidget {
     bool isBold = false,
     Color? color,
   }) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: isBold ? Colors.black87 : Colors.grey.shade700,
-            fontSize: 14,
-            fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: isBold ? 16 : 14,
-            color: color,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEmptyState(String message) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(LucideIcons.calendarX, size: 48, color: Colors.grey.shade300),
-          const SizedBox(height: 16),
-          Text(message, style: const TextStyle(color: Colors.grey)),
+          Text(
+            label,
+            style: TextStyle(
+              color: isBold ? Colors.black87 : Colors.grey.shade700,
+              fontSize: 14,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: isBold ? 16 : 14,
+              color: color,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStatusBadge(SessionStatus status) {
-    Color color;
-    String label;
-    switch (status) {
-      case SessionStatus.completed:
-        color = Colors.green;
-        label = 'Completed';
-        break;
-      case SessionStatus.cancelledCenter:
-        color = Colors.red;
-        label = 'Cancelled (Center)';
-        break;
-      case SessionStatus.cancelledClient:
-        color = Colors.orange;
-        label = 'Cancelled (Client)';
-        break;
-      case SessionStatus.pending:
-        color = Colors.amber;
-        label = 'Pending';
-        break;
-      case SessionStatus.scheduled:
-        color = Colors.blue;
-        label = 'Scheduled';
-        break;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
+  // --- Snapshot & Finalize Logic ---
+  Future<void> _handleTakeSnapshot(
+    WidgetRef ref,
+    BuildContext context,
+    double total,
+    double hours,
+    List<Session> sessions,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Save Pre invoice'),
+        content: const Text(
+          'This will save a draft of the current monthly sessions. It does not affect the wallet.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Save Pre Invoice'),
+          ),
+        ],
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
+    );
+
+    if (confirm == true) {
+      final selectedMonth = ref.read(selectedBillingMonthProvider);
+      final monthKey = DateFormat('yyyy-MM').format(selectedMonth);
+      final sessionsJson = sessions.map((s) => s.toJson()).toList();
+      await ref
+          .read(invoiceSnapshotServiceProvider)
+          .createSnapshot(
+            clientId: client.id,
+            monthKey: monthKey,
+            type: InvoiceType.pre,
+            totalAmount: total,
+            totalHours: hours,
+            walletBalance: client.walletBalance,
+            sessionsJson: sessionsJson,
+          );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pre invoice draft saved.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showConfirmFinalizeDialog(
+    BuildContext context,
+    WidgetRef ref,
+    double total,
+    double hours,
+    List<Session> sessions,
+  ) async {
+    final selectedMonth = ref.read(selectedBillingMonthProvider);
+    final sessionsJson = sessions.map((s) => s.toJson()).toList();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Finalize Monthly Settlement?'),
+        content: Text(
+          'This will create a POST-invoice snapshot AND deduct ৳${NumberFormat('#,###').format(total)} from the client wallet. This action is permanent.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await ref
+                  .read(invoiceSnapshotServiceProvider)
+                  .createSnapshot(
+                    clientId: client.id,
+                    monthKey: DateFormat('yyyy-MM').format(selectedMonth),
+                    type: InvoiceType.post,
+                    totalAmount: total,
+                    totalHours: hours,
+                    walletBalance: client.walletBalance,
+                    sessionsJson: sessionsJson,
+                  );
+              await ref
+                  .read(billingServiceProvider)
+                  .finalizeMonthlyBill(
+                    client: client,
+                    totalBill: total,
+                    monthDate: selectedMonth,
+                  );
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Monthly bill finalized.')),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade800,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Confirm & Deduct'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DataTableWidget extends ConsumerWidget {
+  final Client client;
+  final List<Session> sorted;
+  final List<ServiceRate> allRates;
+  final List<ClientDiscount> allDiscounts;
+  final NumberFormat currencyFormat;
+
+  const _DataTableWidget({
+    required this.client,
+    required this.sorted,
+    required this.allRates,
+    required this.allDiscounts,
+    required this.currencyFormat,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final allEmployees = ref.watch(employeesProvider).value ?? [];
+
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: constraints.maxWidth),
+          child: DataTable(
+            headingRowHeight: 40,
+            columnSpacing: 16,
+            horizontalMargin: 12,
+            border: TableBorder.all(color: Colors.grey.shade200, width: 1),
+            columns: const [
+              DataColumn(label: _HeaderCell('Date')),
+              DataColumn(label: _HeaderCell('Service Breakdown')),
+              DataColumn(label: _HeaderCell('Hours')),
+              DataColumn(label: _HeaderCell('Rate')),
+              DataColumn(label: _HeaderCell('Disc')),
+              DataColumn(label: _HeaderCell('Status')),
+              DataColumn(label: _HeaderCell('Bill'), numeric: true),
+            ],
+            rows: sorted.map((s) {
+              double bill = 0;
+              List<String> rates = [];
+              List<String> discounts = [];
+              final date = s.date.toDate();
+              for (var sv in s.services) {
+                final r =
+                    BillingExportHelper.getApplicableRate(
+                      allRates,
+                      sv.type,
+                      date,
+                    )?.hourlyRate ??
+                    0.0;
+                final d =
+                    BillingExportHelper.getApplicableDiscount(
+                      allDiscounts,
+                      sv.type,
+                      date,
+                    )?.discountPerHour ??
+                    0.0;
+                if (s.status == SessionStatus.completed ||
+                    s.status == SessionStatus.scheduled)
+                  bill += sv.duration * (r - d);
+                rates.add('৳${currencyFormat.format(r)}');
+                discounts.add('৳${currencyFormat.format(d)}');
+              }
+              return DataRow(
+                cells: [
+                  DataCell(
+                    Text(
+                      DateFormat('dd-MM').format(date),
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                  ),
+                  DataCell(
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: s.services
+                            .map(
+                              (sv) => Text(
+                                '${sv.type} | ${AddScheduleUtils.formatTimeToAmPm(sv.startTime)}-${AddScheduleUtils.formatTimeToAmPm(sv.endTime)}',
+                                style: const TextStyle(fontSize: 10),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                  ),
+                  DataCell(
+                    Text(
+                      '${s.totalDuration}h',
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                  ),
+                  DataCell(
+                    Text(rates.join('\n'), style: const TextStyle(fontSize: 9)),
+                  ),
+                  DataCell(
+                    Text(
+                      discounts.join('\n'),
+                      style: const TextStyle(
+                        fontSize: 9,
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                  ),
+                  DataCell(
+                    _StatusBadge(
+                      s.status,
+                      onTap: () {
+                        ref.read(selectedDateProvider.notifier).setDate(date);
+                        final employeeMap = {
+                          for (var e in allEmployees)
+                            e.id: e.nickName.isNotEmpty ? e.nickName : e.name,
+                        };
+                        final card = SessionCardData(
+                          sessionId: s.id,
+                          clientDocId: client.id,
+                          clientId: client.clientId,
+                          clientName: client.name,
+                          clientNickName: client.nickName,
+                          status: s.status,
+                          services: s.services,
+                          notes: s.notes,
+                          isAutoGenerated: s.isAutoGenerated,
+                          employeeNames: employeeMap,
+                        );
+
+                        showDialog(
+                          context: context,
+                          builder: (context) => StatusUpdateDialog(
+                            session: card,
+                            timeSlotId: s.timeSlotId,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  DataCell(
+                    Text(
+                      '৳${currencyFormat.format(bill)}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final SessionStatus status;
+  final VoidCallback? onTap;
+
+  const _StatusBadge(this.status, {this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = {
+      SessionStatus.completed: Colors.green,
+      SessionStatus.scheduled: Colors.blue,
+      SessionStatus.cancelledCenter: Colors.red,
+      SessionStatus.cancelledClient: Colors.orange,
+      SessionStatus.pending: Colors.amber,
+    };
+    final color = colors[status] ?? Colors.grey;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              status.displayName,
+              style: TextStyle(
+                color: color,
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (onTap != null) ...[
+              const SizedBox(width: 2),
+              Icon(Icons.arrow_drop_down, size: 12, color: color),
+            ],
+          ],
         ),
       ),
     );
@@ -529,6 +704,6 @@ class _HeaderCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     label,
-    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
   );
 }

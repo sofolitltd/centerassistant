@@ -116,6 +116,36 @@ class _AddScheduleServiceDialogState
               mainAxisSize: MainAxisSize.min,
               children: [
                 //
+                deptsAsync.when(
+                  data: (depts) {
+                    final items = depts.toList()..sort();
+
+                    return DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      value: depts.contains(_serviceType) ? _serviceType : null,
+                      hint: const Text('Service'),
+                      onChanged: (v) {
+                        setState(() {
+                          _serviceType = v;
+                          if (_employee != null && _employee!.department != v) {
+                            _employee = null;
+                          }
+                        });
+                      },
+                      items: items
+                          .map(
+                            (s) => DropdownMenuItem(value: s, child: Text(s)),
+                          )
+                          .toList(),
+                      decoration: _inputDecoration(label: 'Service'),
+                    );
+                  },
+                  loading: () => const LinearProgressIndicator(),
+                  error: (_, __) => const Text('Error loading services'),
+                ),
+                const SizedBox(height: 16),
+
+                //
                 employeesAsync.when(
                   data: (employees) => deptsAsync.when(
                     data: (depts) {
@@ -195,35 +225,6 @@ class _AddScheduleServiceDialogState
                 ),
 
                 const SizedBox(height: 16),
-                //
-                deptsAsync.when(
-                  data: (depts) {
-                    final items = depts.toList()..sort();
-
-                    return DropdownButtonFormField<String>(
-                      isExpanded: true,
-                      value: depts.contains(_serviceType) ? _serviceType : null,
-                      hint: const Text('Service'),
-                      onChanged: (v) {
-                        setState(() {
-                          _serviceType = v;
-                          if (_employee != null && _employee!.department != v) {
-                            _employee = null;
-                          }
-                        });
-                      },
-                      items: items
-                          .map(
-                            (s) => DropdownMenuItem(value: s, child: Text(s)),
-                          )
-                          .toList(),
-                      decoration: _inputDecoration(label: 'Service'),
-                    );
-                  },
-                  loading: () => const LinearProgressIndicator(),
-                  error: (_, __) => const Text('Error loading services'),
-                ),
-                const SizedBox(height: 16),
 
                 //
                 Row(
@@ -232,6 +233,7 @@ class _AddScheduleServiceDialogState
                     Expanded(
                       flex: 4,
                       child: DropdownButtonFormField<String>(
+                        isExpanded: true,
                         value: _startTime,
                         hint: const Text('Start'),
                         onChanged: (v) {
@@ -250,6 +252,7 @@ class _AddScheduleServiceDialogState
                                 value: t,
                                 child: Text(
                                   AddScheduleUtils.formatTimeToAmPm(t),
+                                  style: Theme.of(context).textTheme.bodyMedium,
                                 ),
                               ),
                             )
@@ -261,6 +264,7 @@ class _AddScheduleServiceDialogState
                     Expanded(
                       flex: 4,
                       child: DropdownButtonFormField<String>(
+                        isExpanded: true,
                         value: _endTime,
                         hint: const Text('End'),
                         onChanged: (v) => setState(() => _endTime = v),
@@ -275,6 +279,7 @@ class _AddScheduleServiceDialogState
                             value: t,
                             child: Text(
                               '${AddScheduleUtils.formatTimeToAmPm(t)} ($duration)',
+                              style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           );
                         }).toList(),
@@ -295,7 +300,10 @@ class _AddScheduleServiceDialogState
                             .map(
                               (t) => DropdownMenuItem(
                                 value: t,
-                                child: Text(t.displayName),
+                                child: Text(
+                                  t.displayName,
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
                               ),
                             )
                             .toList(),
@@ -306,14 +314,20 @@ class _AddScheduleServiceDialogState
                       child: DropdownButtonFormField<bool>(
                         value: _isInclusive,
                         onChanged: (v) => setState(() => _isInclusive = v!),
-                        items: const [
+                        items: [
                           DropdownMenuItem(
                             value: false,
-                            child: Text('Exclusive'),
+                            child: Text(
+                              'Exclusive',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
                           ),
                           DropdownMenuItem(
                             value: true,
-                            child: Text('Inclusive'),
+                            child: Text(
+                              'Inclusive',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
                           ),
                         ],
                         decoration: _inputDecoration(label: 'Session'),

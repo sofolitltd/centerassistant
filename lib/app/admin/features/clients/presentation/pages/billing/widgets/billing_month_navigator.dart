@@ -18,26 +18,28 @@ class BillingMonthNavigator extends ConsumerWidget {
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
+        spacing: 4,
         children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left),
-            style: IconButton.styleFrom(visualDensity: VisualDensity.compact),
-            onPressed: () =>
-                ref.read(selectedBillingMonthProvider.notifier).previousMonth(),
-          ),
-          const SizedBox(width: 8),
+          //
           Text(
             DateFormat('MMMM yyyy').format(selectedMonth).toUpperCase(),
             style: const TextStyle(
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: FontWeight.bold,
               height: 1.2,
             ),
           ),
-          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            constraints: BoxConstraints(),
+            padding: .zero,
+            onPressed: () =>
+                ref.read(selectedBillingMonthProvider.notifier).previousMonth(),
+          ),
           IconButton(
             icon: const Icon(Icons.chevron_right),
-            style: IconButton.styleFrom(visualDensity: VisualDensity.compact),
+            padding: .zero,
+            constraints: BoxConstraints(),
             onPressed: () =>
                 ref.read(selectedBillingMonthProvider.notifier).nextMonth(),
           ),

@@ -38,7 +38,7 @@ class DailyView extends ConsumerWidget {
                   children: [
                     TabBar(
                       isScrollable: true,
-                      physics: NeverScrollableScrollPhysics(),
+                      physics: const NeverScrollableScrollPhysics(),
                       tabAlignment: TabAlignment.start,
                       padding: EdgeInsets.zero,
                       labelColor: Theme.of(context).primaryColor,
@@ -62,7 +62,7 @@ class DailyView extends ConsumerWidget {
                     //
                     Expanded(
                       child: TabBarView(
-                        physics: NeverScrollableScrollPhysics(),
+                        physics: const NeverScrollableScrollPhysics(),
                         children: sortedSlots.map((slot) {
                           return SessionTable(
                             sessions: view.sessionsByTimeSlot[slot.id] ?? [],
@@ -93,7 +93,7 @@ class DailyView extends ConsumerWidget {
       final hour = int.parse(parts[0]);
       final minute = int.parse(parts[1]);
       final dt = DateTime(2024, 1, 1, hour, minute);
-      return DateFormat('h:mm a').format(dt);
+      return DateFormat('hh:mm a').format(dt);
     } catch (e) {
       return time24h;
     }

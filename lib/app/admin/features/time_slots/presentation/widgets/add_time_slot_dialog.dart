@@ -200,7 +200,13 @@ class _AddTimeSlotDialogState extends ConsumerState<AddTimeSlotDialog> {
   Future<void> _selectTime(bool isStart) async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: const TimeOfDay(hour: 8, minute: 0),
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+          child: child!,
+        );
+      },
     );
     if (picked != null) {
       setState(() {
@@ -227,9 +233,7 @@ class _AddTimeSlotDialogState extends ConsumerState<AddTimeSlotDialog> {
     if (_formKey.currentState!.validate() &&
         _startTime != null &&
         _endTime != null) {
-      await ref
-          .read(timeSlotServiceProvider)
-          .addTimeSlot(
+      await ref.read(timeSlotServiceProvider).addTimeSlot(
             label: _labelController.text,
             startTime: _formatTo24h(_startTime!),
             endTime: _formatTo24h(_endTime!),
@@ -250,6 +254,6 @@ class _AddTimeSlotDialogState extends ConsumerState<AddTimeSlotDialog> {
   String _formatToDisplay(TimeOfDay time) {
     final now = DateTime.now();
     final dt = DateTime(now.year, now.month, now.day, time.hour, time.minute);
-    return DateFormat.jm().format(dt);
+    return DateFormat('hh:mm a').format(dt);
   }
 }

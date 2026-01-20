@@ -32,6 +32,38 @@ final selectedBillingMonthProvider =
       SelectedBillingMonthNotifier.new,
     );
 
+final isMonthBilledProvider = StreamProvider.family<bool, String>((
+  ref,
+  clientId,
+) {
+  final firestore = ref.watch(firestoreProvider);
+  final monthDate = ref.watch(selectedBillingMonthProvider);
+  final monthKey = DateFormat('yyyy-MM').format(monthDate);
+
+  return firestore
+      .collection('clients')
+      .doc(clientId)
+      .collection('billed_months')
+      .doc(monthKey)
+      .snapshots()
+      .map((doc) => doc.exists);
+});
+
+final checkMonthBilledProvider =
+    StreamProvider.family<bool, ({String clientId, String monthKey})>((
+      ref,
+      arg,
+    ) {
+      final firestore = ref.watch(firestoreProvider);
+      return firestore
+          .collection('clients')
+          .doc(arg.clientId)
+          .collection('billed_months')
+          .doc(arg.monthKey)
+          .snapshots()
+          .map((doc) => doc.exists);
+    });
+
 final clientTransactionsProvider =
     StreamProvider.family<List<ClientTransaction>, String>((ref, clientId) {
       final firestore = ref.watch(firestoreProvider);
@@ -80,14 +112,6 @@ class BillingService {
   final Ref _ref;
   BillingService(this._ref);
 
-  String _getDeterministicId(
-    DateTime date,
-    String clientId,
-    String timeSlotId,
-  ) {
-    return '${date.year}-${date.month}-${date.day}_${clientId}_$timeSlotId';
-  }
-
   Future<void> addPayment({
     required Client client,
     required double amount,
@@ -115,6 +139,47 @@ class BillingService {
     await batch.commit();
   }
 
+  Future<void> finalizeMonthlyBill({
+    required Client client,
+    required double totalBill,
+    required DateTime monthDate,
+  }) async {
+    final firestore = _ref.read(firestoreProvider);
+    final batch = firestore.batch();
+    final monthKey = DateFormat('yyyy-MM').format(monthDate);
+    final monthDisplay = DateFormat('MMMM yyyy').format(monthDate);
+
+    // 1. Create Transaction
+    final transactionRef = firestore.collection('transactions').doc();
+    final transaction = ClientTransaction(
+      id: transactionRef.id,
+      clientId: client.id,
+      type: TransactionType.debit,
+      amount: -totalBill,
+      rateAtTime: 0,
+      description: 'Monthly Billing Settlement - $monthDisplay',
+      timestamp: DateTime.now(),
+    );
+    batch.set(transactionRef, transaction.toJson());
+
+    // 2. Update Client Wallet
+    final clientRef = firestore.collection('clients').doc(client.id);
+    batch.update(clientRef, {
+      'walletBalance': FieldValue.increment(-totalBill),
+    });
+
+    // 3. Mark month as billed (Snapshot)
+    final billedMonthRef = clientRef.collection('billed_months').doc(monthKey);
+    batch.set(billedMonthRef, {
+      'billedAt': Timestamp.now(),
+      'totalAmount': totalBill,
+      'month': monthKey,
+      'transactionId': transactionRef.id,
+    });
+
+    await batch.commit();
+  }
+
   Future<void> addSecurityDeposit({
     required Client client,
     required double amount,
@@ -138,36 +203,6 @@ class BillingService {
 
     batch.set(transactionRef, transaction.toJson());
     batch.update(clientRef, {'securityDeposit': FieldValue.increment(amount)});
-
-    await batch.commit();
-  }
-
-  Future<void> adjustMonthlyBill({
-    required Client client,
-    required double totalBill,
-    required DateTime monthDate,
-  }) async {
-    final firestore = _ref.read(firestoreProvider);
-    final batch = firestore.batch();
-
-    final monthName = DateFormat('MMMM yyyy').format(monthDate);
-    final transactionRef = firestore.collection('transactions').doc();
-    final transaction = ClientTransaction(
-      id: transactionRef.id,
-      clientId: client.id,
-      type: TransactionType.debit,
-      amount: -totalBill,
-      rateAtTime: 0,
-      description: 'Monthly Bill Adjustment: $monthName',
-      timestamp: DateTime.now(),
-    );
-
-    final clientRef = firestore.collection('clients').doc(client.id);
-
-    batch.set(transactionRef, transaction.toJson());
-    batch.update(clientRef, {
-      'walletBalance': FieldValue.increment(-totalBill),
-    });
 
     await batch.commit();
   }

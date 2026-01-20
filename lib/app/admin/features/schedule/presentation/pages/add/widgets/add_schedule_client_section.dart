@@ -1,3 +1,4 @@
+import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -44,17 +45,35 @@ class AddScheduleClientSection extends StatelessWidget {
               return !busyClientIds.contains(c.id);
             }).toList();
 
-            return DropdownButtonFormField<Client>(
-              isExpanded: true,
-              hint: const Text('Select Client'),
-              initialValue: availableClients.contains(selectedClient)
+            // Sort A-Z by name
+            availableClients.sort(
+              (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+            );
+
+            return DropdownSearch<Client>(
+              items: (filter, loadProps) => availableClients,
+              itemAsString: (Client c) => c.name,
+              selectedItem: availableClients.contains(selectedClient)
                   ? selectedClient
                   : null,
+              compareFn: (a, b) => a.id == b.id,
               onChanged: onClientChanged,
-              items: availableClients
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c.name)))
-                  .toList(),
-              decoration: _inputDecoration(),
+              decoratorProps: DropDownDecoratorProps(
+                decoration: _inputDecoration(hint: 'Select Client'),
+              ),
+              popupProps: const PopupProps.menu(
+                showSearchBox: true,
+                fit: FlexFit.loose,
+                constraints: BoxConstraints(maxHeight: 400),
+                searchFieldProps: TextFieldProps(
+                  decoration: InputDecoration(
+                    hintText: 'Search client...',
+                    prefixIcon: Icon(Icons.search, size: 20),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 10),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
             );
           },
           loading: () => const LinearProgressIndicator(),
@@ -64,10 +83,9 @@ class AddScheduleClientSection extends StatelessWidget {
     );
   }
 
-  InputDecoration _inputDecoration({String? label, String? suffix}) {
+  InputDecoration _inputDecoration({String? hint}) {
     return InputDecoration(
-      labelText: label,
-      suffixText: suffix,
+      hintText: hint,
       border: const OutlineInputBorder(),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       filled: true,

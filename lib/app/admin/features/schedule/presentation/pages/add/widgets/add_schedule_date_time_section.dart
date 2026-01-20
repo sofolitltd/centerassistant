@@ -69,7 +69,7 @@ class AddScheduleDateTimeSection extends StatelessWidget {
                     children: [
                       Text(
                         DateFormat('EEEE, MMM d, yyyy').format(selectedDate),
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                           color: onDateChanged == null
                               ? Colors.black54
                               : Colors.black87,
@@ -77,7 +77,7 @@ class AddScheduleDateTimeSection extends StatelessWidget {
                       ),
                       Icon(
                         Icons.calendar_today,
-                        size: 18,
+                        size: 14,
                         color: onDateChanged == null
                             ? Colors.grey
                             : Colors.black87,
@@ -126,6 +126,7 @@ class AddScheduleDateTimeSection extends StatelessWidget {
                             value: s.id,
                             child: Text(
                               '${formatTimeToAmPm(s.startTime)} - ${formatTimeToAmPm(s.endTime)} (${s.label})',
+                              style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ),
                         )

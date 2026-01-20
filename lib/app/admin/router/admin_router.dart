@@ -64,7 +64,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
               child: Title(
                 title: 'Schedule | Center Assistant',
                 color: Colors.black,
-                child: ScheduleAllPage(),
+                child: const ScheduleAllPage(),
               ),
             );
           },

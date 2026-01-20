@@ -5,9 +5,9 @@ import '/core/models/client.dart';
 import '/core/providers/billing_providers.dart';
 import '/core/providers/client_providers.dart';
 import 'widgets/billing_deposit_tab.dart';
+import 'widgets/billing_discount_tab.dart';
 import 'widgets/billing_history_tab.dart';
 import 'widgets/billing_sessions_tab.dart';
-import 'widgets/billing_discount_tab.dart';
 
 class ClientBillingPage extends ConsumerStatefulWidget {
   final String clientId;

@@ -195,7 +195,13 @@ class _EditTimeSlotDialogState extends ConsumerState<EditTimeSlotDialog> {
     final initial = _parseTime(isStart ? _startTime : _endTime);
     final picked = await showTimePicker(
       context: context,
-      initialTime: initial ?? TimeOfDay.now(),
+      initialTime: initial ?? const TimeOfDay(hour: 8, minute: 0),
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+          child: child!,
+        );
+      },
     );
     if (picked != null) {
       setState(() {
@@ -223,9 +229,7 @@ class _EditTimeSlotDialogState extends ConsumerState<EditTimeSlotDialog> {
   void _handleSave() async {
     if (_labelController.text.isEmpty) return;
 
-    await ref
-        .read(timeSlotServiceProvider)
-        .updateTimeSlot(
+    await ref.read(timeSlotServiceProvider).updateTimeSlot(
           id: widget.timeSlot.id,
           label: _labelController.text,
           startTime: _startTime,
@@ -240,7 +244,7 @@ class _EditTimeSlotDialogState extends ConsumerState<EditTimeSlotDialog> {
     try {
       final parts = time24h.split(':');
       final dt = DateTime(2024, 1, 1, int.parse(parts[0]), int.parse(parts[1]));
-      return DateFormat.jm().format(dt);
+      return DateFormat('hh:mm a').format(dt);
     } catch (_) {
       return time24h;
     }
