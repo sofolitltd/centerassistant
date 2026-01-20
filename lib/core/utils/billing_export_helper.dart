@@ -4,6 +4,7 @@ import 'dart:js_interop';
 
 import 'package:csv/csv.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -14,86 +15,118 @@ import 'package:web/web.dart' as web;
 
 import '../../app/admin/features/schedule/presentation/pages/add/add_schedule_utils.dart';
 import '../models/client.dart';
+import '../models/client_discount.dart';
+import '../models/service_rate.dart';
 import '../models/session.dart';
 
 class BillingExportHelper {
   static final _currencyFormat = NumberFormat('#,###');
-  static final _dateFormat = DateFormat('dd-MM-yyyy');
+  static final _dateFormat = DateFormat('d-MMM-yy');
 
-  /// Exports session data to CSV and triggers a direct download (Web) or share (Mobile)
+  /// Find applicable global rate for a service on a specific date
+  static ServiceRate? _getApplicableRate(
+    List<ServiceRate> rates,
+    String serviceType,
+    DateTime date,
+  ) {
+    final validRates = rates
+        .where(
+          (r) => r.serviceType == serviceType && !r.effectiveDate.isAfter(date),
+        )
+        .toList();
+    if (validRates.isEmpty) return null;
+    validRates.sort((a, b) => b.effectiveDate.compareTo(a.effectiveDate));
+    return validRates.first;
+  }
+
+  /// Find applicable client discount for a service on a specific date
+  static ClientDiscount? _getApplicableDiscount(
+    List<ClientDiscount> discounts,
+    String serviceType,
+    DateTime date,
+  ) {
+    final validDiscounts = discounts
+        .where(
+          (d) =>
+              d.serviceType == serviceType &&
+              d.isActive &&
+              !d.effectiveDate.isAfter(date),
+        )
+        .toList();
+    if (validDiscounts.isEmpty) return null;
+    validDiscounts.sort((a, b) => b.effectiveDate.compareTo(a.effectiveDate));
+    return validDiscounts.first;
+  }
+
+  /// Exports session data to CSV matching the design requirements
   static Future<void> exportToCsv({
     required Client client,
     required List<Session> sessions,
-    required Map<String, double> rateMap,
+    required List<ServiceRate> allRates,
+    required List<ClientDiscount> allDiscounts,
     required DateTime monthDate,
   }) async {
     final List<List<dynamic>> rows = [];
 
-    // Header
+    // Header based on Breakdown Page
     rows.add([
       'Date',
-      'Service & Time',
-      'Hour',
-      'Rate Details (Tk)',
-      'Type',
+      'Start Time',
+      'End Time',
+      'Service Package',
       'Status',
-      'Bill (Tk)',
+      'Total Hours',
+      'Per Unit Charge',
+      'Discount (Per Hour)',
+      'Amount',
     ]);
 
-    double totalBill = 0;
-    double totalHours = 0;
-    int completedCount = 0;
-    int clientCancelledCount = 0;
-    int centerCancelledCount = 0;
+    double grandTotalAmount = 0;
 
     for (final s in sessions) {
-      double sessionBill = 0;
-      String ratesDisplay = 'N/A';
+      double sessionAmount = 0;
+      double avgRate = 0;
+      double avgDiscount = 0;
 
-      // Format services with AM/PM for CSV
-      String servicesWithTime = s.services
-          .map((sv) {
-            return '${AddScheduleUtils.formatTimeToAmPm(sv.startTime)}-${AddScheduleUtils.formatTimeToAmPm(sv.endTime)} ${sv.type}';
-          })
-          .join('; ');
+      final date = s.date.toDate();
 
       if (s.status == SessionStatus.completed ||
           s.status == SessionStatus.scheduled) {
-        if (s.status == SessionStatus.completed) completedCount++;
-        totalHours += s.totalDuration;
-        for (var service in s.services) {
-          final rate = rateMap[service.type] ?? 0.0;
-          sessionBill += service.duration * rate;
+        for (var sv in s.services) {
+          final rate =
+              _getApplicableRate(allRates, sv.type, date)?.hourlyRate ?? 0.0;
+          final discount =
+              _getApplicableDiscount(
+                allDiscounts,
+                sv.type,
+                date,
+              )?.discountPerHour ??
+              0.0;
+          sessionAmount += sv.duration * (rate - discount);
+          avgRate = rate; // Simplified: showing last service rate if multiple
+          avgDiscount = discount;
         }
-        ratesDisplay = s.services
-            .map(
-              (sv) =>
-                  '${sv.type}: ${_currencyFormat.format(rateMap[sv.type] ?? 0)}',
-            )
-            .toSet()
-            .join('; ');
-      } else if (s.status == SessionStatus.cancelledCenter) {
-        centerCancelledCount++;
-      } else if (s.status == SessionStatus.cancelledClient) {
-        clientCancelledCount++;
       }
+      grandTotalAmount += sessionAmount;
 
-      totalBill += sessionBill;
-
-      // Derived Type display from individual services
-      final typesDisplay = s.services
-          .map((sv) => sv.sessionType.displayName)
-          .toSet()
-          .join('; ');
+      final servicePackage = s.services.map((sv) => sv.type).toSet().join(', ');
+      final startTime = s.services.isNotEmpty
+          ? AddScheduleUtils.formatTimeToAmPm(s.services.first.startTime)
+          : '';
+      final endTime = s.services.isNotEmpty
+          ? AddScheduleUtils.formatTimeToAmPm(s.services.last.endTime)
+          : '';
 
       rows.add([
-        _dateFormat.format(s.date.toDate()),
-        servicesWithTime,
-        '${s.totalDuration}h',
-        ratesDisplay,
-        typesDisplay,
-        s.status.displayName.toUpperCase(),
-        sessionBill.toStringAsFixed(0),
+        _dateFormat.format(date),
+        startTime,
+        endTime,
+        servicePackage,
+        s.status.displayName,
+        s.totalDuration.toStringAsFixed(1),
+        avgRate.toStringAsFixed(0),
+        avgDiscount.toStringAsFixed(0),
+        sessionAmount.toStringAsFixed(0),
       ]);
     }
 
@@ -104,46 +137,15 @@ class BillingExportHelper {
       '',
       '',
       '',
-      'Total Hours:',
-      totalHours.toStringAsFixed(1),
-    ]);
-    rows.add(['', '', '', '', '', 'Completed Sessions:', completedCount]);
-    rows.add(['', '', '', '', '', 'Client Cancelled:', clientCancelledCount]);
-    rows.add(['', '', '', '', '', 'Center Cancelled:', centerCancelledCount]);
-    rows.add([
       '',
       '',
-      '',
-      '',
-      '',
-      'Total Monthly Bill:',
-      totalBill.toStringAsFixed(0),
-    ]);
-    rows.add([
-      '',
-      '',
-      '',
-      '',
-      '',
-      'Current Balance:',
-      client.walletBalance.toStringAsFixed(0),
-    ]);
-    rows.add([
-      '',
-      '',
-      '',
-      '',
-      '',
-      'Remaining Balance:',
-      (client.walletBalance - totalBill).toStringAsFixed(0),
+      'Total',
+      grandTotalAmount.toStringAsFixed(0),
     ]);
 
     String csvData = const ListToCsvConverter().convert(rows);
-    final safeName = client.name
-        .replaceAll(RegExp(r'[^\w\s]+'), '')
-        .replaceAll(' ', '_');
     final fileName =
-        '${safeName}_${DateFormat('MMMM_yyyy').format(monthDate)}.csv';
+        '${client.name.replaceAll(' ', '_')}_Breakdown_${DateFormat('MMM_yyyy').format(monthDate)}.csv';
 
     if (kIsWeb) {
       final bytes = utf8.encode(csvData);
@@ -161,90 +163,507 @@ class BillingExportHelper {
       final directory = await getTemporaryDirectory();
       final file = io.File('${directory.path}/$fileName');
       await file.writeAsString(csvData);
-
       await Share.shareXFiles([
         XFile(file.path),
-      ], text: 'Billing Export for ${client.name}');
+      ], text: 'Breakdown Export for ${client.name}');
     }
   }
 
   /// Generates a professional PDF Invoice document
-  static pw.Document _buildInvoiceDocument({
+  static Future<pw.Document> _buildInvoiceDocument({
     required Client client,
     required List<Session> sessions,
-    required Map<String, double> rateMap,
-    required DateTime monthDate,
-    required double totalMonthlyBill,
-  }) {
-    final pdf = pw.Document();
-    final netBalance = client.walletBalance - totalMonthlyBill;
-
-    double totalHours = 0;
-    int completedCount = 0;
-    int clientCancelledCount = 0;
-    int centerCancelledCount = 0;
-
-    for (var s in sessions) {
-      if (s.status == SessionStatus.completed ||
-          s.status == SessionStatus.scheduled) {
-        if (s.status == SessionStatus.completed) completedCount++;
-        totalHours += s.totalDuration;
-      } else if (s.status == SessionStatus.cancelledCenter) {
-        centerCancelledCount++;
-      } else if (s.status == SessionStatus.cancelledClient) {
-        clientCancelledCount++;
-      }
-    }
-
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32),
-        build: (context) => [
-          _buildHeader(client, monthDate),
-          pw.SizedBox(height: 20),
-          _buildInvoiceInfo(client, monthDate),
-          pw.SizedBox(height: 20),
-          _buildSessionsTable(sessions, rateMap),
-          pw.SizedBox(height: 20),
-          _buildSummary(
-            client: client,
-            totalBill: totalMonthlyBill,
-            netBalance: netBalance,
-            totalHours: totalHours,
-            completedCount: completedCount,
-            clientCancelledCount: clientCancelledCount,
-            centerCancelledCount: centerCancelledCount,
-          ),
-          _buildFooter(),
-        ],
-      ),
-    );
-    return pdf;
-  }
-
-  /// Generates a professional PDF Invoice and triggers download (Web) or layout/print (Mobile)
-  static Future<void> generateInvoicePdf({
-    required Client client,
-    required List<Session> sessions,
-    required Map<String, double> rateMap,
+    required List<ServiceRate> allRates,
+    required List<ClientDiscount> allDiscounts,
     required DateTime monthDate,
     required double totalMonthlyBill,
   }) async {
-    final pdf = _buildInvoiceDocument(
+    final pdf = pw.Document();
+
+    pw.MemoryImage? logo;
+    try {
+      final ByteData data = await rootBundle.load(
+        'assets/images/tender_twig.png',
+      );
+      logo = pw.MemoryImage(data.buffer.asUint8List());
+    } catch (e) {
+      /* ignore */
+    }
+
+    final String invoiceMonth = DateFormat('MMM-yy').format(monthDate);
+    final String invoiceDate = _dateFormat.format(DateTime.now());
+    final String dueDate = _dateFormat.format(
+      DateTime.now().add(const Duration(days: 7)),
+    );
+
+    // PAGE 1: Summary
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(40),
+        build: (context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: pw.CrossAxisAlignment.end,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      if (logo != null) pw.Image(logo, width: 120),
+                      pw.SizedBox(height: 10),
+                      pw.Text(
+                        'A1, House 13, Road 34, Gulshan 1',
+                        style: const pw.TextStyle(fontSize: 9),
+                      ),
+                      pw.Text(
+                        'Dhaka, Bangladesh',
+                        style: const pw.TextStyle(fontSize: 9),
+                      ),
+                      pw.Text(
+                        'Phone: 01994446512',
+                        style: const pw.TextStyle(fontSize: 9),
+                      ),
+                      pw.Text(
+                        'E-Mail: info@tendertwigbd.com',
+                        style: const pw.TextStyle(fontSize: 9),
+                      ),
+                    ],
+                  ),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text(
+                        'Monthly Invoice',
+                        style: pw.TextStyle(
+                          fontSize: 24,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.SizedBox(height: 10),
+                      _buildInvoiceDetailsGrid(
+                        client,
+                        invoiceDate,
+                        invoiceMonth,
+                        dueDate,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 30),
+              _buildSummaryTable(sessions, allRates, allDiscounts),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.end,
+                children: [
+                  _buildTotalsTable(totalMonthlyBill, client.walletBalance),
+                ],
+              ),
+              pw.SizedBox(height: 30),
+              _buildPaymentTerms(),
+            ],
+          );
+        },
+      ),
+    );
+
+    // PAGE 2: Breakdown
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(40),
+        build: (context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(
+                'Breakdown of Services',
+                style: pw.TextStyle(
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 15),
+              _buildBreakdownTable(
+                sessions,
+                allRates,
+                allDiscounts,
+                totalMonthlyBill,
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    return pdf;
+  }
+
+  static pw.Widget _buildInvoiceDetailsGrid(
+    Client client,
+    String date,
+    String month,
+    String due,
+  ) {
+    const s = pw.TextStyle(fontSize: 10);
+    var b = pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold);
+    return pw.Table(
+      columnWidths: {
+        0: const pw.FixedColumnWidth(100),
+        1: const pw.FixedColumnWidth(100),
+      },
+      border: pw.TableBorder.all(color: PdfColors.black, width: 0.5),
+      children: [
+        _buildGridRow('Bill To', client.clientId, s, b),
+        _buildGridRow('Invoice Date', date, s, b),
+        _buildGridRow('Invoice Month', month, s, b),
+        _buildGridRow('Payment Due Date', due, s, b),
+      ],
+    );
+  }
+
+  static pw.TableRow _buildGridRow(
+    String l,
+    String v,
+    pw.TextStyle s,
+    pw.TextStyle b,
+  ) {
+    return pw.TableRow(
+      children: [
+        pw.Padding(
+          padding: const pw.EdgeInsets.all(4),
+          child: pw.Text(l, style: s, textAlign: pw.TextAlign.right),
+        ),
+        pw.Padding(
+          padding: const pw.EdgeInsets.all(4),
+          child: pw.Text(v, style: b, textAlign: pw.TextAlign.right),
+        ),
+      ],
+    );
+  }
+
+  static pw.Widget _buildSummaryTable(
+    List<Session> sessions,
+    List<ServiceRate> allRates,
+    List<ClientDiscount> allDiscounts,
+  ) {
+    // Group by Service Type
+    final Map<String, _SummaryData> summary = {};
+    for (var s in sessions) {
+      if (s.status == SessionStatus.completed ||
+          s.status == SessionStatus.scheduled) {
+        final date = s.date.toDate();
+        for (var sv in s.services) {
+          final rate =
+              _getApplicableRate(allRates, sv.type, date)?.hourlyRate ?? 0.0;
+          final discount =
+              _getApplicableDiscount(
+                allDiscounts,
+                sv.type,
+                date,
+              )?.discountPerHour ??
+              0.0;
+
+          summary.update(
+            sv.type,
+            (val) => val
+              ..hours += sv.duration
+              ..total += (sv.duration * (rate - discount)),
+            ifAbsent: () => _SummaryData(
+              sv.type,
+              sv.duration,
+              rate,
+              discount,
+              sv.duration * (rate - discount),
+            ),
+          );
+        }
+      }
+    }
+
+    return pw.Table(
+      columnWidths: {
+        0: const pw.FlexColumnWidth(3),
+        1: const pw.FixedColumnWidth(60),
+        2: const pw.FixedColumnWidth(80),
+        3: const pw.FixedColumnWidth(80),
+        4: const pw.FixedColumnWidth(80),
+      },
+      border: pw.TableBorder.all(color: PdfColors.black, width: 1),
+      children: [
+        pw.TableRow(
+          decoration: const pw.BoxDecoration(color: PdfColors.grey100),
+          children: [
+            _buildCell('Description', isHeader: true),
+            _buildCell('Hours', isHeader: true),
+            _buildCell('Per Unit Charge', isHeader: true),
+            _buildCell('Discount (Per Hour)', isHeader: true),
+            _buildCell('Total', isHeader: true),
+          ],
+        ),
+        ...summary.values.map(
+          (d) => pw.TableRow(
+            children: [
+              _buildCell('${d.type} Session'),
+              _buildCell(
+                d.hours.toStringAsFixed(1),
+                align: pw.TextAlign.center,
+              ),
+              _buildCell(
+                _currencyFormat.format(d.rate),
+                align: pw.TextAlign.center,
+              ),
+              _buildCell(
+                _currencyFormat.format(d.discount),
+                align: pw.TextAlign.center,
+              ),
+              _buildCell(
+                _currencyFormat.format(d.total),
+                align: pw.TextAlign.right,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  static pw.Widget _buildTotalsTable(double totalBill, double advance) {
+    return pw.Table(
+      columnWidths: {
+        0: const pw.FixedColumnWidth(160),
+        1: const pw.FixedColumnWidth(80),
+      },
+      border: pw.TableBorder.all(color: PdfColors.black, width: 1),
+      children: [
+        _buildSimpleRow('Total', _currencyFormat.format(totalBill)),
+        _buildSimpleRow(
+          'Advance/(Previous Due)',
+          _currencyFormat.format(advance),
+        ),
+        _buildSimpleRow(
+          'Net Payable/ (Remaining Balance)',
+          _currencyFormat.format(advance - totalBill),
+          isBold: true,
+        ),
+      ],
+    );
+  }
+
+  static pw.TableRow _buildSimpleRow(
+    String l,
+    String v, {
+    bool isBold = false,
+  }) {
+    final style = pw.TextStyle(
+      fontSize: 10,
+      fontWeight: isBold ? pw.FontWeight.bold : null,
+    );
+    return pw.TableRow(
+      children: [
+        pw.Padding(
+          padding: const pw.EdgeInsets.all(6),
+          child: pw.Text(l, style: style, textAlign: pw.TextAlign.right),
+        ),
+        pw.Padding(
+          padding: const pw.EdgeInsets.all(6),
+          child: pw.Text(v, style: style, textAlign: pw.TextAlign.right),
+        ),
+      ],
+    );
+  }
+
+  static pw.Widget _buildBreakdownTable(
+    List<Session> sessions,
+    List<ServiceRate> allRates,
+    List<ClientDiscount> allDiscounts,
+    double grandTotal,
+  ) {
+    return pw.Table(
+      columnWidths: {
+        0: const pw.FixedColumnWidth(60),
+        1: const pw.FixedColumnWidth(55),
+        2: const pw.FixedColumnWidth(55),
+        3: const pw.FlexColumnWidth(2),
+        4: const pw.FixedColumnWidth(60),
+        5: const pw.FixedColumnWidth(40),
+        6: const pw.FixedColumnWidth(60),
+        7: const pw.FixedColumnWidth(60),
+        8: const pw.FixedColumnWidth(60),
+      },
+      border: pw.TableBorder.all(color: PdfColors.black, width: 0.5),
+      children: [
+        pw.TableRow(
+          decoration: const pw.BoxDecoration(color: PdfColors.grey100),
+          children: [
+            _buildCell('Date', isHeader: true),
+            _buildCell('Start Time', isHeader: true),
+            _buildCell('End Time', isHeader: true),
+            _buildCell('Service Package', isHeader: true),
+            _buildCell('Status', isHeader: true),
+            _buildCell('Total Hours', isHeader: true),
+            _buildCell('Per Unit Charge', isHeader: true),
+            _buildCell('Discount (Per Hour)', isHeader: true),
+            _buildCell('Amount', isHeader: true),
+          ],
+        ),
+        ...sessions.map((s) {
+          double sessionAmount = 0;
+          double rate = 0;
+          double discount = 0;
+          final date = s.date.toDate();
+          if (s.status == SessionStatus.completed ||
+              s.status == SessionStatus.scheduled) {
+            for (var sv in s.services) {
+              rate =
+                  _getApplicableRate(allRates, sv.type, date)?.hourlyRate ??
+                  0.0;
+              discount =
+                  _getApplicableDiscount(
+                    allDiscounts,
+                    sv.type,
+                    date,
+                  )?.discountPerHour ??
+                  0.0;
+              sessionAmount += sv.duration * (rate - discount);
+            }
+          }
+          return pw.TableRow(
+            children: [
+              _buildCell(_dateFormat.format(date)),
+              _buildCell(
+                s.services.isNotEmpty
+                    ? AddScheduleUtils.formatTimeToAmPm(
+                        s.services.first.startTime,
+                      )
+                    : '',
+              ),
+              _buildCell(
+                s.services.isNotEmpty
+                    ? AddScheduleUtils.formatTimeToAmPm(s.services.last.endTime)
+                    : '',
+              ),
+              _buildCell(s.services.map((sv) => sv.type).toSet().join(', ')),
+              _buildCell(s.status.displayName),
+              _buildCell(
+                s.totalDuration.toStringAsFixed(1),
+                align: pw.TextAlign.center,
+              ),
+              _buildCell(
+                _currencyFormat.format(rate),
+                align: pw.TextAlign.center,
+              ),
+              _buildCell(
+                _currencyFormat.format(discount),
+                align: pw.TextAlign.center,
+              ),
+              _buildCell(
+                _currencyFormat.format(sessionAmount),
+                align: pw.TextAlign.right,
+              ),
+            ],
+          );
+        }),
+        pw.TableRow(
+          children: [
+            pw.SizedBox(),
+            pw.SizedBox(),
+            pw.SizedBox(),
+            pw.SizedBox(),
+            pw.SizedBox(),
+            pw.SizedBox(),
+            pw.SizedBox(),
+            _buildCell('Total', isBold: true, align: pw.TextAlign.right),
+            _buildCell(
+              _currencyFormat.format(grandTotal),
+              isBold: true,
+              align: pw.TextAlign.right,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  static pw.Widget _buildCell(
+    String text, {
+    bool isHeader = false,
+    bool isBold = false,
+    pw.TextAlign align = pw.TextAlign.left,
+  }) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(4),
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(
+          fontSize: isHeader ? 8 : 9,
+          fontWeight: (isHeader || isBold) ? pw.FontWeight.bold : null,
+        ),
+        textAlign: align,
+      ),
+    );
+  }
+
+  static pw.Widget _buildPaymentTerms() {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.black, width: 1),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            'Mode of Payment',
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+          ),
+          pw.Text(
+            'CASH/CARD/CHEQUE/ONLINE TRANSFER (In case of Card payment 1.5% charge is applicable).',
+            style: const pw.TextStyle(fontSize: 9),
+          ),
+          pw.SizedBox(height: 10),
+          pw.Text(
+            'Bank details:',
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+          ),
+          pw.Text(
+            'Account Name: M/S. TENDER TWIG, Account No:2077080460001, Bank Name: BRAC Bank Ltd., Bank Branch: Banani Branch, Routing No: 060260435.',
+            style: const pw.TextStyle(fontSize: 9),
+          ),
+          pw.SizedBox(height: 10),
+          pw.Text(
+            'Disclaimer',
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+          ),
+          pw.Text(
+            'Failure to clear the fees by the due date will result in the temporary suspension of all services until all outstanding fees are cleared.',
+            style: const pw.TextStyle(fontSize: 9),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Future<void> generateInvoicePdf({
+    required Client client,
+    required List<Session> sessions,
+    required List<ServiceRate> allRates,
+    required List<ClientDiscount> allDiscounts,
+    required DateTime monthDate,
+    required double totalMonthlyBill,
+  }) async {
+    final pdf = await _buildInvoiceDocument(
       client: client,
       sessions: sessions,
-      rateMap: rateMap,
+      allRates: allRates,
+      allDiscounts: allDiscounts,
       monthDate: monthDate,
       totalMonthlyBill: totalMonthlyBill,
     );
-
-    final safeName = client.name
-        .replaceAll(RegExp(r'[^\w\s]+'), '')
-        .replaceAll(' ', '_');
     final fileName =
-        '${safeName}_${DateFormat('MMMM_yyyy').format(monthDate)}.pdf';
-
+        '${client.name.replaceAll(' ', '_')}_Invoice_${DateFormat('MMM_yyyy').format(monthDate)}.pdf';
     if (kIsWeb) {
       final bytes = await pdf.save();
       final blob = web.Blob(
@@ -265,62 +684,51 @@ class BillingExportHelper {
     }
   }
 
-  /// Directly opens the print dialog for the invoice
   static Future<void> printInvoice({
     required Client client,
     required List<Session> sessions,
-    required Map<String, double> rateMap,
+    required List<ServiceRate> allRates,
+    required List<ClientDiscount> allDiscounts,
     required DateTime monthDate,
     required double totalMonthlyBill,
   }) async {
-    final pdf = _buildInvoiceDocument(
+    final pdf = await _buildInvoiceDocument(
       client: client,
       sessions: sessions,
-      rateMap: rateMap,
+      allRates: allRates,
+      allDiscounts: allDiscounts,
       monthDate: monthDate,
       totalMonthlyBill: totalMonthlyBill,
     );
-
-    final safeName = client.name
-        .replaceAll(RegExp(r'[^\w\s]+'), '')
-        .replaceAll(' ', '_');
-    final fileName =
-        '${safeName}_${DateFormat('MMMM_yyyy').format(monthDate)}.pdf';
-
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
-      name: fileName,
     );
   }
 
-  /// Directly triggers the share sheet for the invoice (Mobile only)
   static Future<void> shareInvoice({
     required Client client,
     required List<Session> sessions,
-    required Map<String, double> rateMap,
+    required List<ServiceRate> allRates,
+    required List<ClientDiscount> allDiscounts,
     required DateTime monthDate,
     required double totalMonthlyBill,
   }) async {
-    final pdf = _buildInvoiceDocument(
+    final pdf = await _buildInvoiceDocument(
       client: client,
       sessions: sessions,
-      rateMap: rateMap,
+      allRates: allRates,
+      allDiscounts: allDiscounts,
       monthDate: monthDate,
       totalMonthlyBill: totalMonthlyBill,
     );
-
     final bytes = await pdf.save();
-    final safeName = client.name
-        .replaceAll(RegExp(r'[^\w\s]+'), '')
-        .replaceAll(' ', '_');
-    final fileName =
-        '${safeName}_${DateFormat('MMMM_yyyy').format(monthDate)}.pdf';
-
+    final fileName = '${client.name.replaceAll(' ', '_')}_Invoice.pdf';
     if (kIsWeb) {
       await generateInvoicePdf(
         client: client,
         sessions: sessions,
-        rateMap: rateMap,
+        allRates: allRates,
+        allDiscounts: allDiscounts,
         monthDate: monthDate,
         totalMonthlyBill: totalMonthlyBill,
       );
@@ -328,252 +736,18 @@ class BillingExportHelper {
       final directory = await getTemporaryDirectory();
       final file = io.File('${directory.path}/$fileName');
       await file.writeAsBytes(bytes);
-
       await Share.shareXFiles([
         XFile(file.path),
       ], text: 'Invoice for ${client.name}');
     }
   }
+}
 
-  static pw.Widget _buildHeader(Client client, DateTime monthDate) {
-    return pw.Row(
-      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-      children: [
-        pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Text(
-              'CENTER ASSISTANT',
-              style: pw.TextStyle(
-                fontSize: 24,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.green900,
-              ),
-            ),
-            pw.Text('Professional Center Management System'),
-          ],
-        ),
-        pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.end,
-          children: [
-            pw.Text(
-              'INVOICE',
-              style: pw.TextStyle(
-                fontSize: 24,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.grey700,
-              ),
-            ),
-            pw.Text(
-              'Date: ${DateFormat('dd MMM, yyyy').format(DateTime.now())}',
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  static pw.Widget _buildInvoiceInfo(Client client, DateTime monthDate) {
-    return pw.Row(
-      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Text(
-              'BILL TO:',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-            ),
-            pw.Text(
-              client.name,
-              style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
-            ),
-            pw.Text('Client ID: ${client.clientId}'),
-            pw.Text('Contact: ${client.mobileNo}'),
-          ],
-        ),
-        pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.end,
-          children: [
-            pw.Text(
-              'BILLING PERIOD:',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-            ),
-            pw.Text(
-              DateFormat('MMMM yyyy').format(monthDate).toUpperCase(),
-              style: pw.TextStyle(fontSize: 14),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  static pw.Widget _buildSessionsTable(
-    List<Session> sessions,
-    Map<String, double> rateMap,
-  ) {
-    final headers = [
-      'Date',
-      'Service (Time)',
-      'Hours',
-      'Rate (Tk)',
-      'Type',
-      'Status',
-      'Total (Tk)',
-    ];
-
-    final data = sessions.map((s) {
-      double sessionBill = 0;
-      if (s.status == SessionStatus.completed ||
-          s.status == SessionStatus.scheduled) {
-        for (var service in s.services) {
-          sessionBill += service.duration * (rateMap[service.type] ?? 0.0);
-        }
-      }
-
-      // Format services with AM/PM for PDF table
-      String servicesWithTime = s.services
-          .map((sv) {
-            return '${AddScheduleUtils.formatTimeToAmPm(sv.startTime)}-${AddScheduleUtils.formatTimeToAmPm(sv.endTime)} ${sv.type}';
-          })
-          .join('\n');
-
-      final typesDisplay = s.services
-          .map((sv) => sv.sessionType.displayName)
-          .toSet()
-          .join('\n');
-
-      return [
-        _dateFormat.format(s.date.toDate()),
-        servicesWithTime,
-        '${s.totalDuration}h',
-        s.services
-            .map((sv) => _currencyFormat.format(rateMap[sv.type] ?? 0))
-            .toSet()
-            .join('\n'),
-        typesDisplay,
-        s.status.displayName,
-        _currencyFormat.format(sessionBill),
-      ];
-    }).toList();
-
-    return pw.TableHelper.fromTextArray(
-      headers: headers,
-      data: data,
-      border: null,
-      headerStyle: pw.TextStyle(
-        fontWeight: pw.FontWeight.bold,
-        color: PdfColors.white,
-      ),
-      headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey900),
-      cellHeight: 30,
-      cellAlignments: {
-        0: pw.Alignment.centerLeft,
-        1: pw.Alignment.centerLeft,
-        2: pw.Alignment.center,
-        3: pw.Alignment.centerRight,
-        4: pw.Alignment.centerLeft,
-        5: pw.Alignment.centerLeft,
-        6: pw.Alignment.centerRight,
-      },
-    );
-  }
-
-  static pw.Widget _buildSummary({
-    required Client client,
-    required double totalBill,
-    required double netBalance,
-    required double totalHours,
-    required int completedCount,
-    required int clientCancelledCount,
-    required int centerCancelledCount,
-  }) {
-    return pw.Row(
-      mainAxisAlignment: pw.MainAxisAlignment.end,
-      children: [
-        pw.Container(
-          width: 250,
-          child: pw.Column(
-            children: [
-              _summaryRow('Total Hours:', '${totalHours.toStringAsFixed(1)} h'),
-              _summaryRow('Completed Sessions:', '$completedCount'),
-              _summaryRow('Client Cancelled:', '$clientCancelledCount'),
-              _summaryRow('Center Cancelled:', '$centerCancelledCount'),
-              pw.SizedBox(height: 5),
-              pw.Divider(),
-              _summaryRow(
-                'Current Prepaid Balance:',
-                'Tk ${_currencyFormat.format(client.walletBalance)}',
-              ),
-              _summaryRow(
-                'Total Monthly Bill:',
-                '- Tk ${_currencyFormat.format(totalBill)}',
-                color: PdfColors.red,
-              ),
-              pw.SizedBox(height: 10),
-              pw.Container(
-                padding: const pw.EdgeInsets.all(8),
-                decoration: const pw.BoxDecoration(color: PdfColors.grey200),
-                child: _summaryRow(
-                  'Net Remaining Balance:',
-                  'Tk ${_currencyFormat.format(netBalance)}',
-                  isBold: true,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  static pw.Widget _summaryRow(
-    String label,
-    String value, {
-    bool isBold = false,
-    PdfColor? color,
-  }) {
-    return pw.Row(
-      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-      children: [
-        pw.Text(
-          label,
-          style: pw.TextStyle(
-            fontSize: 10,
-            fontWeight: isBold ? pw.FontWeight.bold : null,
-          ),
-        ),
-        pw.Text(
-          value,
-          style: pw.TextStyle(
-            fontSize: 12,
-            fontWeight: pw.FontWeight.bold,
-            color: color,
-          ),
-        ),
-      ],
-    );
-  }
-
-  static pw.Widget _buildFooter() {
-    return pw.Container(
-      margin: const pw.EdgeInsets.only(top: 40),
-      child: pw.Column(
-        children: [
-          pw.Divider(color: PdfColors.grey300),
-          pw.SizedBox(height: 10),
-          pw.Text(
-            'Thank you for choosing Center Assistant.',
-            style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
-          ),
-          pw.Text(
-            'This is a computer-generated invoice and does not require a physical signature.',
-            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
-          ),
-        ],
-      ),
-    );
-  }
+class _SummaryData {
+  final String type;
+  double hours;
+  double rate;
+  double discount;
+  double total;
+  _SummaryData(this.type, this.hours, this.rate, this.discount, this.total);
 }

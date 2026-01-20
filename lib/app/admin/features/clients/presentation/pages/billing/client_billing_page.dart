@@ -7,6 +7,7 @@ import '/core/providers/client_providers.dart';
 import 'widgets/billing_deposit_tab.dart';
 import 'widgets/billing_history_tab.dart';
 import 'widgets/billing_sessions_tab.dart';
+import 'widgets/billing_discount_tab.dart';
 
 class ClientBillingPage extends ConsumerStatefulWidget {
   final String clientId;
@@ -43,8 +44,9 @@ class _ClientBillingPageState extends ConsumerState<ClientBillingPage> {
         }
 
         return DefaultTabController(
-          length: 3,
+          length: 4,
           child: Scaffold(
+            backgroundColor: Colors.transparent,
             body: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
@@ -57,6 +59,7 @@ class _ClientBillingPageState extends ConsumerState<ClientBillingPage> {
                       Tab(text: 'Monthly Sessions', height: 40),
                       Tab(text: 'Transaction History', height: 40),
                       Tab(text: 'Deposit & Payment', height: 40),
+                      Tab(text: 'Discounts', height: 40),
                     ],
                   ),
                   Expanded(
@@ -74,6 +77,7 @@ class _ClientBillingPageState extends ConsumerState<ClientBillingPage> {
                           onDeposit: _handleDeposit,
                           onPayment: _handlePayment,
                         ),
+                        BillingDiscountTab(client: client),
                       ],
                     ),
                   ),
