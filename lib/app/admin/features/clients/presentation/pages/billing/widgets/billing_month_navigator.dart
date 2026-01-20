@@ -11,9 +11,10 @@ class BillingMonthNavigator extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedMonth = ref.watch(selectedBillingMonthProvider);
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 1),
+      height: 32,
+      padding: const EdgeInsets.only(right: 2, left: 10),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(50),
+        borderRadius: BorderRadius.circular(0),
         color: Colors.white,
       ),
       child: Row(

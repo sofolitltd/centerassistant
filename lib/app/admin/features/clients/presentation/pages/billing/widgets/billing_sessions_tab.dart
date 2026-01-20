@@ -35,31 +35,13 @@ class BillingSessionsTab extends ConsumerWidget {
       length: 3,
       child: Column(
         children: [
-          // Header with Tools
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [BillingMonthNavigator()],
-            ),
-          ),
-
-          //
+          // Content
           Expanded(
             child: TabBarView(
               physics: const NeverScrollableScrollPhysics(),
               children: [
-                //
                 _LiveSessionsView(client: client, sessionsAsync: sessionsAsync),
-
-                //
                 BillingSnapshotsTab(clientId: client.id, type: InvoiceType.pre),
-
-                //
                 BillingSnapshotsTab(
                   clientId: client.id,
                   type: InvoiceType.post,
@@ -68,32 +50,50 @@ class BillingSessionsTab extends ConsumerWidget {
             ),
           ),
 
-          // Bottom Excel-style Tabs
+          // Bottom Excel-style Tabs & Month Navigator
           Container(
-            height: 40,
+            height: 32,
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
+              color: Colors.blueGrey.shade50,
               border: Border(top: BorderSide(color: Colors.grey.shade300)),
             ),
-            child: TabBar(
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
-              indicatorSize: TabBarIndicatorSize.label,
-              labelColor: Colors.blue,
-              unselectedLabelColor: Colors.black54,
-              indicator: const UnderlineTabIndicator(
-                borderSide: BorderSide(width: 3, color: Colors.blue),
-                insets: EdgeInsets.symmetric(horizontal: 16),
-              ),
-              labelStyle: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
-              unselectedLabelStyle: const TextStyle(fontSize: 13),
-              tabs: const [
-                Tab(text: 'Live'),
-                Tab(text: 'Pre Invoice'),
-                Tab(text: 'Post Invoice'),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TabBar(
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    labelColor: Theme.of(context).primaryColor,
+                    unselectedLabelColor: Colors.black54,
+                    dividerColor: Colors.transparent,
+                    indicator: BoxDecoration(
+                      color: Colors.white,
+                      border: Border(
+                        top: BorderSide(
+                          color: Theme.of(context).primaryColor,
+                          width: 3,
+                        ),
+                        left: BorderSide(color: Colors.grey.shade300),
+                        right: BorderSide(color: Colors.grey.shade300),
+                      ),
+                    ),
+                    labelStyle: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                    unselectedLabelStyle: const TextStyle(fontSize: 13),
+                    tabs: const [
+                      Tab(text: 'Live'),
+                      Tab(text: 'Pre Invoice'),
+                      Tab(text: 'Post Invoice'),
+                    ],
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(right: 2, left: 8),
+                  child: BillingMonthNavigator(),
+                ),
               ],
             ),
           ),
@@ -179,6 +179,7 @@ class _LiveSessionsView extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    //
                     _DataTableWidget(
                       client: client,
                       sorted: sorted,
@@ -186,22 +187,50 @@ class _LiveSessionsView extends ConsumerWidget {
                       allDiscounts: allDiscounts,
                       currencyFormat: currencyFormat,
                     ),
-                    _buildSummarySection(
-                      totalHours: totalHours,
-                      completedCount: completedCount,
-                      clientCancelledCount: clientCancelledCount,
-                      centerCancelledCount: centerCancelledCount,
-                      totalGross: totalGross,
-                      totalDiscount: totalDiscount,
-                      totalNet: totalNet,
-                      walletBalance: client.walletBalance,
-                      currencyFormat: currencyFormat,
+
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final isBilledAsync = ref.watch(
+                          checkMonthBilledProvider((
+                            clientId: client.id,
+                            monthKey: monthKey,
+                          )),
+                        );
+                        return isBilledAsync.maybeWhen(
+                          data: (isBilled) => _buildSummarySection(
+                            totalHours: totalHours,
+                            completedCount: completedCount,
+                            clientCancelledCount: clientCancelledCount,
+                            centerCancelledCount: centerCancelledCount,
+                            totalGross: totalGross,
+                            totalDiscount: totalDiscount,
+                            totalNet: totalNet,
+                            walletBalance: client.walletBalance,
+                            currencyFormat: currencyFormat,
+                            isBilled: isBilled,
+                          ),
+                          orElse: () => _buildSummarySection(
+                            totalHours: totalHours,
+                            completedCount: completedCount,
+                            clientCancelledCount: clientCancelledCount,
+                            centerCancelledCount: centerCancelledCount,
+                            totalGross: totalGross,
+                            totalDiscount: totalDiscount,
+                            totalNet: totalNet,
+                            walletBalance: client.walletBalance,
+                            currencyFormat: currencyFormat,
+                            isBilled: false,
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
               ),
 
               const SizedBox(height: 16),
+
+              //
               Consumer(
                 builder: (context, ref, child) {
                   final hasPreAsync = ref.watch(
@@ -248,6 +277,8 @@ class _LiveSessionsView extends ConsumerWidget {
                         orElse: () => const SizedBox.shrink(),
                       ),
                       const SizedBox(width: 12),
+
+                      //
                       isBilledAsync.maybeWhen(
                         data: (isBilled) => !isBilled
                             ? ElevatedButton.icon(
@@ -299,6 +330,7 @@ class _LiveSessionsView extends ConsumerWidget {
     required double totalNet,
     required double walletBalance,
     required NumberFormat currencyFormat,
+    required bool isBilled,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -327,22 +359,25 @@ class _LiveSessionsView extends ConsumerWidget {
           const Divider(height: 24),
           _buildSummaryRow(
             'Total Monthly Bill',
-            '- ৳ ${currencyFormat.format(totalNet)}',
-            color: Colors.red.shade700,
+            '৳ ${currencyFormat.format(totalNet)}',
+            color: Colors.black,
             isBold: true,
           ),
 
-          const Divider(height: 24),
-          _buildSummaryRow(
-            'Advances/Previous Due',
-            '৳ ${currencyFormat.format(walletBalance)}',
-          ),
-          _buildSummaryRow(
-            'Net Payable / Remaining Balance',
-            '৳ ${currencyFormat.format(walletBalance - totalNet)}',
-            isBold: true,
-            color: Colors.blue.shade800,
-          ),
+          if (!isBilled) ...[
+            const Divider(height: 24),
+
+            _buildSummaryRow(
+              'Advances/Previous Due',
+              '৳ ${currencyFormat.format(walletBalance)}',
+            ),
+            _buildSummaryRow(
+              'Net Payable / Remaining Balance',
+              '৳ ${currencyFormat.format(walletBalance - totalNet)}',
+              isBold: true,
+              color: Colors.blue.shade800,
+            ),
+          ],
         ],
       ),
     );

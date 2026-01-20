@@ -480,8 +480,8 @@ class BillingSnapshotsTab extends ConsumerWidget {
           const Divider(),
           _buildSummaryRow(
             'Total Monthly Bill',
-            '- ৳ ${currencyFormat.format(snapshot.totalAmount)}',
-            color: Colors.red.shade700,
+            '৳ ${currencyFormat.format(snapshot.totalAmount)}',
+            color: Colors.black,
             isBold: true,
           ),
 
@@ -568,18 +568,19 @@ class BillingSnapshotsTab extends ConsumerWidget {
         }
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
           color: Colors.blue.shade800,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(50),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(LucideIcons.download, color: Colors.white, size: 18),
+            Icon(LucideIcons.download, color: Colors.white, size: 16),
             SizedBox(width: 8),
             Text(
-              'Export Snapshot',
+              'Export',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
