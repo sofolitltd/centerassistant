@@ -263,6 +263,24 @@ final scheduleViewProvider = FutureProvider.autoDispose<ScheduleView>((
   return ref.watch(scheduleByDateProvider(selectedDate).future);
 });
 
+final allMonthlySessionsProvider = StreamProvider<List<Session>>((ref) {
+  final firestore = ref.watch(firestoreProvider);
+  final now = DateTime.now();
+  final firstDay = DateTime(now.year, now.month, 1);
+  final lastDay = DateTime(now.year, now.month + 1, 1)
+      .subtract(const Duration(days: 1)); // Corrected
+
+  return firestore
+      .collection('schedule')
+      .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(firstDay))
+      .where('date', isLessThanOrEqualTo: Timestamp.fromDate(lastDay))
+      .snapshots()
+      .map(
+        (snapshot) =>
+            snapshot.docs.map((doc) => Session.fromFirestore(doc)).toList(),
+      );
+});
+
 final sessionServiceProvider = Provider((ref) => SessionActionService(ref));
 
 class SessionActionService {
@@ -644,7 +662,8 @@ class SessionActionService {
         date: date,
         endType: RecurrenceEndType.onDate,
       );
-    } else {
+    }
+    else {
       var query = firestore
           .collection('schedule')
           .where('clientId', isEqualTo: clientId)

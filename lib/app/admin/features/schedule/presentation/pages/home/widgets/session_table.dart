@@ -340,7 +340,7 @@ class SessionTable extends ConsumerWidget {
               currentStatus.displayName,
               style: TextStyle(
                 color: color,
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: FontWeight.bold,
               ),
             ),

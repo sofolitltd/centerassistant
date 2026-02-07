@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '/services/firebase_service.dart';
 import '../models/invoice_snapshot.dart';
+import 'billing_providers.dart';
 
 final invoiceSnapshotsProvider =
     StreamProvider.family<
@@ -36,6 +37,44 @@ final invoiceSnapshotsByMonthProvider =
           .where('monthKey', isEqualTo: arg.monthKey)
           .where('type', isEqualTo: arg.type.name)
           .orderBy('generatedAt', descending: true)
+          .snapshots()
+          .map(
+            (snapshot) => snapshot.docs
+                .map((doc) => InvoiceSnapshot.fromFirestore(doc))
+                .toList(),
+          );
+    });
+
+final allInvoiceSnapshotsByMonthProvider =
+    StreamProvider.family<
+      List<InvoiceSnapshot>,
+      ({String monthKey, InvoiceType type})
+    >((ref, arg) {
+      final firestore = ref.watch(firestoreProvider);
+      return firestore
+          .collectionGroup('invoice_snapshots')
+          .where('monthKey', isEqualTo: arg.monthKey)
+          .where('type', isEqualTo: arg.type.name)
+          .snapshots()
+          .map(
+            (snapshot) => snapshot.docs
+                .map((doc) => InvoiceSnapshot.fromFirestore(doc))
+                .toList(),
+          );
+    });
+
+final allInvoiceSnapshotsByRangeProvider =
+    StreamProvider.family<List<InvoiceSnapshot>, int>((ref, months) {
+      final firestore = ref.watch(firestoreProvider);
+      final monthKeys = List.generate(months, (i) {
+        final date = DateTime.now().subtract(Duration(days: 30 * i));
+        return "${date.year}-${date.month.toString().padLeft(2, '0')}";
+      });
+
+      return firestore
+          .collectionGroup('invoice_snapshots')
+          .where('monthKey', whereIn: monthKeys)
+          .where('type', isEqualTo: InvoiceType.post.name)
           .snapshots()
           .map(
             (snapshot) => snapshot.docs
@@ -131,16 +170,23 @@ class InvoiceSnapshotActionService {
     await docRef.set(snapshot.toJson());
   }
 
-  Future<void> deleteSnapshot({
-    required String clientId,
-    required String snapshotId,
-  }) async {
+  Future<void> deleteSnapshot(InvoiceSnapshot snapshot) async {
     final firestore = _ref.read(firestoreProvider);
+
+    // If it's a POST invoice, we must revert the wallet balance effect first
+    if (snapshot.type == InvoiceType.post) {
+      await _ref.read(billingServiceProvider).revertMonthlyBill(
+            clientId: snapshot.clientId,
+            monthKey: snapshot.monthKey,
+          );
+    }
+
+    // Now delete the snapshot itself
     await firestore
         .collection('clients')
-        .doc(clientId)
+        .doc(snapshot.clientId)
         .collection('invoice_snapshots')
-        .doc(snapshotId)
+        .doc(snapshot.id)
         .delete();
   }
 }

@@ -79,6 +79,20 @@ final clientTransactionsProvider =
           );
     });
 
+final allTransactionsProvider = StreamProvider<List<ClientTransaction>>((ref) {
+  final firestore = ref.watch(firestoreProvider);
+  return firestore
+      .collection('transactions')
+      .orderBy('timestamp', descending: true)
+      .limit(50)
+      .snapshots()
+      .map(
+        (snapshot) => snapshot.docs
+            .map((doc) => ClientTransaction.fromFirestore(doc))
+            .toList(),
+      );
+});
+
 final clientMonthlySessionsProvider =
     StreamProvider.family<List<Session>, String>((ref, clientId) {
       final firestore = ref.watch(firestoreProvider);
@@ -115,7 +129,7 @@ class BillingService {
   Future<void> addPayment({
     required Client client,
     required double amount,
-    String description = 'Prepaid Payment',
+    String description = 'Payment Received',
   }) async {
     final firestore = _ref.read(firestoreProvider);
     final batch = firestore.batch();
@@ -124,7 +138,7 @@ class BillingService {
     final transaction = ClientTransaction(
       id: transactionRef.id,
       clientId: client.id,
-      type: TransactionType.credit,
+      type: TransactionType.prepaid,
       amount: amount,
       rateAtTime: 0,
       description: description,
@@ -139,6 +153,33 @@ class BillingService {
     await batch.commit();
   }
 
+  Future<void> addRefund({
+    required Client client,
+    required double amount,
+    String description = 'Refund Processed',
+  }) async {
+    final firestore = _ref.read(firestoreProvider);
+    final batch = firestore.batch();
+
+    final transactionRef = firestore.collection('transactions').doc();
+    final transaction = ClientTransaction(
+      id: transactionRef.id,
+      clientId: client.id,
+      type: TransactionType.refund,
+      amount: -amount,
+      rateAtTime: 0,
+      description: description,
+      timestamp: DateTime.now(),
+    );
+
+    final clientRef = firestore.collection('clients').doc(client.id);
+
+    batch.set(transactionRef, transaction.toJson());
+    batch.update(clientRef, {'walletBalance': FieldValue.increment(-amount)});
+
+    await batch.commit();
+  }
+
   Future<void> finalizeMonthlyBill({
     required Client client,
     required double totalBill,
@@ -149,12 +190,11 @@ class BillingService {
     final monthKey = DateFormat('yyyy-MM').format(monthDate);
     final monthDisplay = DateFormat('MMMM yyyy').format(monthDate);
 
-    // 1. Create Transaction
     final transactionRef = firestore.collection('transactions').doc();
     final transaction = ClientTransaction(
       id: transactionRef.id,
       clientId: client.id,
-      type: TransactionType.debit,
+      type: TransactionType.prepaid,
       amount: -totalBill,
       rateAtTime: 0,
       description: 'Monthly Billing Settlement - $monthDisplay',
@@ -162,13 +202,11 @@ class BillingService {
     );
     batch.set(transactionRef, transaction.toJson());
 
-    // 2. Update Client Wallet
     final clientRef = firestore.collection('clients').doc(client.id);
     batch.update(clientRef, {
       'walletBalance': FieldValue.increment(-totalBill),
     });
 
-    // 3. Mark month as billed (Snapshot)
     final billedMonthRef = clientRef.collection('billed_months').doc(monthKey);
     batch.set(billedMonthRef, {
       'billedAt': Timestamp.now(),
@@ -180,10 +218,68 @@ class BillingService {
     await batch.commit();
   }
 
+  Future<void> revertMonthlyBill({
+    required String clientId,
+    required String monthKey,
+  }) async {
+    final firestore = _ref.read(firestoreProvider);
+    final clientRef = firestore.collection('clients').doc(clientId);
+    final billedMonthRef = clientRef.collection('billed_months').doc(monthKey);
+
+    final billedDoc = await billedMonthRef.get();
+    if (billedDoc.exists) {
+      final data = billedDoc.data()!;
+      final totalAmount = (data['totalAmount'] as num).toDouble();
+      final transactionId = data['transactionId'] as String;
+
+      final batch = firestore.batch();
+
+      // 1. Refund wallet balance
+      batch.update(clientRef, {
+        'walletBalance': FieldValue.increment(totalAmount),
+      });
+
+      // 2. Delete settlement transaction
+      batch.delete(firestore.collection('transactions').doc(transactionId));
+
+      // 3. Delete billed month record
+      batch.delete(billedMonthRef);
+
+      await batch.commit();
+    }
+  }
+
   Future<void> addSecurityDeposit({
     required Client client,
     required double amount,
     String description = 'Security Deposit',
+  }) async {
+    final firestore = _ref.read(firestoreProvider);
+    final batch = firestore.batch();
+
+    final transactionRef = firestore.collection('transactions').doc();
+    final transaction = ClientTransaction(
+      id: transactionRef.id,
+      clientId: client.id,
+      type: TransactionType.deposit,
+      amount: amount,
+      rateAtTime: 0,
+      description: description,
+      timestamp: DateTime.now(),
+    );
+
+    final clientRef = firestore.collection('clients').doc(client.id);
+
+    batch.set(transactionRef, transaction.toJson());
+    batch.update(clientRef, {'securityDeposit': FieldValue.increment(amount)});
+
+    await batch.commit();
+  }
+
+  Future<void> applyAdjustment({
+    required Client client,
+    required double amount,
+    String description = 'Security Deposit Adjustment',
   }) async {
     final firestore = _ref.read(firestoreProvider);
     final batch = firestore.batch();
@@ -202,7 +298,10 @@ class BillingService {
     final clientRef = firestore.collection('clients').doc(client.id);
 
     batch.set(transactionRef, transaction.toJson());
-    batch.update(clientRef, {'securityDeposit': FieldValue.increment(amount)});
+    batch.update(clientRef, {
+      'securityDeposit': FieldValue.increment(-amount),
+      'walletBalance': FieldValue.increment(amount),
+    });
 
     await batch.commit();
   }
@@ -211,22 +310,49 @@ class BillingService {
     required ClientTransaction oldTx,
     required double newAmount,
     required String newDescription,
+    required TransactionType newType,
   }) async {
     final firestore = _ref.read(firestoreProvider);
     final batch = firestore.batch();
 
-    final diff = newAmount - oldTx.amount;
-    final balanceField = oldTx.type == TransactionType.adjustment
-        ? 'securityDeposit'
-        : 'walletBalance';
+    // 1. Revert old transaction effect
+    final clientRef = firestore.collection('clients').doc(oldTx.clientId);
+    if (oldTx.type == TransactionType.deposit) {
+      batch.update(clientRef, {
+        'securityDeposit': FieldValue.increment(-oldTx.amount),
+      });
+    } else if (oldTx.type == TransactionType.adjustment) {
+      batch.update(clientRef, {
+        'securityDeposit': FieldValue.increment(oldTx.amount),
+        'walletBalance': FieldValue.increment(-oldTx.amount),
+      });
+    } else {
+      batch.update(clientRef, {
+        'walletBalance': FieldValue.increment(-oldTx.amount),
+      });
+    }
 
+    // 2. Apply new transaction effect
+    if (newType == TransactionType.deposit) {
+      batch.update(clientRef, {
+        'securityDeposit': FieldValue.increment(newAmount),
+      });
+    } else if (newType == TransactionType.adjustment) {
+      batch.update(clientRef, {
+        'securityDeposit': FieldValue.increment(-newAmount),
+        'walletBalance': FieldValue.increment(newAmount),
+      });
+    } else {
+      batch.update(clientRef, {
+        'walletBalance': FieldValue.increment(newAmount),
+      });
+    }
+
+    // 3. Update the transaction document
     batch.update(firestore.collection('transactions').doc(oldTx.id), {
       'amount': newAmount,
       'description': newDescription,
-    });
-
-    batch.update(firestore.collection('clients').doc(oldTx.clientId), {
-      balanceField: FieldValue.increment(diff),
+      'type': newType.name,
     });
 
     await batch.commit();
@@ -236,15 +362,23 @@ class BillingService {
     final firestore = _ref.read(firestoreProvider);
     final batch = firestore.batch();
 
-    final amountToRevert = -tx.amount;
-    final balanceField = tx.type == TransactionType.adjustment
-        ? 'securityDeposit'
-        : 'walletBalance';
+    final clientRef = firestore.collection('clients').doc(tx.clientId);
+    if (tx.type == TransactionType.deposit) {
+      batch.update(clientRef, {
+        'securityDeposit': FieldValue.increment(-tx.amount),
+      });
+    } else if (tx.type == TransactionType.adjustment) {
+      batch.update(clientRef, {
+        'securityDeposit': FieldValue.increment(tx.amount),
+        'walletBalance': FieldValue.increment(-tx.amount),
+      });
+    } else {
+      batch.update(clientRef, {
+        'walletBalance': FieldValue.increment(-tx.amount),
+      });
+    }
 
     batch.delete(firestore.collection('transactions').doc(tx.id));
-    batch.update(firestore.collection('clients').doc(tx.clientId), {
-      balanceField: FieldValue.increment(amountToRevert),
-    });
 
     await batch.commit();
   }

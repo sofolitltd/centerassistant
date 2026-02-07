@@ -41,6 +41,7 @@ dependencies:
   path_provider: ^2.1.5
   data_table_2: ^2.7.2
   dropdown_search: ^6.0.2
+  fl_chart: ^1.1.1
 
 dev_dependencies:
   flutter_test:

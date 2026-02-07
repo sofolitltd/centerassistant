@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '/core/models/client.dart';
 import '/core/providers/billing_providers.dart';
 import '/core/providers/client_providers.dart';
-import 'widgets/billing_deposit_tab.dart';
 import 'widgets/billing_discount_tab.dart';
 import 'widgets/billing_history_tab.dart';
 import 'widgets/billing_sessions_tab.dart';
@@ -19,14 +17,6 @@ class ClientBillingPage extends ConsumerStatefulWidget {
 }
 
 class _ClientBillingPageState extends ConsumerState<ClientBillingPage> {
-  final _amountController = TextEditingController();
-
-  @override
-  void dispose() {
-    _amountController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final clientAsync = ref.watch(clientByIdProvider(widget.clientId));
@@ -44,7 +34,7 @@ class _ClientBillingPageState extends ConsumerState<ClientBillingPage> {
         }
 
         return DefaultTabController(
-          length: 4,
+          length: 3, // Reduced from 4
           child: Scaffold(
             backgroundColor: Colors.transparent,
             body: Padding(
@@ -57,8 +47,7 @@ class _ClientBillingPageState extends ConsumerState<ClientBillingPage> {
                     padding: EdgeInsets.zero,
                     tabs: [
                       Tab(text: 'Monthly Sessions', height: 40),
-                      Tab(text: 'Transaction History', height: 40),
-                      Tab(text: 'Deposit & Payment', height: 40),
+                      Tab(text: 'Transactions', height: 40),
                       Tab(text: 'Discounts', height: 40),
                     ],
                   ),
@@ -70,12 +59,9 @@ class _ClientBillingPageState extends ConsumerState<ClientBillingPage> {
                           client: client,
                           sessionsAsync: sessionsAsync,
                         ),
-                        BillingHistoryTab(transactionsAsync: transactionsAsync),
-                        BillingDepositTab(
-                          client: client,
-                          amountController: _amountController,
-                          onDeposit: _handleDeposit,
-                          onPayment: _handlePayment,
+                        BillingHistoryTab(
+                          client: client, // Pass client here
+                          transactionsAsync: transactionsAsync,
                         ),
                         BillingDiscountTab(client: client),
                       ],
@@ -91,29 +77,5 @@ class _ClientBillingPageState extends ConsumerState<ClientBillingPage> {
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (err, _) => Scaffold(body: Center(child: Text('Error: $err'))),
     );
-  }
-
-  Future<void> _handleDeposit(Client client, double amount, String note) async {
-    await ref
-        .read(billingServiceProvider)
-        .addSecurityDeposit(client: client, amount: amount, description: note);
-    _amountController.clear();
-    if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Security deposit added')));
-    }
-  }
-
-  Future<void> _handlePayment(Client client, double amount, String note) async {
-    await ref
-        .read(billingServiceProvider)
-        .addPayment(client: client, amount: amount, description: note);
-    _amountController.clear();
-    if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Payment added to wallet')));
-    }
   }
 }

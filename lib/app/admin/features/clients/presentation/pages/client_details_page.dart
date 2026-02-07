@@ -34,19 +34,20 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
     return Scaffold(
       body: clientsAsync.when(
         data: (clients) {
-          final client = clients
-              .where((c) => c.id == widget.clientId)
-              .firstOrNull;
+          final client =
+              clients.where((c) => c.id == widget.clientId).firstOrNull;
           if (client == null) {
             return const Center(child: Text('Client not found.'));
           }
 
           return Column(
             children: [
-              //
+              // Responsive Breadcrumbs
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: Row(
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 4,
                   children: [
                     InkWell(
                       onTap: () => context.go('/admin/dashboard'),
@@ -55,11 +56,7 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
                         style: TextStyle(color: Colors.grey, fontSize: 13),
                       ),
                     ),
-                    const Icon(
-                      Icons.chevron_right,
-                      size: 16,
-                      color: Colors.grey,
-                    ),
+                    const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
                     InkWell(
                       onTap: () => context.go('/admin/clients'),
                       child: const Text(
@@ -67,38 +64,30 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
                         style: TextStyle(color: Colors.grey, fontSize: 13),
                       ),
                     ),
-                    const Icon(
-                      Icons.chevron_right,
-                      size: 16,
-                      color: Colors.grey,
-                    ),
-                    Text(client.name, style: const TextStyle(fontSize: 13)),
-                  ],
-                ),
-              ),
-
-              //
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
+                    const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+                    Text(
+                      client.name,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
                       ),
-
-                      padding: const EdgeInsets.all(8),
-                      margin: const EdgeInsets.symmetric(horizontal: 16),
-                      child: _buildTabSwitcher(),
                     ),
-
-                    const SizedBox(height: 16),
-                    //
-                    Expanded(child: _buildTabContent(client)),
                   ],
                 ),
               ),
+
+              // Tab Switcher Container
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                ),
+                child: _buildTabSwitcher(),
+              ),
+
+              // Content Area
+              Expanded(child: _buildTabContent(client)),
             ],
           );
         },
@@ -109,32 +98,37 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
   }
 
   Widget _buildTabSwitcher() {
-    return Row(
-      children: [
-        _TabButton(
-          label: 'Details',
-          isSelected: widget.initialTab == 'details',
-          onTap: () => _onTabChanged('details'),
-        ),
-        const SizedBox(width: 8),
-        _TabButton(
-          label: 'Schedule',
-          isSelected: widget.initialTab == 'schedule',
-          onTap: () => _onTabChanged('schedule'),
-        ),
-        const SizedBox(width: 8),
-        _TabButton(
-          label: 'Leaves',
-          isSelected: widget.initialTab == 'leaves',
-          onTap: () => _onTabChanged('leaves'),
-        ),
-        const SizedBox(width: 8),
-        _TabButton(
-          label: 'Billing',
-          isSelected: widget.initialTab == 'billing',
-          onTap: () => _onTabChanged('billing'),
-        ),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: [
+          _TabButton(
+            label: 'Details',
+            isSelected: widget.initialTab == 'details',
+            onTap: () => _onTabChanged('details'),
+          ),
+          const SizedBox(width: 8),
+          _TabButton(
+            label: 'Schedule',
+            isSelected: widget.initialTab == 'schedule',
+            onTap: () => _onTabChanged('schedule'),
+          ),
+          const SizedBox(width: 8),
+          _TabButton(
+            label: 'Billing',
+            isSelected: widget.initialTab == 'billing',
+            onTap: () => _onTabChanged('billing'),
+          ),
+          const SizedBox(width: 8),
+          _TabButton(
+            label: 'Leaves',
+            isSelected: widget.initialTab == 'leaves',
+            onTap: () => _onTabChanged('leaves'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -142,13 +136,13 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
     switch (widget.initialTab) {
       case 'details':
         return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.all(16),
           child: ClientInformationPage(client: client),
         );
-
       case 'schedule':
         return ScheduleSpecificPage(clientId: client.id);
-
+      case 'billing':
+        return ClientBillingPage(clientId: client.id);
       case 'leaves':
         return _buildPlaceholder(
           'Leaves',
@@ -156,8 +150,6 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
             '/admin/clients/${client.id}/leaves?name=${Uri.encodeComponent(client.name)}',
           ),
         );
-      case 'billing':
-        return ClientBillingPage(clientId: client.id);
       default:
         return const SizedBox();
     }
@@ -166,8 +158,8 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
   Widget _buildPlaceholder(String title, VoidCallback onAction) {
     return Center(
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(height: 40),
           Text(
             'View client $title in the dedicated module.',
             style: const TextStyle(color: Colors.grey),
@@ -195,20 +187,22 @@ class _TabButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected
-              ? Theme.of(context).primaryColor
-              : Colors.grey.shade50,
-          borderRadius: BorderRadius.circular(4),
+          color: isSelected ? Theme.of(context).primaryColor : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: isSelected ? Theme.of(context).primaryColor : Colors.grey.shade200,
+          ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             color: isSelected ? Colors.white : Colors.black54,
-            fontSize: 14,
+            fontSize: 13,
           ),
         ),
       ),

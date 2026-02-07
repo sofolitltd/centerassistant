@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum TransactionType { credit, debit, adjustment }
+enum TransactionType { prepaid, deposit, refund, adjustment }
 
 class ClientTransaction {
   final String id;
@@ -42,7 +42,7 @@ class ClientTransaction {
     return ClientTransaction(
       id: snapshot.id,
       clientId: data['clientId'] as String? ?? '',
-      type: TransactionType.values.byName(data['type'] as String? ?? 'debit'),
+      type: TransactionType.values.byName(data['type'] as String? ?? 'prepaid'),
       amount: (data['amount'] as num? ?? 0).toDouble(),
       rateAtTime: (data['rateAtTime'] as num? ?? 0).toDouble(),
       duration: (data['duration'] as num?)?.toDouble(),

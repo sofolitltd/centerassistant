@@ -160,6 +160,7 @@ class _SideMenu extends StatefulWidget {
 class _SideMenuState extends State<_SideMenu> {
   bool _isExpanded = true;
   bool _isSettingsSubmenuOpen = false;
+  int? _hoveredIndex;
 
   @override
   void didChangeDependencies() {
@@ -174,7 +175,6 @@ class _SideMenuState extends State<_SideMenu> {
   @override
   Widget build(BuildContext context) {
     final selectedIndex = _calculateSelectedIndex(context);
-    final theme = Theme.of(context);
 
     return Container(
       width: widget.isDrawer ? 200 : (_isExpanded ? 200 : 60),
@@ -221,21 +221,19 @@ class _SideMenuState extends State<_SideMenu> {
                     LucideIcons.calendar,
                     'Schedule',
                   ),
-
                   const SizedBox(height: 4),
                   _buildNavItem(
                     2,
                     selectedIndex,
-                    LucideIcons.users,
-                    'Employee',
+                    LucideIcons.contact,
+                    'Clients',
                   ),
-
                   const SizedBox(height: 4),
                   _buildNavItem(
                     3,
                     selectedIndex,
-                    LucideIcons.contact,
-                    'Clients',
+                    LucideIcons.users,
+                    'Employee',
                   ),
                   const SizedBox(height: 4),
                   _buildNavItem(
@@ -251,10 +249,7 @@ class _SideMenuState extends State<_SideMenu> {
                     LucideIcons.phone,
                     'Contacts',
                   ),
-
                   const SizedBox(height: 4),
-
-                  // Expandable Settings Menu
                   if (widget.isDrawer || _isExpanded)
                     Column(
                       children: [
@@ -285,14 +280,12 @@ class _SideMenuState extends State<_SideMenu> {
                             onTap: () =>
                                 context.go('/admin/settings/time-slots'),
                           ),
-
                           _buildSubNavItem(
                             8,
                             selectedIndex,
                             'Holidays',
                             onTap: () => context.go('/admin/settings/holidays'),
                           ),
-
                           _buildSubNavItem(
                             9,
                             selectedIndex,
@@ -331,7 +324,6 @@ class _SideMenuState extends State<_SideMenu> {
                             style: TextStyle(fontSize: 13),
                           ),
                         ),
-
                         const PopupMenuItem(
                           value: 9,
                           child: Text(
@@ -479,27 +471,38 @@ class _SideMenuState extends State<_SideMenu> {
   }) {
     final isSelected = index == selectedIndex;
     final theme = Theme.of(context);
+    final bool isHovered = _hoveredIndex == index;
 
-    return InkWell(
-      onTap: () {
-        onTap();
-        if (widget.isDrawer) {
-          Navigator.pop(context);
-        }
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(50, 10, 16, 10),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 13,
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hoveredIndex = index),
+      onExit: (_) => setState(() => _hoveredIndex = null),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () {
+          onTap();
+          if (widget.isDrawer) {
+            Navigator.pop(context);
+          }
+        },
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(50, 10, 16, 10),
+          decoration: BoxDecoration(
             color: isSelected
-                ? theme.colorScheme.primary
-                : theme.colorScheme.onSurface.withValues(alpha: 0.6),
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ? theme.colorScheme.primary.withValues(alpha: 0.05)
+                : (isHovered ? Colors.grey.shade100 : Colors.transparent),
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              color: isSelected
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
           ),
         ),
       ),
@@ -515,57 +518,63 @@ class _SideMenuState extends State<_SideMenu> {
     final isSelected = index == selectedIndex;
     final theme = Theme.of(context);
     final bool showLabel = widget.isDrawer || _isExpanded;
+    final bool isHovered = _hoveredIndex == index;
 
-    return InkWell(
-      onTap: () {
-        _onDestinationSelected(index, context);
-        if (widget.isDrawer) {
-          Navigator.pop(context);
-        }
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: isSelected
-              ? theme.colorScheme.primary.withValues(alpha: 0.1)
-              : Colors.transparent,
-          border: Border(
-            left: BorderSide(
-              color: isSelected
-                  ? theme.colorScheme.primary
-                  : Colors.transparent,
-              width: 4,
-            ),
-          ),
-        ),
-        child: Row(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              child: Icon(
-                icon,
-                size: 18,
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hoveredIndex = index),
+      onExit: (_) => setState(() => _hoveredIndex = null),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () {
+          _onDestinationSelected(index, context);
+          if (widget.isDrawer) {
+            Navigator.pop(context);
+          }
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: isSelected
+                ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                : (isHovered ? Colors.grey.shade100 : Colors.transparent),
+            border: Border(
+              left: BorderSide(
                 color: isSelected
                     ? theme.colorScheme.primary
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    : Colors.transparent,
+                width: 4,
               ),
             ),
-            if (showLabel)
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.clip,
-                  style: TextStyle(
-                    color: isSelected
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.onSurface.withValues(alpha: 0.8),
-                    fontWeight: isSelected
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                  ),
+          ),
+          child: Row(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: Icon(
+                  icon,
+                  size: 18,
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
-          ],
+              if (showLabel)
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
+                    style: TextStyle(
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -575,8 +584,8 @@ class _SideMenuState extends State<_SideMenu> {
     final String location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith('/admin/dashboard')) return 0;
     if (location.startsWith('/admin/schedule')) return 1;
-    if (location.startsWith('/admin/employees')) return 2;
-    if (location.startsWith('/admin/clients')) return 3;
+    if (location.startsWith('/admin/clients')) return 2;
+    if (location.startsWith('/admin/employees')) return 3;
     if (location.startsWith('/admin/leaves')) return 4;
     if (location.startsWith('/admin/contacts')) return 5;
 
@@ -598,10 +607,10 @@ class _SideMenuState extends State<_SideMenu> {
         context.go('/admin/schedule');
         break;
       case 2:
-        context.go('/admin/employees');
+        context.go('/admin/clients');
         break;
       case 3:
-        context.go('/admin/clients');
+        context.go('/admin/employees');
         break;
       case 4:
         context.go('/admin/leaves');

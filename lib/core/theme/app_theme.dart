@@ -25,11 +25,13 @@ final darkColorScheme = ColorScheme.fromSeed(
   primaryContainer: Colors.grey.shade100,
 );
 
+//
 ThemeData buildTheme(ColorScheme colorScheme) {
   return ThemeData(
     colorScheme: colorScheme,
     useMaterial3: true,
     scaffoldBackgroundColor: colorScheme.primaryContainer,
+
     textTheme: GoogleFonts.outfitTextTheme(
       ThemeData(brightness: colorScheme.brightness).textTheme,
     ),

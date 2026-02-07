@@ -286,9 +286,7 @@ class BillingSnapshotsTab extends ConsumerWidget {
     );
 
     if (confirm == true) {
-      await ref
-          .read(invoiceSnapshotServiceProvider)
-          .deleteSnapshot(clientId: snapshot.clientId, snapshotId: snapshot.id);
+      await ref.read(invoiceSnapshotServiceProvider).deleteSnapshot(snapshot);
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
@@ -621,9 +619,9 @@ class BillingSnapshotsTab extends ConsumerWidget {
         ),
       ),
       itemBuilder: (context) => [
+        const PopupMenuItem(value: 'pdf', child: Text('Download PDF Invoice')),
         const PopupMenuItem(value: 'print', child: Text('Print PDF Invoice')),
         const PopupMenuItem(value: 'share', child: Text('Share PDF Invoice')),
-        const PopupMenuItem(value: 'pdf', child: Text('Download PDF Invoice')),
         const PopupMenuItem(value: 'csv', child: Text('Export CSV Breakdown')),
       ],
     );
