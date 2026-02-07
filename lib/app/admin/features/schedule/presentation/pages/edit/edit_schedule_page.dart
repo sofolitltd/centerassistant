@@ -11,6 +11,7 @@ import '/core/providers/client_providers.dart';
 import '/core/providers/employee_providers.dart';
 import '/core/providers/session_providers.dart';
 import '/core/providers/time_slot_providers.dart';
+import '../../../../../../../core/models/schedule_template.dart';
 import '../add/add_schedule_utils.dart';
 import '../add/widgets/add_schedule_client_section.dart';
 import '../add/widgets/add_schedule_date_time_section.dart';
@@ -30,13 +31,13 @@ class EditSchedulePage extends ConsumerStatefulWidget {
 
 class _EditSchedulePageState extends ConsumerState<EditSchedulePage> {
   Client? _selectedClient;
+  SessionStatus _status = SessionStatus.scheduled;
 
   // Time selection defaults for service builder
   String? _builderStartTime;
   String? _builderEndTime;
 
   List<ServiceDetail> _pendingServices = [];
-  SessionType _sessionType = SessionType.regular;
   String? _selectedTimeSlotId;
   DateTime? _date;
 
@@ -73,7 +74,7 @@ class _EditSchedulePageState extends ConsumerState<EditSchedulePage> {
                 constraints: const BoxConstraints(maxWidth: 800),
                 child: Column(
                   children: [
-                    const AddScheduleHeader(), // Header remains the same styling
+                    const AddScheduleHeader(title: 'Edit Schedule'),
                     const SizedBox(height: 32),
                     Card(
                       margin: EdgeInsets.zero,
@@ -89,23 +90,19 @@ class _EditSchedulePageState extends ConsumerState<EditSchedulePage> {
                                 selectedDate: _date!,
                                 timeSlotsAsync: timeSlotsAsync,
                                 selectedTimeSlotId: _selectedTimeSlotId,
-                                onDateChanged:
-                                    null, // Disable changing date in edit
-                                onTimeSlotChanged:
-                                    null, // Disable changing slot in edit
+                                onDateChanged: null,
+                                onTimeSlotChanged: null,
                                 formatTimeToAmPm:
                                     AddScheduleUtils.formatTimeToAmPm,
                               ),
 
                               const SizedBox(height: 16),
 
-                              // Client & Session Type Section
+                              // Client Section (Read-only for Edit)
                               AddScheduleClientSection(
                                 clientsAsync: clientsAsync,
                                 selectedClient: _selectedClient,
-                                onClientChanged: (c) =>
-                                    setState(() => _selectedClient = c),
-
+                                onClientChanged: null,
                                 selectedTimeSlotId: _selectedTimeSlotId,
                                 scheduleAsync: scheduleAsync,
                               ),
@@ -145,6 +142,11 @@ class _EditSchedulePageState extends ConsumerState<EditSchedulePage> {
                                 onRemoveService: (index) => setState(
                                   () => _pendingServices.removeAt(index),
                                 ),
+                                onEditService: (index, service) =>
+                                    _handleOpenServiceDialog(
+                                      index: index,
+                                      initialService: service,
+                                    ),
                               ),
 
                               const SizedBox(height: 32),
@@ -201,8 +203,8 @@ class _EditSchedulePageState extends ConsumerState<EditSchedulePage> {
     setState(() {
       _date = date;
       _selectedTimeSlotId = timeSlotId;
-      _sessionType = session.services.first.sessionType;
       _pendingServices = List.from(session.services);
+      _status = session.status;
 
       final clients = ref.read(clientsProvider).value ?? [];
       _selectedClient = clients.where((c) => c.id == clientId).firstOrNull;
@@ -218,21 +220,37 @@ class _EditSchedulePageState extends ConsumerState<EditSchedulePage> {
     });
   }
 
-  Future<void> _handleOpenServiceDialog() async {
-    final result = await showDialog<ServiceDetail>(
-      context: context,
-      builder: (context) => AddScheduleServiceDialog(
-        selectedTimeSlotId: _selectedTimeSlotId,
-        initialStartTime: _builderStartTime,
-        initialEndTime: _builderEndTime,
-        selectedClient: _selectedClient,
-      ),
-    );
+  Future<void> _handleOpenServiceDialog({
+    int? index,
+    ServiceDetail? initialService,
+  }) async {
+    Employee? initialEmployee;
+    if (initialService != null) {
+      initialEmployee = await _getEmployee(initialService.employeeId);
+    }
 
-    if (result != null) {
-      setState(() {
-        _pendingServices.add(result);
-      });
+    if (mounted) {
+      final result = await showDialog<ServiceDetail>(
+        context: context,
+        builder: (context) => AddScheduleServiceDialog(
+          selectedTimeSlotId: _selectedTimeSlotId,
+          initialStartTime: initialService?.startTime ?? _builderStartTime,
+          initialEndTime: initialService?.endTime ?? _builderEndTime,
+          initialEmployee: initialEmployee,
+          selectedClient: _selectedClient,
+          initialService: initialService,
+        ),
+      );
+
+      if (result != null) {
+        setState(() {
+          if (index != null) {
+            _pendingServices[index] = result;
+          } else {
+            _pendingServices.add(result);
+          }
+        });
+      }
     }
   }
 
@@ -241,7 +259,17 @@ class _EditSchedulePageState extends ConsumerState<EditSchedulePage> {
     setState(() => _isSaving = true);
 
     try {
-      // Logic for saving edits
+      await ref
+          .read(sessionServiceProvider)
+          .bookSession(
+            clientId: _selectedClient!.id,
+            timeSlotId: _selectedTimeSlotId!,
+            status: _status,
+            services: _pendingServices,
+            date: _date!,
+            endType: RecurrenceEndType.onDate, // Not recurring
+          );
+
       if (mounted) {
         context.go('/admin/schedule');
       }

@@ -9,6 +9,7 @@ import '/core/models/session.dart';
 import '/core/providers/session_providers.dart';
 import 'delete_session_dialog.dart';
 import 'status_update_dialog.dart';
+import 'type_update_dialog.dart';
 
 class SessionTable extends ConsumerWidget {
   final List<SessionCardData> sessions;
@@ -78,7 +79,7 @@ class SessionTable extends ConsumerWidget {
                   children: [
                     TableRow(
                       decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: .05),
+                        color: Colors.green.withOpacity(0.05),
                       ),
                       children: [
                         _buildHeaderCell('#'),
@@ -116,23 +117,36 @@ class SessionTable extends ConsumerWidget {
                           ),
                           _buildDataCell(
                             ConstrainedBox(
-                              constraints: .new(
+                              constraints: BoxConstraints(
                                 minWidth: constraints.maxWidth < 600
                                     ? 150
                                     : 200,
                               ),
-                              child: Text(
-                                s.displayFullName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12,
+                              child: InkWell(
+                                onTap: () => context.push(
+                                  '/admin/clients/${s.clientDocId}',
+                                ),
+
+                                borderRadius: BorderRadius.circular(4),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 4,
+                                    horizontal: 2,
+                                  ),
+                                  child: Text(
+                                    s.displayFullName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                           _buildDataCell(
                             ConstrainedBox(
-                              constraints: .new(
+                              constraints: BoxConstraints(
                                 minWidth: constraints.maxWidth < 600
                                     ? 100
                                     : 150,
@@ -142,7 +156,7 @@ class SessionTable extends ConsumerWidget {
                           ),
                           _buildDataCell(
                             Container(
-                              constraints: .new(
+                              constraints: BoxConstraints(
                                 minWidth: constraints.maxWidth < 600 ? 72 : 72,
                               ),
                               child: _buildMultiServiceCell(s.serviceNames),
@@ -155,9 +169,13 @@ class SessionTable extends ConsumerWidget {
                           _buildDataCell(
                             _buildMultiServiceCell(s.inclusiveStatus),
                           ),
-                          _buildDataCell(_buildTypeBadge(s.typeDisplay)),
 
-                          //
+                          // Type
+                          _buildDataCell(
+                            _buildTypeBadge(context, ref, s, slotId),
+                          ),
+
+                          // Status
                           _buildDataCell(
                             _buildStatusBadge(context, ref, s, slotId),
                           ),
@@ -165,7 +183,6 @@ class SessionTable extends ConsumerWidget {
                           //
                           _buildDataCell(
                             Row(
-                              spacing: 8,
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 IconButton(
@@ -174,12 +191,13 @@ class SessionTable extends ConsumerWidget {
                                     size: 18,
                                   ),
                                   onPressed: () => context.push(
-                                    '/admin/schedule/edit/${s.id}',
+                                    '/admin/schedule/${s.id}/edit',
                                   ),
                                   padding: const EdgeInsets.all(2),
                                   constraints: const BoxConstraints(),
                                   splashRadius: 32,
                                 ),
+                                const SizedBox(width: 8),
                                 IconButton(
                                   icon: const Icon(
                                     Icons.delete_outline,
@@ -308,7 +326,7 @@ class SessionTable extends ConsumerWidget {
             StatusUpdateDialog(session: session, timeSlotId: timeSlotId),
       ),
       child: Container(
-        padding: const .fromLTRB(8, 4, 4, 4),
+        padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
         decoration: BoxDecoration(
           color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(4),
@@ -316,7 +334,7 @@ class SessionTable extends ConsumerWidget {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: .spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
               currentStatus.displayName,
@@ -334,7 +352,13 @@ class SessionTable extends ConsumerWidget {
     );
   }
 
-  Widget _buildTypeBadge(String type) {
+  Widget _buildTypeBadge(
+    BuildContext context,
+    WidgetRef ref,
+    SessionCardData s,
+    String timeSlotId,
+  ) {
+    final type = s.typeDisplay;
     Color color;
     switch (type.toLowerCase()) {
       case 'regular':
@@ -342,28 +366,45 @@ class SessionTable extends ConsumerWidget {
         break;
       case 'cover':
         color = Colors.orange;
+        break;
       case 'makeup':
         color = Colors.teal;
+        break;
       case 'extra':
         color = Colors.purpleAccent;
         break;
       default:
         color = Colors.blue;
     }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.5), width: 0.5),
+    return InkWell(
+      onTap: () => showDialog(
+        context: context,
+        builder: (context) =>
+            TypeUpdateDialog(session: s, timeSlotId: timeSlotId),
       ),
-      alignment: Alignment.center,
-      child: Text(
-        type[0].toUpperCase() + type.substring(1),
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: color.withOpacity(0.5), width: 0.5),
+        ),
+        alignment: Alignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              type[0].toUpperCase() + type.substring(1),
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.arrow_drop_down, size: 14, color: color),
+          ],
         ),
       ),
     );

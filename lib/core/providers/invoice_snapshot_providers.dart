@@ -23,6 +23,27 @@ final invoiceSnapshotsProvider =
           );
     });
 
+final invoiceSnapshotsByMonthProvider =
+    StreamProvider.family<
+      List<InvoiceSnapshot>,
+      ({String clientId, String monthKey, InvoiceType type})
+    >((ref, arg) {
+      final firestore = ref.watch(firestoreProvider);
+      return firestore
+          .collection('clients')
+          .doc(arg.clientId)
+          .collection('invoice_snapshots')
+          .where('monthKey', isEqualTo: arg.monthKey)
+          .where('type', isEqualTo: arg.type.name)
+          .orderBy('generatedAt', descending: true)
+          .snapshots()
+          .map(
+            (snapshot) => snapshot.docs
+                .map((doc) => InvoiceSnapshot.fromFirestore(doc))
+                .toList(),
+          );
+    });
+
 final hasSnapshotProvider =
     StreamProvider.family<
       bool,

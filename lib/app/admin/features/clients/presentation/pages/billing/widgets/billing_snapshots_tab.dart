@@ -18,18 +18,27 @@ import '/core/utils/billing_export_helper.dart';
 class BillingSnapshotsTab extends ConsumerWidget {
   final String clientId;
   final InvoiceType type;
+  final String? monthKey;
 
   const BillingSnapshotsTab({
     super.key,
     required this.clientId,
     required this.type,
+    this.monthKey,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final snapshotsAsync = ref.watch(
-      invoiceSnapshotsProvider((clientId: clientId, type: type)),
-    );
+    final snapshotsAsync = monthKey != null
+        ? ref.watch(
+            invoiceSnapshotsByMonthProvider((
+              clientId: clientId,
+              monthKey: monthKey!,
+              type: type,
+            )),
+          )
+        : ref.watch(invoiceSnapshotsProvider((clientId: clientId, type: type)));
+
     final allServiceRatesAsync = ref.watch(allServiceRatesProvider);
     final allDiscountsAsync = ref.watch(clientDiscountsProvider(clientId));
     final currencyFormat = NumberFormat('#,###');
@@ -565,6 +574,26 @@ class BillingSnapshotsTab extends ConsumerWidget {
             totalMonthlyBill: snapshot.totalAmount,
             isDraft: snapshot.type == InvoiceType.pre,
           );
+        } else if (value == 'print') {
+          await BillingExportHelper.printInvoice(
+            client: client,
+            sessions: sessions,
+            allRates: allRates,
+            allDiscounts: allDiscounts,
+            monthDate: monthDate,
+            totalMonthlyBill: snapshot.totalAmount,
+            isDraft: snapshot.type == InvoiceType.pre,
+          );
+        } else if (value == 'share') {
+          await BillingExportHelper.shareInvoice(
+            client: client,
+            sessions: sessions,
+            allRates: allRates,
+            allDiscounts: allDiscounts,
+            monthDate: monthDate,
+            totalMonthlyBill: snapshot.totalAmount,
+            isDraft: snapshot.type == InvoiceType.pre,
+          );
         }
       },
       child: Container(
@@ -592,6 +621,8 @@ class BillingSnapshotsTab extends ConsumerWidget {
         ),
       ),
       itemBuilder: (context) => [
+        const PopupMenuItem(value: 'print', child: Text('Print PDF Invoice')),
+        const PopupMenuItem(value: 'share', child: Text('Share PDF Invoice')),
         const PopupMenuItem(value: 'pdf', child: Text('Download PDF Invoice')),
         const PopupMenuItem(value: 'csv', child: Text('Export CSV Breakdown')),
       ],
@@ -626,9 +657,9 @@ class BillingSnapshotsTab extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
+        border: Border.all(color: color.withOpacity(0.5)),
       ),
       child: Text(
         label,

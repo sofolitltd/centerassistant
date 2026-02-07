@@ -9,7 +9,7 @@ class CompactCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+      padding: .fromLTRB(2, 1, 2, 2),
       decoration: BoxDecoration(
         color: Colors.white,
         border: .all(color: Colors.grey, width: .8),

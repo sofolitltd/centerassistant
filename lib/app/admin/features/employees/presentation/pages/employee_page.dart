@@ -1,7 +1,9 @@
+import 'dart:ui';
+
+import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -18,471 +20,467 @@ class EmployeePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final employeesAsync = ref.watch(employeesProvider);
     final schedulableDeptsAsync = ref.watch(schedulableDepartmentsProvider);
-    final double width = MediaQuery.of(context).size.width;
-
-    int crossAxisCount;
-    if (width > 1100) {
-      crossAxisCount = 4;
-    } else if (width > 900) {
-      crossAxisCount = 3;
-    } else if (width > 600) {
-      crossAxisCount = 2;
-    } else {
-      crossAxisCount = 1;
-    }
-
-    final bool isMobile = width < 600;
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: SingleChildScrollView(
-        child: Container(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+      body: Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Text(
-                          'Employees',
-                          style: Theme.of(context).textTheme.headlineMedium!
-                              .copyWith(
-                                fontWeight: FontWeight.bold,
-                                height: 1.2,
-                              ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            InkWell(
-                              onTap: () => context.go('/admin/dashboard'),
-                              child: Text(
-                                'Admin',
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(color: Colors.grey),
-                              ),
-                            ),
-                            const Icon(
-                              Icons.chevron_right,
-                              size: 16,
+                        InkWell(
+                          onTap: () => context.go('/admin/dashboard'),
+                          child: Text(
+                            'Admin',
+                            style: theme.textTheme.bodyMedium?.copyWith(
                               color: Colors.grey,
                             ),
-                            Text(
-                              'Employees',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ],
+                          ),
                         ),
+                        const Icon(
+                          Icons.chevron_right,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        Text('Employees', style: theme.textTheme.bodyMedium),
                       ],
                     ),
-                  ),
-                  if (!isMobile)
-                    ElevatedButton.icon(
-                      onPressed: () => context.go('/admin/employees/add'),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add Employee'),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Employee Directory',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                ],
-              ),
-              if (isMobile) ...[
-                const SizedBox(height: 16),
+                  ],
+                ),
                 ElevatedButton.icon(
                   onPressed: () => context.go('/admin/employees/add'),
                   icon: const Icon(Icons.add),
                   label: const Text('Add Employee'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                  ),
                 ),
               ],
-              const SizedBox(height: 24),
-              employeesAsync.when(
-                data: (employees) {
-                  if (employees.isEmpty) {
-                    return const Center(
-                      child: Text('No employees found. Add one!'),
-                    );
-                  }
-                  return schedulableDeptsAsync.when(
-                    data: (schedulableDepts) => MasonryGridView.count(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: crossAxisCount,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      itemCount: employees.length,
-                      itemBuilder: (context, index) {
-                        final employee = employees[index];
-                        final bool isSchedulable = schedulableDepts.contains(
-                          employee.department,
-                        );
+            ),
+            const SizedBox(height: 32),
 
-                        return Card(
-                          margin: EdgeInsets.zero,
-                          child: Stack(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 35,
-                                      backgroundImage: employee.image.isNotEmpty
-                                          ? NetworkImage(employee.image)
-                                          : null,
-                                      child: employee.image.isEmpty
-                                          ? const Icon(Icons.person, size: 30)
-                                          : null,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      employee.name,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    const SizedBox(height: 2),
+            // Table Card
+            Expanded(
+              child: Card(
+                elevation: 0,
+                margin: EdgeInsets.zero,
+                clipBehavior: Clip.antiAlias,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.grey.shade200),
+                ),
+                child: employeesAsync.when(
+                  data: (employees) {
+                    if (employees.isEmpty) {
+                      return const Center(child: Text('No employees found.'));
+                    }
 
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      spacing: 8,
-                                      children: [
-                                        //
-                                        Text(
-                                          employee.department.toUpperCase(),
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.bold,
-                                                color: Theme.of(
-                                                  context,
-                                                ).primaryColor,
-                                                letterSpacing: 0.5,
-                                              ),
-                                          textAlign: TextAlign.center,
-                                        ),
+                    return schedulableDeptsAsync.when(
+                      data: (schedulableDepts) {
+                        // Reverse numeric sort by employeeId
+                        final sortedEmployees = List<Employee>.from(employees)
+                          ..sort((a, b) {
+                            try {
+                              final idA = int.parse(a.employeeId);
+                              final idB = int.parse(b.employeeId);
+                              return idB.compareTo(idA);
+                            } catch (_) {
+                              return b.employeeId.compareTo(a.employeeId);
+                            }
+                          });
 
-                                        Text(
-                                          '|',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .labelSmall
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.bold,
-                                                color: Theme.of(
-                                                  context,
-                                                ).primaryColor,
-                                                letterSpacing: 0.5,
-                                              ),
-                                          textAlign: TextAlign.center,
-                                        ),
-
-                                        //
-                                        Text(
-                                          'ID: ${employee.employeeId.toUpperCase()} ',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.bold,
-                                                color: Theme.of(
-                                                  context,
-                                                ).primaryColor,
-                                                letterSpacing: 0.5,
-                                              ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      employee.designation.toUpperCase(),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            color: Colors.grey.shade600,
-                                            letterSpacing: 0.5,
-                                          ),
-                                      textAlign: TextAlign.center,
-                                    ),
-
-                                    const SizedBox(height: 8),
-
-                                    TextButton(
-                                      onPressed: () => _showEmployeeInfoDialog(
-                                        context,
-                                        employee,
-                                      ),
-                                      child: const Text('View Details'),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: ElevatedButton(
-                                            onPressed: isSchedulable
-                                                ? () {
-                                                    context.go(
-                                                      '/admin/schedule?employeeId=${employee.id}',
-                                                    );
-                                                  }
-                                                : null,
-                                            child: const Text(
-                                              'Schedule',
-                                              style: TextStyle(fontSize: 11),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: OutlinedButton(
-                                            onPressed: () {
-                                              context.go(
-                                                '/admin/employees/${employee.id}/availability?name=${Uri.encodeComponent(employee.name)}',
-                                              );
-                                            },
-
-                                            child: const Text(
-                                              'Availability',
-                                              style: TextStyle(fontSize: 11),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                        return ScrollConfiguration(
+                          behavior: ScrollConfiguration.of(context).copyWith(
+                            dragDevices: {
+                              PointerDeviceKind.touch,
+                              PointerDeviceKind.mouse,
+                              PointerDeviceKind.stylus,
+                            },
+                          ),
+                          child: DataTable2(
+                            columnSpacing: 24,
+                            horizontalMargin: 12,
+                            minWidth: 1100,
+                            headingRowColor: WidgetStateProperty.all(
+                              theme.colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.3),
+                            ),
+                            border: TableBorder.all(
+                              color: Colors.grey.shade200,
+                              width: 1,
+                            ),
+                            columns: const [
+                              DataColumn2(
+                                label: Text(
+                                  'ID',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                headingRowAlignment: MainAxisAlignment.center,
+                                fixedWidth: 60,
+                              ),
+                              DataColumn2(
+                                label: Text(
+                                  'Employee Name',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                size: ColumnSize.L,
+                              ),
+                              DataColumn2(
+                                label: Text(
+                                  'Department',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
                               ),
-
-                              //
-                              Positioned(
-                                top: 2,
-                                right: 2,
-                                child: PopupMenuButton<String>(
-                                  color: Colors.white,
-                                  icon: const Icon(Icons.more_vert, size: 20),
-                                  onSelected: (value) {
-                                    if (value == 'edit') {
-                                      context.go(
-                                        '/admin/employees/${employee.id}/edit',
-                                      );
-                                    } else if (value == 'delete') {
-                                      _showDeleteConfirmDialog(
-                                        context,
-                                        ref,
-                                        employee,
-                                      );
-                                    } else if (value == 'invite') {
-                                      context.go(
-                                        '/admin/employees/invite?userId=${employee.id}',
-                                      );
-                                    } else if (value == 'toggle_access') {
-                                      final updatedEmployee = Employee(
-                                        id: employee.id,
-                                        employeeId: employee.employeeId,
-                                        name: employee.name,
-                                        nickName: employee.nickName,
-                                        personalPhone: employee.personalPhone,
-                                        officialPhone: employee.officialPhone,
-                                        personalEmail: employee.personalEmail,
-                                        officialEmail: employee.officialEmail,
-                                        department: employee.department,
-                                        designation: employee.designation,
-                                        gender: employee.gender,
-                                        dateOfBirth: employee.dateOfBirth,
-                                        email: employee.email,
-                                        password: employee.password,
-                                        role: employee.role,
-                                        mustChangePassword:
-                                            employee.mustChangePassword,
-                                        isActive: !employee.isActive, // Toggle
-                                        joinedDate: employee.joinedDate,
-                                        createdAt: employee.createdAt,
-                                        image: employee.image,
-                                      );
-                                      ref
-                                          .read(employeeServiceProvider)
-                                          .updateEmployee(updatedEmployee);
-
-                                      // Show feedback
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            employee.isActive
-                                                ? '${employee.name} portal access blocked'
-                                                : '${employee.name} portal access enabled',
-                                          ),
-                                          backgroundColor: employee.isActive
-                                              ? Colors.orange
-                                              : Colors.green,
-                                        ),
-                                      );
-                                    }
-                                  },
-                                  itemBuilder: (context) => [
-                                    const PopupMenuItem(
-                                      value: 'edit',
-                                      child: ListTile(
-                                        leading: Icon(Icons.edit, size: 18),
-                                        title: Text('Edit'),
-                                        contentPadding: EdgeInsets.zero,
-                                      ),
-                                    ),
-                                    PopupMenuItem(
-                                      value: 'invite',
-                                      child: ListTile(
-                                        leading: Icon(
-                                          Icons.person_add,
-                                          size: 18,
-                                          color: employee.hasPortalAccess
-                                              ? Colors.blue
-                                              : Colors.green,
-                                        ),
-                                        title: Text(
-                                          employee.hasPortalAccess
-                                              ? 'Manage Portal Access'
-                                              : 'Invite to Portal',
-                                          style: TextStyle(
-                                            color: employee.hasPortalAccess
-                                                ? Colors.blue
-                                                : Colors.green,
-                                          ),
-                                        ),
-                                        contentPadding: EdgeInsets.zero,
-                                      ),
-                                    ),
-                                    if (employee.email.isNotEmpty &&
-                                        employee.password.isNotEmpty)
-                                      PopupMenuItem(
-                                        value: 'toggle_access',
-                                        child: ListTile(
-                                          leading: Icon(
-                                            employee.isActive
-                                                ? Icons.block
-                                                : Icons.check_circle_outline,
-                                            size: 18,
-                                            color: employee.isActive
-                                                ? Colors.orange
-                                                : Colors.green,
-                                          ),
-                                          title: Text(
-                                            employee.isActive
-                                                ? 'Block Portal Access'
-                                                : 'Enable Portal Access',
-                                            style: TextStyle(
-                                              color: employee.isActive
-                                                  ? Colors.orange
-                                                  : Colors.green,
-                                            ),
-                                          ),
-                                          contentPadding: EdgeInsets.zero,
-                                        ),
-                                      ),
-                                    const PopupMenuItem(
-                                      value: 'delete',
-                                      child: ListTile(
-                                        leading: Icon(
-                                          Icons.delete,
-                                          size: 18,
-                                          color: Colors.red,
-                                        ),
-                                        title: Text(
-                                          'Delete',
-                                          style: TextStyle(color: Colors.red),
-                                        ),
-                                        contentPadding: EdgeInsets.zero,
-                                      ),
-                                    ),
-                                  ],
+                              DataColumn2(
+                                label: Text(
+                                  'Designation',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
                               ),
-
-                              // Portal access indicator
-                              Positioned(
-                                top: 12,
-                                left: 12,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: employee.hasPortalAccess
-                                        ? Colors.green.shade100
-                                        : Colors.orange.shade100,
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(
-                                      color: employee.hasPortalAccess
-                                          ? Colors.green.shade300
-                                          : Colors.orange.shade300,
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        employee.hasPortalAccess
-                                            ? Icons.check_circle
-                                            : Icons.lock_outline,
-                                        size: 10,
-                                        color: employee.hasPortalAccess
-                                            ? Colors.green.shade700
-                                            : Colors.orange.shade700,
-                                      ),
-                                      const SizedBox(width: 3),
-                                      Text(
-                                        employee.hasPortalAccess
-                                            ? 'Access'
-                                            : 'No Access',
-                                        style: TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w600,
-                                          color: employee.hasPortalAccess
-                                              ? Colors.green.shade700
-                                              : Colors.orange.shade700,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                              DataColumn2(
+                                label: Text(
+                                  'Contact',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
+                                size: ColumnSize.M,
+                              ),
+                              DataColumn2(
+                                label: Text(
+                                  'Portal Access',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                fixedWidth: 120,
+                              ),
+                              DataColumn2(
+                                label: Text(
+                                  'Actions',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                fixedWidth: 130,
                               ),
                             ],
+                            rows: sortedEmployees.map((employee) {
+                              final bool isSchedulable = schedulableDepts
+                                  .contains(employee.department);
+
+                              return DataRow2(
+                                onTap: () =>
+                                    _showEmployeeInfoDialog(context, employee),
+                                cells: [
+                                  DataCell(
+                                    Center(
+                                      child: Text(
+                                        employee.employeeId,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Row(
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 14,
+                                          backgroundImage:
+                                              employee.image.isNotEmpty
+                                              ? NetworkImage(employee.image)
+                                              : null,
+                                          child: employee.image.isEmpty
+                                              ? const Icon(
+                                                  Icons.person,
+                                                  size: 14,
+                                                )
+                                              : null,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            employee.name,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Text(employee.department.toUpperCase()),
+                                  ),
+                                  DataCell(Text(employee.designation)),
+                                  DataCell(
+                                    Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        if (employee.officialPhone.isNotEmpty)
+                                          Text(
+                                            employee.officialPhone,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        if (employee.officialEmail.isNotEmpty)
+                                          Text(
+                                            employee.officialEmail,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: employee.hasPortalAccess
+                                            ? Colors.green.shade50
+                                            : Colors.orange.shade50,
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(
+                                          color: employee.hasPortalAccess
+                                              ? Colors.green.shade200
+                                              : Colors.orange.shade200,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            employee.hasPortalAccess
+                                                ? Icons.check_circle
+                                                : Icons.lock_outline,
+                                            size: 10,
+                                            color: employee.hasPortalAccess
+                                                ? Colors.green.shade700
+                                                : Colors.orange.shade700,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            employee.hasPortalAccess
+                                                ? 'Active'
+                                                : 'No Access',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: employee.hasPortalAccess
+                                                  ? Colors.green.shade700
+                                                  : Colors.orange.shade700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  DataCell(
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(
+                                            LucideIcons.calendar,
+                                            size: 16,
+                                          ),
+                                          onPressed: isSchedulable
+                                              ? () => context.go(
+                                                  '/admin/schedule?employeeId=${employee.id}',
+                                                )
+                                              : null,
+                                          tooltip: 'Schedule',
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            LucideIcons.clock,
+                                            size: 16,
+                                          ),
+                                          onPressed: () => context.go(
+                                            '/admin/employees/${employee.id}/availability?name=${Uri.encodeComponent(employee.name)}',
+                                          ),
+                                          tooltip: 'Availability',
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                        PopupMenuButton<String>(
+                                          icon: const Icon(
+                                            Icons.more_vert,
+                                            size: 16,
+                                          ),
+                                          padding: EdgeInsets.zero,
+                                          onSelected: (value) =>
+                                              _handleMenuAction(
+                                                context,
+                                                ref,
+                                                employee,
+                                                value,
+                                              ),
+                                          itemBuilder: (context) => [
+                                            const PopupMenuItem(
+                                              value: 'edit',
+                                              child: ListTile(
+                                                leading: Icon(
+                                                  Icons.edit,
+                                                  size: 18,
+                                                ),
+                                                title: Text('Edit'),
+                                                contentPadding: EdgeInsets.zero,
+                                              ),
+                                            ),
+                                            PopupMenuItem(
+                                              value: 'invite',
+                                              child: ListTile(
+                                                leading: Icon(
+                                                  Icons.person_add,
+                                                  size: 18,
+                                                  color:
+                                                      employee.hasPortalAccess
+                                                      ? Colors.blue
+                                                      : Colors.green,
+                                                ),
+                                                title: Text(
+                                                  employee.hasPortalAccess
+                                                      ? 'Manage Portal'
+                                                      : 'Invite to Portal',
+                                                  style: TextStyle(
+                                                    color:
+                                                        employee.hasPortalAccess
+                                                        ? Colors.blue
+                                                        : Colors.green,
+                                                  ),
+                                                ),
+                                                contentPadding: EdgeInsets.zero,
+                                              ),
+                                            ),
+                                            if (employee.email.isNotEmpty &&
+                                                employee.password.isNotEmpty)
+                                              PopupMenuItem(
+                                                value: 'toggle_access',
+                                                child: ListTile(
+                                                  leading: Icon(
+                                                    employee.isActive
+                                                        ? Icons.block
+                                                        : Icons
+                                                              .check_circle_outline,
+                                                    size: 18,
+                                                    color: employee.isActive
+                                                        ? Colors.orange
+                                                        : Colors.green,
+                                                  ),
+                                                  title: Text(
+                                                    employee.isActive
+                                                        ? 'Block Portal Access'
+                                                        : 'Enable Portal Access',
+                                                    style: TextStyle(
+                                                      color: employee.isActive
+                                                          ? Colors.orange
+                                                          : Colors.green,
+                                                    ),
+                                                  ),
+                                                  contentPadding:
+                                                      EdgeInsets.zero,
+                                                ),
+                                              ),
+                                            const PopupMenuItem(
+                                              value: 'delete',
+                                              child: ListTile(
+                                                leading: Icon(
+                                                  Icons.delete,
+                                                  size: 18,
+                                                  color: Colors.red,
+                                                ),
+                                                title: Text(
+                                                  'Delete',
+                                                  style: TextStyle(
+                                                    color: Colors.red,
+                                                  ),
+                                                ),
+                                                contentPadding: EdgeInsets.zero,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }).toList(),
                           ),
                         );
                       },
-                    ),
-                    loading: () =>
-                        const Center(child: CircularProgressIndicator()),
-                    error: (_, __) => const SizedBox(),
-                  );
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (err, stack) => Center(child: Text('Error: $err')),
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
+                      error: (_, __) => const Center(
+                        child: Text('Error loading departments'),
+                      ),
+                    );
+                  },
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (err, _) => Center(child: Text('Error: $err')),
+                ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  void _handleMenuAction(
+    BuildContext context,
+    WidgetRef ref,
+    Employee employee,
+    String value,
+  ) {
+    if (value == 'edit') {
+      context.go('/admin/employees/${employee.id}/edit');
+    } else if (value == 'delete') {
+      _showDeleteConfirmDialog(context, ref, employee);
+    } else if (value == 'invite') {
+      context.go('/admin/employees/invite?userId=${employee.id}');
+    } else if (value == 'toggle_access') {
+      final updatedEmployee = employee.copyWith(isActive: !employee.isActive);
+      ref.read(employeeServiceProvider).updateEmployee(updatedEmployee);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            employee.isActive
+                ? '${employee.name} portal access blocked'
+                : '${employee.name} portal access enabled',
+          ),
+          backgroundColor: employee.isActive ? Colors.orange : Colors.green,
+        ),
+      );
+    }
   }
 
   void _showEmployeeInfoDialog(BuildContext context, Employee employee) {
@@ -520,7 +518,9 @@ class EmployeePage extends ConsumerWidget {
                   children: [
                     CircleAvatar(
                       radius: 40,
-                      backgroundImage: NetworkImage(employee.image),
+                      backgroundImage: employee.image.isNotEmpty
+                          ? NetworkImage(employee.image)
+                          : null,
                       child: employee.image.isEmpty
                           ? const Icon(Icons.person, size: 40)
                           : null,
@@ -565,11 +565,8 @@ class EmployeePage extends ConsumerWidget {
                           ),
                           Text(
                             employee.designation,
-                            style: Theme.of(
-                              context,
-                            ).textTheme.bodySmall?.copyWith(),
+                            style: Theme.of(context).textTheme.bodySmall,
                           ),
-
                           const SizedBox(height: 4),
                           Text(
                             'Joined: ${DateFormat('dd MMM, yyyy').format(employee.joinedDate)}',

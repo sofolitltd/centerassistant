@@ -30,7 +30,7 @@ ThemeData buildTheme(ColorScheme colorScheme) {
     colorScheme: colorScheme,
     useMaterial3: true,
     scaffoldBackgroundColor: colorScheme.primaryContainer,
-    textTheme: GoogleFonts.latoTextTheme(
+    textTheme: GoogleFonts.outfitTextTheme(
       ThemeData(brightness: colorScheme.brightness).textTheme,
     ),
     cardTheme: CardThemeData(
@@ -54,7 +54,7 @@ ThemeData buildTheme(ColorScheme colorScheme) {
         backgroundColor: colorScheme.primary,
         foregroundColor: Colors.white,
         // textStyle: GoogleFonts.lato(fontWeight: FontWeight.bold, fontSize: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       ),
     ),
@@ -62,15 +62,18 @@ ThemeData buildTheme(ColorScheme colorScheme) {
       style: OutlinedButton.styleFrom(
         foregroundColor: colorScheme.primary,
         side: BorderSide(color: colorScheme.primary.withValues(alpha: 0.5)),
-        textStyle: GoogleFonts.lato(fontWeight: FontWeight.bold, fontSize: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+        textStyle: GoogleFonts.outfit(
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
     ),
     dialogTheme: DialogThemeData(

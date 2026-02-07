@@ -31,6 +31,9 @@ class BillingSessionsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final selectedMonth = ref.watch(selectedBillingMonthProvider);
+    final monthKey = DateFormat('yyyy-MM').format(selectedMonth);
+
     return DefaultTabController(
       length: 3,
       child: Column(
@@ -41,10 +44,15 @@ class BillingSessionsTab extends ConsumerWidget {
               physics: const NeverScrollableScrollPhysics(),
               children: [
                 _LiveSessionsView(client: client, sessionsAsync: sessionsAsync),
-                BillingSnapshotsTab(clientId: client.id, type: InvoiceType.pre),
+                BillingSnapshotsTab(
+                  clientId: client.id,
+                  type: InvoiceType.pre,
+                  monthKey: monthKey,
+                ),
                 BillingSnapshotsTab(
                   clientId: client.id,
                   type: InvoiceType.post,
+                  monthKey: monthKey,
                 ),
               ],
             ),

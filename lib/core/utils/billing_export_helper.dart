@@ -85,8 +85,8 @@ class BillingExportHelper {
 
     for (final s in sessions) {
       double sessionAmount = 0;
-      double avgRate = 0;
-      double avgDiscount = 0;
+      List<String> rates = [];
+      List<String> discounts = [];
 
       final date = s.date.toDate();
 
@@ -103,8 +103,8 @@ class BillingExportHelper {
               )?.discountPerHour ??
               0.0;
           sessionAmount += sv.duration * (rate - discount);
-          avgRate = rate;
-          avgDiscount = discount;
+          rates.add(rate.toStringAsFixed(0));
+          discounts.add(discount.toStringAsFixed(0));
         }
       }
       grandTotalAmount += sessionAmount;
@@ -124,8 +124,8 @@ class BillingExportHelper {
         servicePackage,
         s.status.displayName,
         s.totalDuration.toStringAsFixed(1),
-        avgRate.toStringAsFixed(0),
-        avgDiscount.toStringAsFixed(0),
+        rates.join('; '),
+        discounts.join('; '),
         sessionAmount.toStringAsFixed(0),
       ]);
     }
@@ -145,7 +145,7 @@ class BillingExportHelper {
 
     String csvData = const ListToCsvConverter().convert(rows);
     final fileName =
-        '${client.name.replaceAll(' ', '_')}_Breakdown_${DateFormat('MMM_yyyy').format(monthDate)}.csv';
+        'Breakdown_${client.clientId}_${DateFormat('MMM_yyyy').format(monthDate)}.csv';
 
     if (kIsWeb) {
       final bytes = utf8.encode(csvData);
@@ -165,7 +165,7 @@ class BillingExportHelper {
       await file.writeAsString(csvData);
       await Share.shareXFiles([
         XFile(file.path),
-      ], text: 'Breakdown Export for ${client.name}');
+      ], text: 'Breakdown Export for Client #${client.clientId}');
     }
   }
 
@@ -531,22 +531,24 @@ class BillingExportHelper {
         ),
         ...sessions.map((s) {
           double sessionAmount = 0;
-          double rate = 0;
-          double discount = 0;
+          List<String> rates = [];
+          List<String> discounts = [];
           final date = s.date.toDate();
           if (s.status == SessionStatus.completed ||
               s.status == SessionStatus.scheduled) {
             for (var sv in s.services) {
-              rate =
+              final r =
                   getApplicableRate(allRates, sv.type, date)?.hourlyRate ?? 0.0;
-              discount =
+              final d =
                   getApplicableDiscount(
                     allDiscounts,
                     sv.type,
                     date,
                   )?.discountPerHour ??
                   0.0;
-              sessionAmount += sv.duration * (rate - discount);
+              sessionAmount += sv.duration * (r - d);
+              rates.add(_currencyFormat.format(r));
+              discounts.add(_currencyFormat.format(d));
             }
           }
           return pw.TableRow(
@@ -570,14 +572,8 @@ class BillingExportHelper {
                 s.totalDuration.toStringAsFixed(1),
                 align: pw.TextAlign.center,
               ),
-              _buildCell(
-                _currencyFormat.format(rate),
-                align: pw.TextAlign.center,
-              ),
-              _buildCell(
-                _currencyFormat.format(discount),
-                align: pw.TextAlign.center,
-              ),
+              _buildCell(rates.join('\n'), align: pw.TextAlign.center),
+              _buildCell(discounts.join('\n'), align: pw.TextAlign.center),
               _buildCell(
                 _currencyFormat.format(sessionAmount),
                 align: pw.TextAlign.right,
@@ -685,7 +681,7 @@ class BillingExportHelper {
     );
 
     final fileName =
-        '${client.name.replaceAll(' ', '_')}_Invoice_${DateFormat('MMM_yyyy').format(monthDate)}.pdf';
+        'Invoice_${client.clientId}_${DateFormat('MMM_yyyy').format(monthDate)}.pdf';
     if (kIsWeb) {
       final bytes = await pdf.save();
       final blob = web.Blob(
@@ -748,7 +744,8 @@ class BillingExportHelper {
       isDraft: isDraft,
     );
     final bytes = await pdf.save();
-    final fileName = '${client.name.replaceAll(' ', '_')}_Invoice.pdf';
+    final fileName =
+        'Invoice_${client.clientId}_${DateFormat('MMM_yyyy').format(monthDate)}.pdf';
     if (kIsWeb) {
       await generateInvoicePdf(
         client: client,
@@ -765,7 +762,7 @@ class BillingExportHelper {
       await file.writeAsBytes(bytes);
       await Share.shareXFiles([
         XFile(file.path),
-      ], text: 'Invoice for ${client.name}');
+      ], text: 'Invoice for Client #${client.clientId}');
     }
   }
 }

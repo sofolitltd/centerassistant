@@ -52,6 +52,56 @@ class Employee {
   bool get hasPortalAccess =>
       email.isNotEmpty && password.isNotEmpty && isActive;
 
+  Employee copyWith({
+    String? id,
+    String? employeeId,
+    String? name,
+    String? nickName,
+    String? personalPhone,
+    String? officialPhone,
+    String? personalEmail,
+    String? officialEmail,
+    String? department,
+    String? designation,
+    String? gender,
+    DateTime? dateOfBirth,
+    String? email,
+    String? password,
+    String? role,
+    bool? mustChangePassword,
+    bool? isActive,
+    DateTime? joinedDate,
+    DateTime? createdAt,
+    String? image,
+    int? carriedForwardLeaves,
+    String? fcmToken,
+  }) {
+    return Employee(
+      id: id ?? this.id,
+      employeeId: employeeId ?? this.employeeId,
+      name: name ?? this.name,
+      nickName: nickName ?? this.nickName,
+      personalPhone: personalPhone ?? this.personalPhone,
+      officialPhone: officialPhone ?? this.officialPhone,
+      personalEmail: personalEmail ?? this.personalEmail,
+      officialEmail: officialEmail ?? this.officialEmail,
+      department: department ?? this.department,
+      designation: designation ?? this.designation,
+      gender: gender ?? this.gender,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      email: email ?? this.email,
+      password: password ?? this.password,
+      role: role ?? this.role,
+      mustChangePassword: mustChangePassword ?? this.mustChangePassword,
+      isActive: isActive ?? this.isActive,
+      joinedDate: joinedDate ?? this.joinedDate,
+      createdAt: createdAt ?? this.createdAt,
+      image: image ?? this.image,
+      carriedForwardLeaves: carriedForwardLeaves ?? this.carriedForwardLeaves,
+      fcmToken: fcmToken ?? this.fcmToken,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'employeeId': employeeId,

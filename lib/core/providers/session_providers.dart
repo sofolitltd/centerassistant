@@ -137,8 +137,10 @@ class SessionCardData {
   });
 
   /// Used for Weekly/Monthly views: Nickname(ID)
-  String get displayNickName =>
-      '${(clientNickName != null && clientNickName!.isNotEmpty) ? clientNickName : clientName}($clientId)';
+  // String get displayNickName =>
+  //     '${(clientNickName != null && clientNickName!.isNotEmpty) ? clientNickName : clientName}($clientId)';
+  String get displayNickName => clientId;
+  //     '${(clientNickName != null && clientNickName!.isNotEmpty) ? clientNickName : clientName}($clientId)';
 
   /// Used for Daily view: FullName(ID)
   String get displayFullName => '$clientName($clientId)';
@@ -548,6 +550,71 @@ class SessionActionService {
         final batch = firestore.batch();
         for (var doc in snapshots.docs) {
           batch.update(doc.reference, {'status': newStatus.name});
+        }
+        await batch.commit();
+      } catch (e) {
+        rethrow;
+      }
+    }
+
+    _ref.invalidate(scheduleByDateProvider);
+    _ref.invalidate(scheduleViewProvider);
+  }
+
+  Future<void> updateSessionType({
+    required String clientId,
+    required String timeSlotId,
+    required List<ServiceDetail> services,
+    required SessionStatus status,
+    required SessionType newType,
+    required DateTime date,
+    required String mode, // 'this_only', 'this_and_following', 'all'
+  }) async {
+    final firestore = _ref.read(firestoreProvider);
+    final updatedServices = services
+        .map((s) => s.copyWith(sessionType: newType))
+        .toList();
+
+    if (mode == 'this_only') {
+      await bookSession(
+        clientId: clientId,
+        timeSlotId: timeSlotId,
+        status: status,
+        services: updatedServices,
+        date: date,
+        endType: RecurrenceEndType.onDate,
+      );
+    } else {
+      var query = firestore
+          .collection('schedule')
+          .where('clientId', isEqualTo: clientId)
+          .where('timeSlotId', isEqualTo: timeSlotId);
+
+      if (mode == 'this_and_following') {
+        final startOfDay = DateTime(date.year, date.month, date.day);
+        query = query.where(
+          'date',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+        );
+      }
+
+      try {
+        final snapshots = await query.get();
+        final batch = firestore.batch();
+        for (var doc in snapshots.docs) {
+          final data = doc.data();
+          final List<dynamic> servicesJson = data['services'] ?? [];
+          final List<ServiceDetail> docServices = servicesJson
+              .map((s) => ServiceDetail.fromJson(s as Map<String, dynamic>))
+              .toList();
+
+          final List<ServiceDetail> updatedDocServices = docServices
+              .map((s) => s.copyWith(sessionType: newType))
+              .toList();
+
+          batch.update(doc.reference, {
+            'services': updatedDocServices.map((s) => s.toJson()).toList(),
+          });
         }
         await batch.commit();
       } catch (e) {

@@ -90,7 +90,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           },
         ),
         GoRoute(
-          path: '/admin/schedule/edit/:sessionId',
+          path: '/admin/schedule/:sessionId/edit',
           pageBuilder: (context, state) {
             final sessionId = state.pathParameters['sessionId']!;
             return NoTransitionPage(

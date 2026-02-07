@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class AddScheduleHeader extends StatelessWidget {
-  const AddScheduleHeader({super.key});
+  final String title;
+  const AddScheduleHeader({super.key, this.title = 'Add Schedule'});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Add Schedule',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 28),
+        Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 28),
         ),
         const SizedBox(height: 8),
         Row(
@@ -29,7 +30,7 @@ class AddScheduleHeader extends StatelessWidget {
               ),
             ),
             const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
-            const Text('New'),
+            Text(title == 'Add Schedule' ? 'New' : 'Edit'),
           ],
         ),
       ],
