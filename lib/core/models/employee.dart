@@ -1,26 +1,69 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+class Education {
+  final String institute;
+  final String degree;
+  final String passingYear;
+
+  Education({
+    required this.institute,
+    required this.degree,
+    required this.passingYear,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'institute': institute,
+      'degree': degree,
+      'passingYear': passingYear,
+    };
+  }
+
+  factory Education.fromJson(Map<String, dynamic> json) {
+    return Education(
+      institute: json['institute'] as String? ?? '',
+      degree: json['degree'] as String? ?? '',
+      passingYear: json['passingYear'] as String? ?? '',
+    );
+  }
+}
+
 class Employee {
+  // --- 1. Basic Information ---
   final String id; // Random Document ID
   final String employeeId; // Sequential ID (e.g., 0001)
   final String name;
   final String nickName;
+  final String gender;
+  final DateTime? dateOfBirth;
+  final String image;
+  final String nid;
+  final String tin;
+
+  // --- 2. Contact Information ---
   final String personalPhone;
   final String officialPhone;
   final String personalEmail;
   final String officialEmail;
+  final String presentAddress;
+  final String permanentAddress;
+
+  // --- 3. Professional & Education ---
   final String department;
   final String designation;
-  final String gender;
-  final DateTime? dateOfBirth;
+  final List<Education> education;
+
+  // --- 4. Employment & Separation ---
+  final DateTime joinedDate;
+  final DateTime? separationDate;
+  final bool isActive;
+
+  // --- System & Auth ---
   final String email;
   final String password;
   final String role;
   final bool mustChangePassword;
-  final bool isActive;
-  final DateTime joinedDate;
   final DateTime createdAt;
-  final String image;
   final int carriedForwardLeaves;
   final String? fcmToken;
 
@@ -28,23 +71,29 @@ class Employee {
     required this.id,
     required this.employeeId,
     required this.name,
-    required this.department,
     this.nickName = '',
+    this.gender = 'male',
+    this.dateOfBirth,
+    this.image = '',
+    this.nid = '',
+    this.tin = '',
     this.personalPhone = '',
     this.officialPhone = '',
     this.personalEmail = '',
     this.officialEmail = '',
+    this.presentAddress = '',
+    this.permanentAddress = '',
+    required this.department,
     this.designation = '',
-    this.gender = 'male',
-    this.dateOfBirth,
+    this.education = const [],
+    required this.joinedDate,
+    this.separationDate,
+    this.isActive = true,
     this.email = '',
     this.password = '',
     this.role = 'employee',
     this.mustChangePassword = false,
-    this.isActive = true,
-    required this.joinedDate,
     required this.createdAt,
-    this.image = '',
     this.carriedForwardLeaves = 0,
     this.fcmToken,
   });
@@ -57,22 +106,28 @@ class Employee {
     String? employeeId,
     String? name,
     String? nickName,
+    String? gender,
+    DateTime? dateOfBirth,
+    String? image,
+    String? nid,
+    String? tin,
     String? personalPhone,
     String? officialPhone,
     String? personalEmail,
     String? officialEmail,
+    String? presentAddress,
+    String? permanentAddress,
     String? department,
     String? designation,
-    String? gender,
-    DateTime? dateOfBirth,
+    List<Education>? education,
+    DateTime? joinedDate,
+    DateTime? separationDate,
+    bool? isActive,
     String? email,
     String? password,
     String? role,
     bool? mustChangePassword,
-    bool? isActive,
-    DateTime? joinedDate,
     DateTime? createdAt,
-    String? image,
     int? carriedForwardLeaves,
     String? fcmToken,
   }) {
@@ -81,22 +136,28 @@ class Employee {
       employeeId: employeeId ?? this.employeeId,
       name: name ?? this.name,
       nickName: nickName ?? this.nickName,
+      gender: gender ?? this.gender,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      image: image ?? this.image,
+      nid: nid ?? this.nid,
+      tin: tin ?? this.tin,
       personalPhone: personalPhone ?? this.personalPhone,
       officialPhone: officialPhone ?? this.officialPhone,
       personalEmail: personalEmail ?? this.personalEmail,
       officialEmail: officialEmail ?? this.officialEmail,
+      presentAddress: presentAddress ?? this.presentAddress,
+      permanentAddress: permanentAddress ?? this.permanentAddress,
       department: department ?? this.department,
       designation: designation ?? this.designation,
-      gender: gender ?? this.gender,
-      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      education: education ?? this.education,
+      joinedDate: joinedDate ?? this.joinedDate,
+      separationDate: separationDate ?? this.separationDate,
+      isActive: isActive ?? this.isActive,
       email: email ?? this.email,
       password: password ?? this.password,
       role: role ?? this.role,
       mustChangePassword: mustChangePassword ?? this.mustChangePassword,
-      isActive: isActive ?? this.isActive,
-      joinedDate: joinedDate ?? this.joinedDate,
       createdAt: createdAt ?? this.createdAt,
-      image: image ?? this.image,
       carriedForwardLeaves: carriedForwardLeaves ?? this.carriedForwardLeaves,
       fcmToken: fcmToken ?? this.fcmToken,
     );
@@ -107,24 +168,32 @@ class Employee {
       'employeeId': employeeId,
       'name': name,
       'nickName': nickName,
-      'personalPhone': personalPhone,
-      'officialPhone': officialPhone,
-      'personalEmail': personalEmail,
-      'officialEmail': officialEmail,
-      'department': department,
-      'designation': designation,
       'gender': gender,
       'dateOfBirth': dateOfBirth != null
           ? Timestamp.fromDate(dateOfBirth!)
           : null,
+      'image': image,
+      'nid': nid,
+      'tin': tin,
+      'personalPhone': personalPhone,
+      'officialPhone': officialPhone,
+      'personalEmail': personalEmail,
+      'officialEmail': officialEmail,
+      'presentAddress': presentAddress,
+      'permanentAddress': permanentAddress,
+      'department': department,
+      'designation': designation,
+      'education': education.map((e) => e.toJson()).toList(),
       'joinedDate': Timestamp.fromDate(joinedDate),
+      'separationDate': separationDate != null
+          ? Timestamp.fromDate(separationDate!)
+          : null,
+      'isActive': isActive,
       'email': email,
       'password': password,
       'role': role,
       'mustChangePassword': mustChangePassword,
-      'isActive': isActive,
       'createdAt': Timestamp.fromDate(createdAt),
-      'image': image,
       'carriedForwardLeaves': carriedForwardLeaves,
       'fcmToken': fcmToken,
     };
@@ -139,23 +208,33 @@ class Employee {
       employeeId: data['employeeId'] as String? ?? '',
       name: data['name'] as String? ?? '',
       nickName: data['nickName'] as String? ?? '',
+      gender: data['gender'] as String? ?? 'male',
+      dateOfBirth: (data['dateOfBirth'] as Timestamp?)?.toDate(),
+      image: data['image'] as String? ?? '',
+      nid: data['nid'] as String? ?? '',
+      tin: data['tin'] as String? ?? '',
       personalPhone: data['personalPhone'] as String? ?? '',
       officialPhone: data['officialPhone'] as String? ?? '',
       personalEmail: data['personalEmail'] as String? ?? '',
       officialEmail: data['officialEmail'] as String? ?? '',
+      presentAddress: data['presentAddress'] as String? ?? '',
+      permanentAddress: data['permanentAddress'] as String? ?? '',
       department: data['department'] as String? ?? '',
       designation: data['designation'] as String? ?? '',
-      gender: data['gender'] as String? ?? 'male',
-      dateOfBirth: (data['dateOfBirth'] as Timestamp?)?.toDate(),
+      education:
+          (data['education'] as List<dynamic>?)
+              ?.map((e) => Education.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
       joinedDate:
           (data['joinedDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      separationDate: (data['separationDate'] as Timestamp?)?.toDate(),
+      isActive: data['isActive'] as bool? ?? true,
       email: data['email'] as String? ?? '',
       password: data['password'] as String? ?? '',
       role: data['role'] as String? ?? 'employee',
       mustChangePassword: data['mustChangePassword'] as bool? ?? false,
-      isActive: data['isActive'] as bool? ?? true,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      image: data['image'] as String? ?? '',
       carriedForwardLeaves: data['carriedForwardLeaves'] as int? ?? 0,
       fcmToken: data['fcmToken'] as String?,
     );

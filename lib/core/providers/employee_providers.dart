@@ -31,10 +31,17 @@ final schedulableDepartmentsProvider = StreamProvider<Set<String>>((ref) {
       .where('isSchedulable', isEqualTo: true)
       .snapshots()
       .map(
-        (snapshot) => snapshot.docs
-            .map((doc) => doc.data()['name'] as String)
-            .toSet(),
+        (snapshot) =>
+            snapshot.docs.map((doc) => doc.data()['name'] as String).toSet(),
       );
+});
+
+final nextEmployeeIdProvider = FutureProvider<String>((ref) async {
+  final firestore = ref.watch(firestoreProvider);
+  final doc = await firestore.collection('counters').doc('employees').get();
+  if (!doc.exists) return '0001';
+  final count = (doc.data()?['count'] as int? ?? 0) + 1;
+  return count.toString().padLeft(4, '0');
 });
 
 // Model for Designation with Department link
@@ -91,7 +98,9 @@ class EmployeeActionService {
     DateTime? dateOfBirth,
     required String email,
     String? password,
+    String? customEmployeeId,
   }) {
+    // Note: The repository should be updated to accept customEmployeeId if needed
     return _ref
         .read(employeeRepositoryProvider)
         .addEmployee(

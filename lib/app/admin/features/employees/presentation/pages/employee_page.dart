@@ -334,6 +334,7 @@ class EmployeePage extends ConsumerWidget {
                                             Icons.more_vert,
                                             size: 16,
                                           ),
+                                          color: Colors.white,
                                           padding: EdgeInsets.zero,
                                           onSelected: (value) =>
                                               _handleMenuAction(
@@ -345,7 +346,9 @@ class EmployeePage extends ConsumerWidget {
                                           itemBuilder: (context) => [
                                             const PopupMenuItem(
                                               value: 'edit',
+                                              height: 32, // Reduced height
                                               child: ListTile(
+                                                dense: true,
                                                 leading: Icon(
                                                   Icons.edit,
                                                   size: 18,
@@ -356,7 +359,9 @@ class EmployeePage extends ConsumerWidget {
                                             ),
                                             PopupMenuItem(
                                               value: 'invite',
+                                              height: 32, // Reduced height
                                               child: ListTile(
+                                                dense: true,
                                                 leading: Icon(
                                                   Icons.person_add,
                                                   size: 18,
@@ -380,10 +385,34 @@ class EmployeePage extends ConsumerWidget {
                                               ),
                                             ),
                                             if (employee.email.isNotEmpty &&
-                                                employee.password.isNotEmpty)
+                                                employee
+                                                    .password
+                                                    .isNotEmpty) ...[
+                                              PopupMenuItem(
+                                                value: 'share_access',
+                                                height: 32, // Reduced height
+                                                child: ListTile(
+                                                  dense: true,
+                                                  leading: const Icon(
+                                                    LucideIcons.share2,
+                                                    size: 18,
+                                                    color: Colors.green,
+                                                  ),
+                                                  title: const Text(
+                                                    'Share Access',
+                                                    style: TextStyle(
+                                                      color: Colors.green,
+                                                    ),
+                                                  ),
+                                                  contentPadding:
+                                                      EdgeInsets.zero,
+                                                ),
+                                              ),
                                               PopupMenuItem(
                                                 value: 'toggle_access',
+                                                height: 32, // Reduced height
                                                 child: ListTile(
+                                                  dense: true,
                                                   leading: Icon(
                                                     employee.isActive
                                                         ? Icons.block
@@ -408,9 +437,13 @@ class EmployeePage extends ConsumerWidget {
                                                       EdgeInsets.zero,
                                                 ),
                                               ),
+                                            ],
+                                            const PopupMenuDivider(height: 1),
                                             const PopupMenuItem(
                                               value: 'delete',
+                                              height: 32, // Reduced height
                                               child: ListTile(
+                                                dense: true,
                                                 leading: Icon(
                                                   Icons.delete,
                                                   size: 18,
@@ -480,7 +513,21 @@ class EmployeePage extends ConsumerWidget {
           backgroundColor: employee.isActive ? Colors.orange : Colors.green,
         ),
       );
+    } else if (value == 'share_access') {
+      _shareAccess(employee);
     }
+  }
+
+  void _shareAccess(Employee employee) {
+    final String message =
+        'Center Assistant Portal Access\n\n'
+        'Hello ${employee.name},\n\n'
+        'Your portal access has been set up.\n\n'
+        'Login Email: ${employee.email}\n'
+        'Temporary Password: ${employee.password}\n\n'
+        'Please change your password after your first login.';
+
+    Share.share(message, subject: 'Employee Portal Credentials');
   }
 
   void _showEmployeeInfoDialog(BuildContext context, Employee employee) {

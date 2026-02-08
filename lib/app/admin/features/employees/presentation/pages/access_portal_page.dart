@@ -102,14 +102,27 @@ class _InviteEmployeePageState extends ConsumerState<AccessPortalPage> {
       context: context,
       builder: (context) => AlertDialog(
         insetPadding: .zero,
-        title: Container(
-          constraints: const BoxConstraints(minWidth: 350, maxWidth: 500),
-          child: const Text('Confirm Portal Update'),
+        title: Row(
+          children: [
+            const Text('Confirm Portal Update'),
+            const Spacer(),
+            IconButton(
+              onPressed: () => Navigator.pop(
+                context,
+                false,
+              ), // Close the dialog without confirming
+              icon: const Icon(Icons.close),
+            ),
+          ],
         ),
-        content: const Text(
-          'Are you sure you want to update the portal access for this employee? '
-          'The existing password will be overwritten and they will be required to change it upon login.',
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Text(
+            'Are you sure you want to update access for this employee? '
+            'Existing password will be overwritten and they will be required to change it upon login.',
+          ),
         ),
+
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -395,7 +408,7 @@ class _InviteEmployeePageState extends ConsumerState<AccessPortalPage> {
                                             ),
                                             const SizedBox(height: 4),
                                             Text(
-                                              'ID: ${employee.id}',
+                                              'ID: ${employee.employeeId}',
                                               style: theme.textTheme.bodySmall
                                                   ?.copyWith(
                                                     color: Colors.grey.shade500,
@@ -561,7 +574,6 @@ class _InviteEmployeePageState extends ConsumerState<AccessPortalPage> {
                       const SizedBox(height: 40),
                       SizedBox(
                         width: double.infinity,
-                        height: 50,
                         child: ElevatedButton.icon(
                           onPressed: _isLoading ? null : _inviteEmployee,
                           icon: _isLoading
@@ -572,13 +584,9 @@ class _InviteEmployeePageState extends ConsumerState<AccessPortalPage> {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Icon(LucideIcons.userCheck),
+                              : const Icon(LucideIcons.userCheck, size: 16),
                           label: Text(
-                            _isLoading ? 'Saving...' : 'Update Portal Access',
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: theme.colorScheme.primary,
-                            foregroundColor: theme.colorScheme.onPrimary,
+                            _isLoading ? 'Saving...' : 'Update Access',
                           ),
                         ),
                       ),
