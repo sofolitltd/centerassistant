@@ -118,7 +118,7 @@ class _DepartmentManagementPageState
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                OutlinedButton.icon(
+                ElevatedButton.icon(
                   onPressed: () => _showAddDepartmentDialog(),
                   icon: const Icon(LucideIcons.plus, size: 18),
                   label: const Text('Add Department'),
@@ -248,7 +248,7 @@ class _DepartmentManagementPageState
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                OutlinedButton.icon(
+                ElevatedButton.icon(
                   onPressed: () => _showAddDesignationDialog(deptsAsync),
                   icon: const Icon(LucideIcons.plus, size: 18),
                   label: const Text('Add Designation'),
@@ -620,13 +620,21 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
+      borderRadius: BorderRadius.circular(4),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF3D5A45) : Colors.white,
-          borderRadius: BorderRadius.circular(50),
+          color: isSelected
+              ? Theme.of(context).primaryColor
+              : Colors.grey.shade50,
+          border: Border.all(
+            color: isSelected
+                ? Theme.of(context).primaryColor
+                : Colors.grey.shade300,
+          ),
+          borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
           label,

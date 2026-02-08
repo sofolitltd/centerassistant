@@ -215,12 +215,12 @@ class _ServiceRatesPageState extends ConsumerState<ServiceRatesPage> {
     final isSelected = _filter == label;
     return InkWell(
       onTap: () => setState(() => _filter = label),
-      borderRadius: BorderRadius.circular(50),
+      borderRadius: BorderRadius.circular(4),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? Theme.of(context).primaryColor : Colors.white,
-          borderRadius: BorderRadius.circular(50),
+          borderRadius: BorderRadius.circular(4),
           border: Border.all(
             color: isSelected
                 ? Theme.of(context).primaryColor

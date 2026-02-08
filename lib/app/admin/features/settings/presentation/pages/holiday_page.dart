@@ -163,7 +163,7 @@ class _HolidayPageState extends ConsumerState<HolidayPage> {
           data: (settings) => Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              OutlinedButton.icon(
+              ElevatedButton.icon(
                 onPressed: () => _showAddSpecialWorkDayDialog(context),
                 icon: const Icon(LucideIcons.plus, size: 18),
                 label: const Text('Add Special Work Day'),
@@ -737,14 +737,20 @@ class _TabButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
+      borderRadius: BorderRadius.circular(4),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
               ? Theme.of(context).primaryColor
               : Colors.grey.shade50,
-          borderRadius: BorderRadius.circular(50),
+          border: Border.all(
+            color: isSelected
+                ? Theme.of(context).primaryColor
+                : Colors.grey.shade300,
+          ),
+          borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
           label,

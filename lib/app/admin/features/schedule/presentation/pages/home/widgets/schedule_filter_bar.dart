@@ -167,6 +167,7 @@ class _ViewMenuButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
+      borderRadius: BorderRadius.circular(4),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -174,7 +175,11 @@ class _ViewMenuButton extends StatelessWidget {
           color: isSelected
               ? Theme.of(context).primaryColor
               : Colors.grey.shade50,
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(
+            color: isSelected
+                ? Theme.of(context).primaryColor
+                : Colors.grey.shade300,
+          ),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
