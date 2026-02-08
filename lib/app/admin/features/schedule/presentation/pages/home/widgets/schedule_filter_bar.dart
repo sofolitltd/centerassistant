@@ -96,6 +96,7 @@ class ScheduleFilterBar extends ConsumerWidget {
 
   Widget _buildViewMenu(WidgetRef ref, PlannerView currentView) {
     return Row(
+      spacing: 8,
       children: [
         _ViewMenuButton(
           label: 'Day',
@@ -104,7 +105,6 @@ class ScheduleFilterBar extends ConsumerWidget {
               .read(plannerViewNotifierProvider.notifier)
               .setView(PlannerView.daily),
         ),
-        const SizedBox(width: 4),
         _ViewMenuButton(
           label: 'Week',
           isSelected: currentView == PlannerView.weekly,
@@ -112,7 +112,6 @@ class ScheduleFilterBar extends ConsumerWidget {
               .read(plannerViewNotifierProvider.notifier)
               .setView(PlannerView.weekly),
         ),
-        const SizedBox(width: 4),
         _ViewMenuButton(
           label: 'Month',
           isSelected: currentView == PlannerView.monthly,
@@ -175,6 +174,7 @@ class _ViewMenuButton extends StatelessWidget {
           color: isSelected
               ? Theme.of(context).primaryColor
               : Colors.grey.shade50,
+          border: Border.all(color: Colors.grey.shade300),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(

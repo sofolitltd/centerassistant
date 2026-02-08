@@ -20,7 +20,8 @@ class ScheduleDrawerFilter extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<ScheduleDrawerFilter> createState() => _ScheduleDrawerFilterState();
+  ConsumerState<ScheduleDrawerFilter> createState() =>
+      _ScheduleDrawerFilterState();
 }
 
 class _ScheduleDrawerFilterState extends ConsumerState<ScheduleDrawerFilter> {
@@ -39,6 +40,7 @@ class _ScheduleDrawerFilterState extends ConsumerState<ScheduleDrawerFilter> {
     final deptsAsync = ref.watch(schedulableDepartmentsProvider);
 
     return Drawer(
+      backgroundColor: Colors.white,
       child: SafeArea(
         child: Column(
           children: [
@@ -47,7 +49,10 @@ class _ScheduleDrawerFilterState extends ConsumerState<ScheduleDrawerFilter> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Filters', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Filters',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
                   TextButton(
                     onPressed: () {
                       setState(() {
@@ -56,7 +61,9 @@ class _ScheduleDrawerFilterState extends ConsumerState<ScheduleDrawerFilter> {
                           employeeId: widget.fixedEmployeeId,
                         );
                       });
-                      ref.read(scheduleFilterProvider.notifier).setFilter(_localFilter);
+                      ref
+                          .read(scheduleFilterProvider.notifier)
+                          .setFilter(_localFilter);
                     },
                     child: const Text('Reset'),
                   ),
@@ -77,21 +84,37 @@ class _ScheduleDrawerFilterState extends ConsumerState<ScheduleDrawerFilter> {
                         items: (filter, loadProps) => clients,
                         itemAsString: (c) => c.name,
                         compareFn: (a, b) => a.id == b.id,
-                        selectedItem: _localFilter.clientId != null ? clients.where((c) => c.id == _localFilter.clientId).firstOrNull : null,
-                        onChanged: (c) => setState(() => _localFilter = _localFilter.copyWith(clientId: () => c?.id)),
+                        selectedItem: _localFilter.clientId != null
+                            ? clients
+                                  .where((c) => c.id == _localFilter.clientId)
+                                  .firstOrNull
+                            : null,
+                        onChanged: (c) => setState(
+                          () => _localFilter = _localFilter.copyWith(
+                            clientId: () => c?.id,
+                          ),
+                        ),
                         decoratorProps: DropDownDecoratorProps(
                           decoration: InputDecoration(
                             hintText: 'Select Client',
                             border: const OutlineInputBorder(),
                             isDense: true,
-                            fillColor: widget.fixedClientId != null ? Colors.grey.shade100 : null,
+                            fillColor: widget.fixedClientId != null
+                                ? Colors.grey.shade100
+                                : null,
                             filled: widget.fixedClientId != null,
                           ),
                         ),
                         popupProps: const PopupProps.menu(showSearchBox: true),
                       ),
-                      onClear: () => setState(() => _localFilter = _localFilter.copyWith(clientId: () => null)),
-                      showClear: _localFilter.clientId != null && widget.fixedClientId == null,
+                      onClear: () => setState(
+                        () => _localFilter = _localFilter.copyWith(
+                          clientId: () => null,
+                        ),
+                      ),
+                      showClear:
+                          _localFilter.clientId != null &&
+                          widget.fixedClientId == null,
                     ),
                     loading: () => const LinearProgressIndicator(),
                     error: (_, __) => const Text('Error'),
@@ -105,21 +128,37 @@ class _ScheduleDrawerFilterState extends ConsumerState<ScheduleDrawerFilter> {
                         items: (filter, loadProps) => employees,
                         itemAsString: (e) => e.name,
                         compareFn: (a, b) => a.id == b.id,
-                        selectedItem: _localFilter.employeeId != null ? employees.where((e) => e.id == _localFilter.employeeId).firstOrNull : null,
-                        onChanged: (e) => setState(() => _localFilter = _localFilter.copyWith(employeeId: () => e?.id)),
+                        selectedItem: _localFilter.employeeId != null
+                            ? employees
+                                  .where((e) => e.id == _localFilter.employeeId)
+                                  .firstOrNull
+                            : null,
+                        onChanged: (e) => setState(
+                          () => _localFilter = _localFilter.copyWith(
+                            employeeId: () => e?.id,
+                          ),
+                        ),
                         decoratorProps: DropDownDecoratorProps(
                           decoration: InputDecoration(
                             hintText: 'Select Therapist',
                             border: const OutlineInputBorder(),
                             isDense: true,
-                            fillColor: widget.fixedEmployeeId != null ? Colors.grey.shade100 : null,
+                            fillColor: widget.fixedEmployeeId != null
+                                ? Colors.grey.shade100
+                                : null,
                             filled: widget.fixedEmployeeId != null,
                           ),
                         ),
                         popupProps: const PopupProps.menu(showSearchBox: true),
                       ),
-                      onClear: () => setState(() => _localFilter = _localFilter.copyWith(employeeId: () => null)),
-                      showClear: _localFilter.employeeId != null && widget.fixedEmployeeId == null,
+                      onClear: () => setState(
+                        () => _localFilter = _localFilter.copyWith(
+                          employeeId: () => null,
+                        ),
+                      ),
+                      showClear:
+                          _localFilter.employeeId != null &&
+                          widget.fixedEmployeeId == null,
                     ),
                     loading: () => const LinearProgressIndicator(),
                     error: (_, __) => const Text('Error'),
@@ -131,11 +170,26 @@ class _ScheduleDrawerFilterState extends ConsumerState<ScheduleDrawerFilter> {
                       child: DropdownButtonFormField<String>(
                         value: _localFilter.serviceType,
                         hint: const Text('Select Service'),
-                        decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
-                        items: depts.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
-                        onChanged: (v) => setState(() => _localFilter = _localFilter.copyWith(serviceType: () => v)),
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        items: depts
+                            .map(
+                              (d) => DropdownMenuItem(value: d, child: Text(d)),
+                            )
+                            .toList(),
+                        onChanged: (v) => setState(
+                          () => _localFilter = _localFilter.copyWith(
+                            serviceType: () => v,
+                          ),
+                        ),
                       ),
-                      onClear: () => setState(() => _localFilter = _localFilter.copyWith(serviceType: () => null)),
+                      onClear: () => setState(
+                        () => _localFilter = _localFilter.copyWith(
+                          serviceType: () => null,
+                        ),
+                      ),
                       showClear: _localFilter.serviceType != null,
                     ),
                     loading: () => const LinearProgressIndicator(),
@@ -147,11 +201,29 @@ class _ScheduleDrawerFilterState extends ConsumerState<ScheduleDrawerFilter> {
                     child: DropdownButtonFormField<SessionStatus>(
                       value: _localFilter.status,
                       hint: const Text('Select Status'),
-                      decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
-                      items: SessionStatus.values.map((s) => DropdownMenuItem(value: s, child: Text(s.displayName))).toList(),
-                      onChanged: (v) => setState(() => _localFilter = _localFilter.copyWith(status: () => v)),
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      items: SessionStatus.values
+                          .map(
+                            (s) => DropdownMenuItem(
+                              value: s,
+                              child: Text(s.displayName),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) => setState(
+                        () => _localFilter = _localFilter.copyWith(
+                          status: () => v,
+                        ),
+                      ),
                     ),
-                    onClear: () => setState(() => _localFilter = _localFilter.copyWith(status: () => null)),
+                    onClear: () => setState(
+                      () => _localFilter = _localFilter.copyWith(
+                        status: () => null,
+                      ),
+                    ),
                     showClear: _localFilter.status != null,
                   ),
                   const SizedBox(height: 20),
@@ -160,11 +232,28 @@ class _ScheduleDrawerFilterState extends ConsumerState<ScheduleDrawerFilter> {
                     child: DropdownButtonFormField<bool>(
                       value: _localFilter.isInclusive,
                       hint: const Text('Inclusive/Exclusive'),
-                      decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
-                      items: const [DropdownMenuItem(value: true, child: Text('Inclusive')), DropdownMenuItem(value: false, child: Text('Exclusive'))],
-                      onChanged: (v) => setState(() => _localFilter = _localFilter.copyWith(isInclusive: () => v)),
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: true, child: Text('Inclusive')),
+                        DropdownMenuItem(
+                          value: false,
+                          child: Text('Exclusive'),
+                        ),
+                      ],
+                      onChanged: (v) => setState(
+                        () => _localFilter = _localFilter.copyWith(
+                          isInclusive: () => v,
+                        ),
+                      ),
                     ),
-                    onClear: () => setState(() => _localFilter = _localFilter.copyWith(isInclusive: () => null)),
+                    onClear: () => setState(
+                      () => _localFilter = _localFilter.copyWith(
+                        isInclusive: () => null,
+                      ),
+                    ),
                     showClear: _localFilter.isInclusive != null,
                   ),
                 ],
@@ -176,7 +265,9 @@ class _ScheduleDrawerFilterState extends ConsumerState<ScheduleDrawerFilter> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    ref.read(scheduleFilterProvider.notifier).setFilter(_localFilter);
+                    ref
+                        .read(scheduleFilterProvider.notifier)
+                        .setFilter(_localFilter);
                     Navigator.pop(context);
                   },
                   child: const Text('Apply Filters'),
@@ -192,11 +283,18 @@ class _ScheduleDrawerFilterState extends ConsumerState<ScheduleDrawerFilter> {
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
-      child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+      child: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+      ),
     );
   }
 
-  Widget _buildFilterRow({required Widget child, required VoidCallback onClear, required bool showClear}) {
+  Widget _buildFilterRow({
+    required Widget child,
+    required VoidCallback onClear,
+    required bool showClear,
+  }) {
     return Row(
       children: [
         Expanded(child: child),

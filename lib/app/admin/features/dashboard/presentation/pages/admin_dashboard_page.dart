@@ -2,15 +2,18 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '/core/models/employee.dart';
 import '/core/models/invoice_snapshot.dart';
 import '/core/models/leave.dart';
 import '/core/models/session.dart';
 import '/core/models/transaction.dart';
 import '/core/providers/billing_providers.dart';
 import '/core/providers/client_providers.dart';
+import '/core/providers/employee_providers.dart';
 import '/core/providers/invoice_snapshot_providers.dart';
 import '/core/providers/leave_providers.dart';
 import '/core/providers/session_providers.dart';
@@ -21,6 +24,8 @@ class AdminDashboardPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final clientsAsync = ref.watch(clientsProvider);
+    final employeesAsync = ref.watch(employeesProvider);
+    final schedulableDeptsAsync = ref.watch(schedulableDepartmentsProvider);
     final todayScheduleAsync = ref.watch(scheduleViewProvider);
     final leavesAsync = ref.watch(allLeavesProvider);
     final monthKey = DateFormat('yyyy-MM').format(DateTime.now());
@@ -35,22 +40,24 @@ class AdminDashboardPage extends ConsumerWidget {
       allInvoiceSnapshotsByRangeProvider(6),
     );
     final allMonthlySessionsAsync = ref.watch(allMonthlySessionsProvider);
+    final allWeeklySessionsAsync = ref.watch(allWeeklySessionsProvider);
 
     final transactionsAsync = ref.watch(allTransactionsProvider);
 
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(context),
-            const SizedBox(height: 16),
+            const SizedBox(height: 32),
 
             // KPI Grid - Responsive Layout
             _buildKpiGrid(context, monthlySnapshotsAsync, clientsAsync),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
 
             // Main Charts & Lists Section
             LayoutBuilder(
@@ -69,6 +76,10 @@ class AdminDashboardPage extends ConsumerWidget {
                               ref,
                               transactionsAsync,
                               monthlySnapshotsByRangeAsync,
+                              allWeeklySessionsAsync,
+                              employeesAsync,
+                              schedulableDeptsAsync,
+                              clientsAsync,
                             ),
                           ),
                           const SizedBox(width: 24),
@@ -91,6 +102,10 @@ class AdminDashboardPage extends ConsumerWidget {
                             ref,
                             transactionsAsync,
                             monthlySnapshotsByRangeAsync,
+                            allWeeklySessionsAsync,
+                            employeesAsync,
+                            schedulableDeptsAsync,
+                            clientsAsync,
                           ),
                           const SizedBox(height: 32),
                           _buildRightColumn(
@@ -116,12 +131,16 @@ class AdminDashboardPage extends ConsumerWidget {
     WidgetRef ref,
     AsyncValue<List<ClientTransaction>> transactionsAsync,
     AsyncValue<List<InvoiceSnapshot>> monthlySnapshotsByRangeAsync,
+    AsyncValue<List<Session>> weeklySessionsAsync,
+    AsyncValue<List<Employee>> employeesAsync,
+    AsyncValue<Set<String>> schedulableDeptsAsync,
+    AsyncValue<dynamic> clientsAsync,
   ) {
     return Column(
       children: [
         _buildSectionTitle(
           context,
-          'Revenue Performance & Growth Trends',
+          'Strategic Financial Growth (Realized Revenue)',
           icon: LucideIcons.trendingUp,
         ),
         const SizedBox(height: 16),
@@ -129,11 +148,24 @@ class AdminDashboardPage extends ConsumerWidget {
         const SizedBox(height: 32),
         _buildSectionTitle(
           context,
-          'Latest Transactions',
+          'Therapist Weekly Load & Capacity (Action Required)',
+          icon: LucideIcons.userCheck,
+        ),
+        const SizedBox(height: 16),
+        _buildTherapistWorkloadList(
+          context,
+          weeklySessionsAsync,
+          employeesAsync,
+          schedulableDeptsAsync,
+        ),
+        const SizedBox(height: 32),
+        _buildSectionTitle(
+          context,
+          'Latest Transactions Activity',
           icon: LucideIcons.history,
         ),
         const SizedBox(height: 16),
-        _buildRecentTransactions(transactionsAsync),
+        _buildRecentTransactions(context, transactionsAsync, clientsAsync),
       ],
     );
   }
@@ -177,7 +209,7 @@ class AdminDashboardPage extends ConsumerWidget {
           ),
         ),
         Text(
-          'Strategic and financial metrics at a glance',
+          'Detailed insights of your center',
           style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
         ),
       ],
@@ -191,14 +223,15 @@ class AdminDashboardPage extends ConsumerWidget {
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        int crossAxisCount = constraints.maxWidth > 1200 ? 4 : 2;
+        int crossAxisCount = constraints.maxWidth > 1000 ? 4 : 2;
         int maxItems = 4;
 
         return MasonryGridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: crossAxisCount,
-
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 16,
           itemCount: maxItems,
           itemBuilder: (context, index) {
             if (index == 0) {
@@ -356,7 +389,7 @@ class AdminDashboardPage extends ConsumerWidget {
       ),
       child: Container(
         height: 300,
-        padding: const EdgeInsets.fromLTRB(0, 32, 8, 16),
+        padding: const EdgeInsets.fromLTRB(16, 40, 24, 16),
         child: snapshotsByRangeAsync.when(
           data: (snapshots) {
             final Map<String, double> monthlyRevenue = {};
@@ -399,10 +432,8 @@ class AdminDashboardPage extends ConsumerWidget {
               );
             }
 
-            // Calculate interval to prevent overlapping (e.g., 5 intervals)
-            double interval = (maxVal / 6);
+            double interval = (maxVal / 5);
             if (interval < 1000) interval = 1000;
-            // Round interval to nice number
             interval = (interval / 500).ceil() * 500.0;
 
             return BarChart(
@@ -447,7 +478,7 @@ class AdminDashboardPage extends ConsumerWidget {
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      reservedSize: 50,
+                      reservedSize: 65,
                       interval: interval,
                       getTitlesWidget: (value, meta) {
                         return Padding(
@@ -474,25 +505,154 @@ class AdminDashboardPage extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, stack) {
             debugPrint('Error loading revenue data: $error');
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    LucideIcons.alertTriangle,
-                    color: Colors.red,
-                    size: 32,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Data Error: ${error.toString().split(':').first}',
-                    style: const TextStyle(fontSize: 12, color: Colors.red),
-                  ),
-                ],
-              ),
-            );
+            return const Center(child: Text('Error loading revenue data'));
           },
         ),
+      ),
+    );
+  }
+
+  Widget _buildTherapistWorkloadList(
+    BuildContext context,
+    AsyncValue<List<Session>> weeklySessionsAsync,
+    AsyncValue<List<Employee>> employeesAsync,
+    AsyncValue<Set<String>> schedulableDeptsAsync,
+  ) {
+    const int targetSessions = 15;
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: weeklySessionsAsync.when(
+        data: (sessions) {
+          return employeesAsync.when(
+            data: (employees) {
+              return schedulableDeptsAsync.when(
+                data: (schedulableDepts) {
+                  final filteredEmployees = employees
+                      .where((e) => schedulableDepts.contains(e.department))
+                      .toList();
+
+                  final Map<String, int> workload = {};
+                  for (final s in sessions) {
+                    for (final sv in s.services) {
+                      workload[sv.employeeId] =
+                          (workload[sv.employeeId] ?? 0) + 1;
+                    }
+                  }
+
+                  filteredEmployees.sort((a, b) {
+                    final aCount = workload[a.id] ?? 0;
+                    final bCount = workload[b.id] ?? 0;
+                    return (bCount - 10).abs().compareTo((aCount - 10).abs());
+                  });
+
+                  final displayList = filteredEmployees.take(5).toList();
+
+                  return Column(
+                    children: [
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: displayList.length,
+                        separatorBuilder: (context, index) =>
+                            Divider(height: 1, color: Colors.grey.shade100),
+                        itemBuilder: (context, index) {
+                          final emp = displayList[index];
+                          final count = workload[emp.id] ?? 0;
+                          final percentage = (count / targetSessions).clamp(
+                            0.0,
+                            1.0,
+                          );
+
+                          Color statusColor = Colors.blue;
+                          if (count > 15)
+                            statusColor = Colors.red;
+                          else if (count >= 13)
+                            statusColor = Colors.orange;
+                          else if (count >= 6)
+                            statusColor = Colors.green;
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 16,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      emp.name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: statusColor.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        '$count/$targetSessions',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: statusColor,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: LinearProgressIndicator(
+                                    value: percentage,
+                                    backgroundColor: Colors.grey.shade100,
+                                    color: statusColor,
+                                    minHeight: 8,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                      ...[
+                        const Divider(height: 1),
+                        TextButton(
+                          onPressed: () => context.go('/admin/utilization'),
+                          child: Text(
+                            'View All ${filteredEmployees.length} Therapists',
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+                    ],
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (_, __) => const SizedBox.shrink(),
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (_, __) => const SizedBox.shrink(),
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, __) => const SizedBox.shrink(),
       ),
     );
   }
@@ -623,7 +783,9 @@ class AdminDashboardPage extends ConsumerWidget {
   }
 
   Widget _buildRecentTransactions(
+    BuildContext context,
     AsyncValue<List<ClientTransaction>> transactionsAsync,
+    AsyncValue<dynamic> clientsAsync,
   ) {
     return Card(
       elevation: 0,
@@ -631,70 +793,89 @@ class AdminDashboardPage extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: Colors.grey.shade200),
       ),
-      child: transactionsAsync.when(
-        data: (transactions) {
-          if (transactions.isEmpty) {
-            return const Padding(
-              padding: EdgeInsets.all(48.0),
-              child: Center(child: Text('No recent transactions.')),
-            );
-          }
-          final displayList = transactions.take(6).toList();
-          return Column(
-            children: [
-              ...displayList.map((tx) {
-                final isCredit = tx.type == TransactionType.prepaid;
-                return Container(
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(color: Colors.grey.shade100),
-                    ),
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 8,
-                    ),
-                    leading: CircleAvatar(
-                      backgroundColor: (isCredit ? Colors.black : Colors.blue)
-                          .withOpacity(0.1),
-                      child: Icon(
-                        isCredit ? LucideIcons.arrowDownLeft : LucideIcons.zap,
-                        size: 18,
-                        color: isCredit ? Colors.black : Colors.blue,
-                      ),
-                    ),
-                    title: Text(
-                      tx.description,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    subtitle: Text(
-                      DateFormat('MMM dd, hh:mm a').format(tx.timestamp),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                    trailing: Text(
-                      '${isCredit ? "+" : "-"} ৳${NumberFormat('#,###').format(tx.amount)}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16,
-                        color: isCredit ? Colors.black : Colors.black87,
-                      ),
-                    ),
-                  ),
+      child: Column(
+        children: [
+          transactionsAsync.when(
+            data: (transactions) {
+              if (transactions.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.all(48.0),
+                  child: Center(child: Text('No recent transactions.')),
                 );
-              }),
-              const SizedBox(height: 8),
-            ],
-          );
-        },
-        loading: () => const LinearProgressIndicator(),
-        error: (_, __) => const Center(child: Text('Error loading activity')),
+              }
+              final displayList = transactions.take(6).toList();
+              return Column(
+                children: [
+                  ...displayList.map((tx) {
+                    final isCredit = tx.type == TransactionType.prepaid;
+
+                    // Fetch client name for better identification
+                    final client = (clientsAsync.value as List?)
+                        ?.where((c) => c.id == tx.clientId)
+                        .firstOrNull;
+
+                    return Container(
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Colors.grey.shade100),
+                        ),
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 8,
+                        ),
+                        leading: CircleAvatar(
+                          backgroundColor:
+                              (isCredit ? Colors.black : Colors.blue)
+                                  .withOpacity(0.1),
+                          child: Icon(
+                            isCredit
+                                ? LucideIcons.arrowDownLeft
+                                : LucideIcons.zap,
+                            size: 18,
+                            color: isCredit ? Colors.black : Colors.blue,
+                          ),
+                        ),
+                        title: Text(
+                          '${client?.name ?? "Unknown"} - ${tx.description}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        subtitle: Text(
+                          DateFormat('MMM dd, hh:mm a').format(tx.timestamp),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        trailing: Text(
+                          '${isCredit ? "+" : "-"} ৳${NumberFormat('#,###').format(tx.amount.abs())}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                            color: isCredit ? Colors.black : Colors.black87,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              );
+            },
+            loading: () => const LinearProgressIndicator(),
+            error: (_, __) =>
+                const Center(child: Text('Error loading activity')),
+          ),
+          const Divider(height: 1),
+          TextButton(
+            onPressed: () => context.go('/admin/transactions'),
+            child: const Text('View All Transactions Activity'),
+          ),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }

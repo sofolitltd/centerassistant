@@ -55,7 +55,11 @@ class _ScheduleAllPageState extends ConsumerState<ScheduleAllPage> {
       body: Column(
         children: [
           _buildHeader(context, ref, filter, scaffoldKey),
+
+          //
           const ScheduleFilterBar(),
+
+          //
           Expanded(child: _buildMainView(view)),
         ],
       ),
@@ -99,11 +103,16 @@ class _ScheduleAllPageState extends ConsumerState<ScheduleAllPage> {
                 children: [
                   IconButton.filledTonal(
                     onPressed: () => scaffoldKey.currentState?.openEndDrawer(),
+                    style: IconButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: .circular(4)),
+                    ),
                     icon: const Icon(LucideIcons.filter, size: 20),
                     tooltip: 'Filter',
                     visualDensity: .comfortable,
                   ),
                   const SizedBox(width: 12),
+
+                  //
                   _buildAddButton(context, filter),
                 ],
               ),

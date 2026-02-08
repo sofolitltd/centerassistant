@@ -1,3 +1,4 @@
+import 'package:center_assistant/app/admin/features/billing/presentation/pages/all_transactions_page.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -19,6 +20,7 @@ import '/app/admin/features/leave/presentation/pages/leave_management_page.dart'
 import '/app/admin/features/settings/presentation/pages/holiday_page.dart';
 import '/app/admin/features/settings/presentation/pages/service_rates_page.dart';
 import '/app/admin/features/time_slots/presentation/pages/time_slot_page.dart';
+import '/app/admin/features/utilization/presentation/pages/therapist_utilization_page.dart';
 import '../features/clients/presentation/pages/billing/client_billing_page.dart';
 import '../features/contact/presentation/pages/employee_contact_page.dart';
 import '../features/schedule/presentation/pages/add/add_schedule_page.dart';
@@ -291,6 +293,28 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
               title: 'Service Charges | Center Assistant',
               color: Colors.black,
               child: const ServiceRatesPage(),
+            ),
+          ),
+        ),
+
+        GoRoute(
+          path: '/admin/utilization',
+          pageBuilder: (context, state) => NoTransitionPage(
+            child: Title(
+              title: 'Therapist Utilization | Center Assistant',
+              color: Colors.black,
+              child: const TherapistUtilizationPage(),
+            ),
+          ),
+        ),
+
+        GoRoute(
+          path: '/admin/transactions',
+          pageBuilder: (context, state) => NoTransitionPage(
+            child: Title(
+              title: 'All Transactions | Center Assistant',
+              color: Colors.black,
+              child: const AllTransactionsPage(),
             ),
           ),
         ),
