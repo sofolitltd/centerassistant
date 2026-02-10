@@ -1,14 +1,16 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '/core/models/employee.dart';
+import '/core/models/leave.dart';
 import '/core/models/session.dart';
 import '/core/providers/employee_providers.dart';
 import '/core/providers/leave_providers.dart';
 import '/core/providers/session_providers.dart';
-import '../../../../../../core/models/leave.dart';
 
 class AdminDashboardPage extends ConsumerWidget {
   const AdminDashboardPage({super.key});
@@ -46,7 +48,7 @@ class AdminDashboardPage extends ConsumerWidget {
                           children: [
                             _buildSectionTitle(
                               context,
-                              'Therapist Weekly Load & Capacity (Action Required)',
+                              'Therapist Weekly Load(Action Required)',
                               icon: LucideIcons.userCheck,
                             ),
                             const SizedBox(height: 16),
@@ -96,7 +98,7 @@ class AdminDashboardPage extends ConsumerWidget {
                     children: [
                       _buildSectionTitle(
                         context,
-                        'Therapist Weekly Load & Capacity (Action Required)',
+                        'Therapist Weekly Load(Action Required)',
                         icon: LucideIcons.userCheck,
                       ),
                       const SizedBox(height: 16),
@@ -109,7 +111,7 @@ class AdminDashboardPage extends ConsumerWidget {
                       const SizedBox(height: 32),
                       _buildSectionTitle(
                         context,
-                        'Session Distribution Breakdown',
+                        'Session Distribution',
                         icon: LucideIcons.pieChart,
                       ),
                       const SizedBox(height: 16),
@@ -120,7 +122,7 @@ class AdminDashboardPage extends ConsumerWidget {
                       const SizedBox(height: 32),
                       _buildSectionTitle(
                         context,
-                        'Operational Activity Pulse',
+                        'Operational Activity ',
                         icon: LucideIcons.activity,
                       ),
                       const SizedBox(height: 16),
@@ -199,80 +201,93 @@ class AdminDashboardPage extends ConsumerWidget {
 
                   final displayList = filteredEmployees.take(10).toList();
 
-                  return ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: displayList.length,
-                    separatorBuilder: (context, index) =>
-                        Divider(height: 1, color: Colors.grey.shade100),
-                    itemBuilder: (context, index) {
-                      final emp = displayList[index];
-                      final count = workload[emp.id] ?? 0;
-                      final percentage = (count / targetSessions).clamp(
-                        0.0,
-                        1.0,
-                      );
+                  return Column(
+                    children: [
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: displayList.length,
+                        separatorBuilder: (context, index) =>
+                            Divider(height: 1, color: Colors.grey.shade100),
+                        itemBuilder: (context, index) {
+                          final emp = displayList[index];
+                          final count = workload[emp.id] ?? 0;
+                          final percentage = (count / targetSessions).clamp(
+                            0.0,
+                            1.0,
+                          );
 
-                      Color statusColor = Colors.blue;
-                      if (count > 15)
-                        statusColor = Colors.red;
-                      else if (count >= 13)
-                        statusColor = Colors.orange;
-                      else if (count >= 6)
-                        statusColor = Colors.green;
+                          Color statusColor = Colors.blue;
+                          if (count > 15)
+                            statusColor = Colors.red;
+                          else if (count >= 13)
+                            statusColor = Colors.orange;
+                          else if (count >= 6)
+                            statusColor = Colors.green;
 
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 16,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 16,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  emp.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: statusColor.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    '$count/$targetSessions',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: statusColor,
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      emp.name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
                                     ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: statusColor.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        '$count/$targetSessions',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: statusColor,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: LinearProgressIndicator(
+                                    value: percentage,
+                                    backgroundColor: Colors.grey.shade100,
+                                    color: statusColor,
+                                    minHeight: 8,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: LinearProgressIndicator(
-                                value: percentage,
-                                backgroundColor: Colors.grey.shade100,
-                                color: statusColor,
-                                minHeight: 8,
-                              ),
-                            ),
-                          ],
+                          );
+                        },
+                      ),
+                      const Divider(height: 1),
+                      TextButton(
+                        onPressed: () => context.go('/admin/utilization'),
+                        child: Text(
+                          'View All ${filteredEmployees.length} Therapists Utilization',
                         ),
-                      );
-                    },
+                      ),
+                      const SizedBox(height: 4),
+                    ],
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
