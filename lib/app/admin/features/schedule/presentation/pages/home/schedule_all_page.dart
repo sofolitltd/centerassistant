@@ -80,7 +80,6 @@ class _ScheduleAllPageState extends ConsumerState<ScheduleAllPage> {
       child: Column(
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(

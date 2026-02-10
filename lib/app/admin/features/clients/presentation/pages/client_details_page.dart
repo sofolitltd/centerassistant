@@ -34,13 +34,15 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
     return Scaffold(
       body: clientsAsync.when(
         data: (clients) {
-          final client =
-              clients.where((c) => c.id == widget.clientId).firstOrNull;
+          final client = clients
+              .where((c) => c.id == widget.clientId)
+              .firstOrNull;
           if (client == null) {
             return const Center(child: Text('Client not found.'));
           }
 
           return Column(
+            crossAxisAlignment: .start,
             children: [
               // Responsive Breadcrumbs
               Padding(
@@ -56,7 +58,11 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
                         style: TextStyle(color: Colors.grey, fontSize: 13),
                       ),
                     ),
-                    const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+                    const Icon(
+                      Icons.chevron_right,
+                      size: 16,
+                      color: Colors.grey,
+                    ),
                     InkWell(
                       onTap: () => context.go('/admin/clients'),
                       child: const Text(
@@ -64,7 +70,11 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
                         style: TextStyle(color: Colors.grey, fontSize: 13),
                       ),
                     ),
-                    const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+                    const Icon(
+                      Icons.chevron_right,
+                      size: 16,
+                      color: Colors.grey,
+                    ),
                     Text(
                       client.name,
                       style: const TextStyle(
@@ -79,9 +89,19 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
               // Tab Switcher Container
               Container(
                 width: double.infinity,
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 10,
+                ),
+
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+
+                  borderRadius: .circular(4),
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade300),
+                  ),
                 ),
                 child: _buildTabSwitcher(),
               ),
@@ -100,7 +120,6 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
   Widget _buildTabSwitcher() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       physics: const BouncingScrollPhysics(),
       child: Row(
         children: [
@@ -189,18 +208,21 @@ class _TabButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         decoration: BoxDecoration(
-          color: isSelected ? Theme.of(context).primaryColor : Colors.grey.shade50,
-          borderRadius: BorderRadius.circular(6),
+          color: isSelected
+              ? Theme.of(context).primaryColor
+              : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(4),
           border: Border.all(
-            color: isSelected ? Theme.of(context).primaryColor : Colors.grey.shade200,
+            color: isSelected
+                ? Theme.of(context).primaryColor
+                : Colors.grey.shade200,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             color: isSelected ? Colors.white : Colors.black54,
             fontSize: 13,
           ),

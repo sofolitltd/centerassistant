@@ -8,6 +8,7 @@ abstract class ITimeSlotRepository {
     required String label,
     required bool isActive,
     required DateTime effectiveDate,
+    DateTime? effectiveEndDate,
   });
   Future<void> updateTimeSlot(TimeSlot timeSlot);
   Future<void> archiveTimeSlot(String id);

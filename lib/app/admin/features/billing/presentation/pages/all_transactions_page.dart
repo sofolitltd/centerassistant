@@ -132,7 +132,6 @@ class _AllTransactionsPageState extends ConsumerState<AllTransactionsPage> {
   Widget _buildHeader(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 600;
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [

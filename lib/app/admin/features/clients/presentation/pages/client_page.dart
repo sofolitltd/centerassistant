@@ -72,7 +72,7 @@ class ClientPage extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
 
             // Table Card
             Expanded(

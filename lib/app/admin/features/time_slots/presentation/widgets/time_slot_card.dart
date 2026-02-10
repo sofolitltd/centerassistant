@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '/core/models/time_slot.dart';
 import '/core/providers/time_slot_providers.dart';
+import 'add_time_slot_dialog.dart';
 import 'edit_time_slot_dialog.dart';
 
 class TimeSlotCard extends ConsumerWidget {
@@ -12,53 +13,72 @@ class TimeSlotCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final effectiveStart = DateTime(
+      slot.effectiveDate.year,
+      slot.effectiveDate.month,
+      slot.effectiveDate.day,
+    );
+
+    final isUpcoming = effectiveStart.isAfter(today);
+    final isExpired =
+        slot.effectiveEndDate != null &&
+        DateTime(
+          slot.effectiveEndDate!.year,
+          slot.effectiveEndDate!.month,
+          slot.effectiveEndDate!.day,
+        ).isBefore(today);
+
+    final isActive = !isUpcoming && !isExpired;
+
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         side: BorderSide(
-          color: slot.isActive ? Colors.grey.shade200 : Colors.red.shade100,
+          color: isExpired
+              ? Colors.red.shade100
+              : isUpcoming
+              ? Colors.blue.shade100
+              : Colors.green.shade100,
         ),
       ),
-      color: slot.isActive ? Colors.white : Colors.red.withOpacity(0.02),
+      color: isExpired
+          ? Colors.red.withOpacity(0.02)
+          : isUpcoming
+          ? Colors.blue.withOpacity(0.02)
+          : Colors.green.withOpacity(0.01),
       child: Stack(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: slot.isActive
-                        ? Colors.green.shade50
-                        : Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    slot.isActive ? 'ACTIVE' : 'ARCHIVED',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                      color: slot.isActive
-                          ? Colors.green.shade700
-                          : Colors.red.shade700,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        slot.label,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-                Text(
-                  slot.label,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+                    if (isExpired)
+                      const _StatusBadge(label: 'EXPIRED', color: Colors.red)
+                    else if (isUpcoming)
+                      const _StatusBadge(label: 'UPCOMING', color: Colors.blue)
+                    else if (isActive)
+                      const _StatusBadge(label: 'ACTIVE', color: Colors.green),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -69,8 +89,8 @@ class TimeSlotCard extends ConsumerWidget {
             ),
           ),
           Positioned(
-            top: 8,
-            right: 8,
+            bottom: 4,
+            right: 4,
             child: PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert, size: 18),
               onSelected: (val) => _handleAction(context, ref, val),
@@ -79,24 +99,16 @@ class TimeSlotCard extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               itemBuilder: (context) => [
-                if (slot.isActive) ...[
-                  const PopupMenuItem(
-                    value: 'edit',
-                    height: 40,
-                    child: Text('Edit & Re-version'),
-                  ),
-                  const PopupMenuItem(
-                    value: 'archive',
-                    height: 40,
-                    child: Text('Archive (Soft Delete)'),
-                  ),
-                ] else ...[
-                  const PopupMenuItem(
-                    value: 'unarchive',
-                    height: 40,
-                    child: Text('Restore (Unarchive)'),
-                  ),
-                ],
+                const PopupMenuItem(
+                  value: 'edit',
+                  height: 40,
+                  child: Text('Edit Slot'),
+                ),
+                const PopupMenuItem(
+                  value: 'duplicate',
+                  height: 40,
+                  child: Text('Duplicate Slot'),
+                ),
                 const PopupMenuItem(
                   value: 'delete',
                   height: 40,
@@ -121,26 +133,10 @@ class TimeSlotCard extends ConsumerWidget {
           builder: (context) => EditTimeSlotDialog(timeSlot: slot),
         );
         break;
-      case 'archive':
-        _showConfirm(
-          context,
-          ref,
-          'Archive',
-          'This hides the slot but keeps history.',
-          () {
-            ref.read(timeSlotServiceProvider).archiveTimeSlot(slot.id);
-          },
-        );
-        break;
-      case 'unarchive':
-        _showConfirm(
-          context,
-          ref,
-          'Restore',
-          'Make this slot active again?',
-          () {
-            ref.read(timeSlotServiceProvider).unarchiveTimeSlot(slot.id);
-          },
+      case 'duplicate':
+        showDialog(
+          context: context,
+          builder: (context) => AddTimeSlotDialog(initialSlot: slot),
         );
         break;
       case 'delete':
@@ -198,9 +194,35 @@ class TimeSlotCard extends ConsumerWidget {
     try {
       final parts = time24h.split(':');
       final dt = DateTime(2024, 1, 1, int.parse(parts[0]), int.parse(parts[1]));
-      return DateFormat.jm().format(dt);
+      // 'hh' forces two digits (03), 'mm' is minutes, 'a' is AM/PM marker
+      return DateFormat('hh:mm a').format(dt);
     } catch (_) {
       return time24h;
     }
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _StatusBadge({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
+      ),
+    );
   }
 }

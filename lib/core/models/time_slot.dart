@@ -3,10 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class TimeSlot {
   final String id;
   final String startTime; // 24h format "HH:mm"
-  final String endTime;   // 24h format "HH:mm"
+  final String endTime; // 24h format "HH:mm"
   final String label;
   final bool isActive;
   final DateTime effectiveDate;
+  final DateTime? effectiveEndDate;
 
   TimeSlot({
     required this.id,
@@ -15,6 +16,7 @@ class TimeSlot {
     this.label = '',
     this.isActive = true,
     required this.effectiveDate,
+    this.effectiveEndDate,
   });
 
   Map<String, dynamic> toJson() {
@@ -24,6 +26,9 @@ class TimeSlot {
       'label': label,
       'isActive': isActive,
       'effectiveDate': Timestamp.fromDate(effectiveDate),
+      'effectiveEndDate': effectiveEndDate != null
+          ? Timestamp.fromDate(effectiveEndDate!)
+          : null,
     };
   }
 
@@ -37,7 +42,9 @@ class TimeSlot {
       endTime: data['endTime'] as String? ?? '00:00',
       label: data['label'] as String? ?? '',
       isActive: data['isActive'] as bool? ?? true,
-      effectiveDate: (data['effectiveDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      effectiveDate:
+          (data['effectiveDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      effectiveEndDate: (data['effectiveEndDate'] as Timestamp?)?.toDate(),
     );
   }
 }

@@ -28,6 +28,7 @@ class TimeSlotRepositoryImpl implements ITimeSlotRepository {
     required String label,
     required bool isActive,
     required DateTime effectiveDate,
+    DateTime? effectiveEndDate,
   }) async {
     final docRef = _firestore.collection('time_slots').doc();
 
@@ -38,6 +39,7 @@ class TimeSlotRepositoryImpl implements ITimeSlotRepository {
       label: label,
       isActive: isActive,
       effectiveDate: effectiveDate,
+      effectiveEndDate: effectiveEndDate,
     );
 
     await docRef.set(newTimeSlot.toJson());

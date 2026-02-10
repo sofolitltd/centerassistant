@@ -16,7 +16,7 @@ class WeeklyView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedDate = ref.watch(selectedDateProvider);
-    final timeSlotsAsync = ref.watch(timeSlotsProvider);
+    final timeSlotsAsync = ref.watch(timeSlotsForDateProvider(selectedDate));
     final settingsAsync = ref.watch(officeSettingsProvider);
 
     final startOfWeek = selectedDate.subtract(

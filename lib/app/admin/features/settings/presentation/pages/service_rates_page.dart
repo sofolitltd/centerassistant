@@ -118,6 +118,8 @@ class _ServiceRatesPageState extends ConsumerState<ServiceRatesPage> {
                   _buildFilterButton('Archived'),
                 ],
               ),
+
+              //
               const SizedBox(height: 32),
 
               // Content

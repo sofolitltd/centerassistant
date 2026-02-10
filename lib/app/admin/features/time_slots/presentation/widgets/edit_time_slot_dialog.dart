@@ -20,6 +20,7 @@ class _EditTimeSlotDialogState extends ConsumerState<EditTimeSlotDialog> {
   late String _startTime;
   late String _endTime;
   late DateTime _effectiveDate;
+  DateTime? _effectiveEndDate;
 
   @override
   void initState() {
@@ -28,6 +29,7 @@ class _EditTimeSlotDialogState extends ConsumerState<EditTimeSlotDialog> {
     _startTime = widget.timeSlot.startTime;
     _endTime = widget.timeSlot.endTime;
     _effectiveDate = widget.timeSlot.effectiveDate;
+    _effectiveEndDate = widget.timeSlot.effectiveEndDate;
   }
 
   @override
@@ -141,33 +143,104 @@ class _EditTimeSlotDialogState extends ConsumerState<EditTimeSlotDialog> {
                 ],
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Effective Date',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-              const SizedBox(height: 8),
-              InkWell(
-                onTap: _selectDate,
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Effective Date',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        InkWell(
+                          onTap: _selectDate,
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  DateFormat('dd MMM yyyy')
+                                      .format(_effectiveDate),
+                                ),
+                                const Icon(
+                                  LucideIcons.calendar,
+                                  size: 16,
+                                  color: Colors.grey,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(DateFormat('dd MMM yyyy').format(_effectiveDate)),
-                      const Icon(
-                        LucideIcons.calendar,
-                        size: 16,
-                        color: Colors.grey,
-                      ),
-                    ],
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'End Date (Optional)',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        InkWell(
+                          onTap: _selectEndDate,
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  _effectiveEndDate != null
+                                      ? DateFormat('dd MMM yyyy')
+                                          .format(_effectiveEndDate!)
+                                      : 'No end date',
+                                ),
+                                if (_effectiveEndDate != null)
+                                  IconButton(
+                                    icon: const Icon(LucideIcons.x, size: 14),
+                                    onPressed: () {
+                                      setState(() => _effectiveEndDate = null);
+                                    },
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                  )
+                                else
+                                  const Icon(
+                                    LucideIcons.calendar,
+                                    size: 16,
+                                    color: Colors.grey,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ),
               const SizedBox(height: 24),
               Row(
@@ -226,6 +299,16 @@ class _EditTimeSlotDialogState extends ConsumerState<EditTimeSlotDialog> {
     if (picked != null) setState(() => _effectiveDate = picked);
   }
 
+  Future<void> _selectEndDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _effectiveEndDate ?? _effectiveDate.add(const Duration(days: 1)),
+      firstDate: _effectiveDate,
+      lastDate: DateTime(2030),
+    );
+    if (picked != null) setState(() => _effectiveEndDate = picked);
+  }
+
   void _handleSave() async {
     if (_labelController.text.isEmpty) return;
 
@@ -235,6 +318,7 @@ class _EditTimeSlotDialogState extends ConsumerState<EditTimeSlotDialog> {
           startTime: _startTime,
           endTime: _endTime,
           effectiveDate: _effectiveDate,
+          effectiveEndDate: _effectiveEndDate,
           isActive: widget.timeSlot.isActive,
         );
     if (mounted) Navigator.pop(context);

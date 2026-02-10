@@ -163,7 +163,7 @@ class SessionCardData {
 final scheduleByDateProvider = FutureProvider.autoDispose
     .family<ScheduleView, DateTime>((ref, date) async {
       final filter = ref.watch(scheduleFilterProvider);
-      final timeSlots = await ref.watch(timeSlotsProvider.future);
+      final timeSlots = await ref.watch(timeSlotsForDateProvider(date).future);
       final clients = await ref.watch(clientsProvider.future);
       final employees = await ref.watch(employeesProvider.future);
 

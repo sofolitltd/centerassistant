@@ -9,17 +9,47 @@ final timeSlotRepositoryProvider = Provider<ITimeSlotRepository>((ref) {
   return TimeSlotRepositoryImpl(ref.watch(firestoreProvider));
 });
 
-// All time slots from the database (including archived)
+// All time slots from the database
 final allTimeSlotsProvider = StreamProvider<List<TimeSlot>>((ref) {
   return ref.watch(timeSlotRepositoryProvider).getTimeSlots();
 });
 
-// Filtered time slots (Active only)
+// Filtered time slots (Active only based on date)
 final timeSlotsProvider = StreamProvider<List<TimeSlot>>((ref) {
   return ref.watch(timeSlotRepositoryProvider).getTimeSlots().map((slots) {
     return slots.where((slot) => slot.isActive).toList();
   });
 });
+
+// Get time slots valid for a specific date
+final timeSlotsForDateProvider =
+    StreamProvider.family<List<TimeSlot>, DateTime>((ref, date) {
+      return ref.watch(timeSlotRepositoryProvider).getTimeSlots().map((slots) {
+        return slots.where((slot) {
+          if (!slot.isActive) return false;
+
+          final effectiveStart = DateTime(
+            slot.effectiveDate.year,
+            slot.effectiveDate.month,
+            slot.effectiveDate.day,
+          );
+          final checkDate = DateTime(date.year, date.month, date.day);
+
+          if (checkDate.isBefore(effectiveStart)) return false;
+
+          if (slot.effectiveEndDate != null) {
+            final effectiveEnd = DateTime(
+              slot.effectiveEndDate!.year,
+              slot.effectiveEndDate!.month,
+              slot.effectiveEndDate!.day,
+            );
+            if (checkDate.isAfter(effectiveEnd)) return false;
+          }
+
+          return true;
+        }).toList();
+      });
+    });
 
 final timeSlotServiceProvider = Provider((ref) => TimeSlotActionService(ref));
 
@@ -32,13 +62,17 @@ class TimeSlotActionService {
     required String endTime,
     required String label,
     DateTime? effectiveDate,
+    DateTime? effectiveEndDate,
   }) {
-    return _ref.read(timeSlotRepositoryProvider).addTimeSlot(
+    return _ref
+        .read(timeSlotRepositoryProvider)
+        .addTimeSlot(
           startTime: startTime,
           endTime: endTime,
           label: label,
           isActive: true,
           effectiveDate: effectiveDate ?? DateTime.now(),
+          effectiveEndDate: effectiveEndDate,
         );
   }
 
@@ -48,6 +82,7 @@ class TimeSlotActionService {
     required String endTime,
     required String label,
     required DateTime effectiveDate,
+    DateTime? effectiveEndDate,
     bool isActive = true,
   }) async {
     final updatedTimeSlot = TimeSlot(
@@ -57,24 +92,14 @@ class TimeSlotActionService {
       label: label,
       isActive: isActive,
       effectiveDate: effectiveDate,
+      effectiveEndDate: effectiveEndDate,
     );
-    return _ref.read(timeSlotRepositoryProvider).updateTimeSlot(updatedTimeSlot);
-  }
-
-  Future<void> archiveTimeSlot(String id) {
-    return _ref.read(timeSlotRepositoryProvider).archiveTimeSlot(id);
-  }
-
-  Future<void> unarchiveTimeSlot(String id) {
-    return _ref.read(timeSlotRepositoryProvider).unarchiveTimeSlot(id);
+    return _ref
+        .read(timeSlotRepositoryProvider)
+        .updateTimeSlot(updatedTimeSlot);
   }
 
   Future<void> deleteTimeSlotPermanently(String id) {
     return _ref.read(timeSlotRepositoryProvider).deleteTimeSlotPermanently(id);
-  }
-
-  @Deprecated('Use archiveTimeSlot instead')
-  Future<void> deleteTimeSlot(String id) {
-    return archiveTimeSlot(id);
   }
 }

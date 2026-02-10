@@ -17,7 +17,8 @@ class ScheduleFilterBar extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade200),
           color: Colors.white,
         ),
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),

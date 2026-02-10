@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '/core/models/time_slot.dart';
 import '/core/providers/time_slot_providers.dart';
 
 class AddTimeSlotDialog extends ConsumerStatefulWidget {
-  const AddTimeSlotDialog({super.key});
+  final TimeSlot? initialSlot;
+  const AddTimeSlotDialog({super.key, this.initialSlot});
 
   @override
   ConsumerState<AddTimeSlotDialog> createState() => _AddTimeSlotDialogState();
@@ -14,10 +16,32 @@ class AddTimeSlotDialog extends ConsumerStatefulWidget {
 
 class _AddTimeSlotDialogState extends ConsumerState<AddTimeSlotDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _labelController = TextEditingController();
+  late final TextEditingController _labelController;
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
   DateTime _effectiveDate = DateTime.now();
+  DateTime? _effectiveEndDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _labelController = TextEditingController(text: widget.initialSlot?.label);
+    if (widget.initialSlot != null) {
+      _startTime = _parseTime(widget.initialSlot!.startTime);
+      _endTime = _parseTime(widget.initialSlot!.endTime);
+      _effectiveDate = widget.initialSlot!.effectiveDate;
+      _effectiveEndDate = widget.initialSlot!.effectiveEndDate;
+    }
+  }
+
+  TimeOfDay? _parseTime(String time24h) {
+    try {
+      final parts = time24h.split(':');
+      return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   void dispose() {
@@ -41,9 +65,11 @@ class _AddTimeSlotDialogState extends ConsumerState<AddTimeSlotDialog> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Add New Time Slot',
-                      style: TextStyle(
+                    Text(
+                      widget.initialSlot == null
+                          ? 'Add New Time Slot'
+                          : 'Duplicate Time Slot',
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
@@ -146,33 +172,98 @@ class _AddTimeSlotDialogState extends ConsumerState<AddTimeSlotDialog> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Effective Date',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-                const SizedBox(height: 8),
-                InkWell(
-                  onTap: _selectDate,
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 12,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Effective From',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          InkWell(
+                            onTap: _selectDate,
+                            child: InputDecorator(
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 12,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    DateFormat(
+                                      'dd MMM yyyy',
+                                    ).format(_effectiveDate),
+                                  ),
+                                  const Icon(
+                                    LucideIcons.calendar,
+                                    size: 16,
+                                    color: Colors.grey,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(DateFormat('dd MMM yyyy').format(_effectiveDate)),
-                        const Icon(
-                          LucideIcons.calendar,
-                          size: 16,
-                          color: Colors.grey,
-                        ),
-                      ],
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Effective Until (Optional)',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          InkWell(
+                            onTap: _selectEndDate,
+                            child: InputDecorator(
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 12,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    _effectiveEndDate != null
+                                        ? DateFormat(
+                                            'dd MMM yyyy',
+                                          ).format(_effectiveEndDate!)
+                                        : 'No End Date',
+                                  ),
+                                  const Icon(
+                                    LucideIcons.calendar,
+                                    size: 16,
+                                    color: Colors.grey,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
                 const SizedBox(height: 32),
                 Row(
@@ -185,7 +276,11 @@ class _AddTimeSlotDialogState extends ConsumerState<AddTimeSlotDialog> {
                     const SizedBox(width: 16),
                     ElevatedButton(
                       onPressed: _handleSave,
-                      child: const Text('Add Time Slot'),
+                      child: Text(
+                        widget.initialSlot == null
+                            ? 'Add Time Slot'
+                            : 'Create Duplicate',
+                      ),
                     ),
                   ],
                 ),
@@ -200,7 +295,9 @@ class _AddTimeSlotDialogState extends ConsumerState<AddTimeSlotDialog> {
   Future<void> _selectTime(bool isStart) async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: const TimeOfDay(hour: 8, minute: 0),
+      initialTime: isStart
+          ? (_startTime ?? const TimeOfDay(hour: 8, minute: 0))
+          : (_endTime ?? const TimeOfDay(hour: 9, minute: 0)),
       builder: (context, child) {
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
@@ -229,6 +326,16 @@ class _AddTimeSlotDialogState extends ConsumerState<AddTimeSlotDialog> {
     if (picked != null) setState(() => _effectiveDate = picked);
   }
 
+  Future<void> _selectEndDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _effectiveEndDate ?? _effectiveDate,
+      firstDate: _effectiveDate,
+      lastDate: DateTime(2030),
+    );
+    if (picked != null) setState(() => _effectiveEndDate = picked);
+  }
+
   void _handleSave() async {
     if (_formKey.currentState!.validate() &&
         _startTime != null &&
@@ -238,6 +345,7 @@ class _AddTimeSlotDialogState extends ConsumerState<AddTimeSlotDialog> {
             startTime: _formatTo24h(_startTime!),
             endTime: _formatTo24h(_endTime!),
             effectiveDate: _effectiveDate,
+            effectiveEndDate: _effectiveEndDate,
           );
       if (mounted) Navigator.pop(context);
     } else if (_startTime == null || _endTime == null) {

@@ -66,7 +66,7 @@ class _AddSchedulePageState extends ConsumerState<AddSchedulePage> {
   Widget build(BuildContext context) {
     final employeesAsync = ref.watch(employeesProvider);
     final selectedDate = ref.watch(selectedDateProvider);
-    final timeSlotsAsync = ref.watch(timeSlotsProvider);
+    final timeSlotsAsync = ref.watch(timeSlotsForDateProvider(selectedDate));
     final clientsAsync = ref.watch(clientsProvider);
     final scheduleAsync = ref.watch(scheduleViewProvider);
 
