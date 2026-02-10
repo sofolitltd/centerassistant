@@ -81,7 +81,7 @@ class LeavePolicyPage extends StatelessWidget {
                       theme,
                       LucideIcons.fileText,
                       'Approval Process',
-                      'All leave requests are subject to approval by the center administrator based on operational requirements and staff availability. You will receive an automated notification once your request has been processed.',
+                      'All leave requests are subject to approval by the center administrator based on operational requirements and staff leaves. You will receive an automated notification once your request has been processed.',
                     ),
                     const Divider(height: 40),
                     _buildPolicySection(

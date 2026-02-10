@@ -2,13 +2,10 @@ import 'dart:ui';
 
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '/core/models/employee.dart';
 import '/core/providers/employee_providers.dart';
@@ -76,6 +73,7 @@ class EmployeePage extends ConsumerWidget {
                 ),
               ],
             ),
+
             const SizedBox(height: 24),
 
             // Table Card
@@ -183,8 +181,9 @@ class EmployeePage extends ConsumerWidget {
                                   .contains(employee.department);
 
                               return DataRow2(
-                                onTap: () =>
-                                    _showEmployeeInfoDialog(context, employee),
+                                onTap: () => context.go(
+                                  '/admin/employees/${employee.id}',
+                                ),
                                 cells: [
                                   DataCell(
                                     Center(
@@ -312,7 +311,7 @@ class EmployeePage extends ConsumerWidget {
                                           ),
                                           onPressed: isSchedulable
                                               ? () => context.go(
-                                                  '/admin/schedule?employeeId=${employee.id}',
+                                                  '/admin/employees/${employee.id}/schedule',
                                                 )
                                               : null,
                                           tooltip: 'Schedule',
@@ -324,9 +323,9 @@ class EmployeePage extends ConsumerWidget {
                                             size: 16,
                                           ),
                                           onPressed: () => context.go(
-                                            '/admin/employees/${employee.id}/availability?name=${Uri.encodeComponent(employee.name)}',
+                                            '/admin/employees/${employee.id}/leave',
                                           ),
-                                          tooltip: 'Availability',
+                                          tooltip: 'Leave',
                                           visualDensity: VisualDensity.compact,
                                         ),
                                         PopupMenuButton<String>(
@@ -527,284 +526,8 @@ class EmployeePage extends ConsumerWidget {
         'Temporary Password: ${employee.password}\n\n'
         'Please change your password after your first login.';
 
-    Share.share(message, subject: 'Employee Portal Credentials');
-  }
-
-  void _showEmployeeInfoDialog(BuildContext context, Employee employee) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-        content: Container(
-          constraints: const BoxConstraints(minWidth: 350, maxWidth: 500),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const Text(
-                      'Employee Profile',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    InkWell(
-                      child: const Icon(Icons.close, size: 16),
-                      onTap: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    CircleAvatar(
-                      radius: 40,
-                      backgroundImage: employee.image.isNotEmpty
-                          ? NetworkImage(employee.image)
-                          : null,
-                      child: employee.image.isEmpty
-                          ? const Icon(Icons.person, size: 40)
-                          : null,
-                    ),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            employee.name,
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          Row(
-                            children: [
-                              Text(
-                                'ID: ${employee.employeeId}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade700,
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                ),
-                                child: Text(
-                                  '|',
-                                  style: TextStyle(color: Colors.grey.shade400),
-                                ),
-                              ),
-                              Text(
-                                employee.department.toUpperCase(),
-                                style: Theme.of(context).textTheme.titleSmall
-                                    ?.copyWith(
-                                      color: Colors.grey.shade600,
-                                      letterSpacing: 1.2,
-                                    ),
-                              ),
-                            ],
-                          ),
-                          Text(
-                            employee.designation,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Joined: ${DateFormat('dd MMM, yyyy').format(employee.joinedDate)}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 32),
-                _buildInfoSection(context, 'Contact Information', [
-                  _buildInfoRow(
-                    context,
-                    Icons.phone_iphone,
-                    'Personal Phone',
-                    employee.personalPhone,
-                    actions: [
-                      _ActionButton(
-                        icon: LucideIcons.copy,
-                        onTap: () =>
-                            _copyToClipboard(context, employee.personalPhone),
-                      ),
-                      _ActionButton(
-                        icon: LucideIcons.phone,
-                        onTap: () =>
-                            _launchURL('tel:${employee.personalPhone}'),
-                      ),
-                      _ActionButton(
-                        icon: LucideIcons.share2,
-                        onTap: () => Share.share(employee.personalPhone),
-                      ),
-                    ],
-                  ),
-                  _buildInfoRow(
-                    context,
-                    Icons.phone_android,
-                    'Official Phone',
-                    employee.officialPhone,
-                    actions: [
-                      _ActionButton(
-                        icon: LucideIcons.copy,
-                        onTap: () =>
-                            _copyToClipboard(context, employee.officialPhone),
-                      ),
-                      _ActionButton(
-                        icon: LucideIcons.phone,
-                        onTap: () =>
-                            _launchURL('tel:${employee.officialPhone}'),
-                      ),
-                      _ActionButton(
-                        icon: LucideIcons.share2,
-                        onTap: () => Share.share(employee.officialPhone),
-                      ),
-                    ],
-                  ),
-                  _buildInfoRow(
-                    context,
-                    Icons.email_outlined,
-                    'Personal Email',
-                    employee.personalEmail,
-                    actions: [
-                      _ActionButton(
-                        icon: LucideIcons.copy,
-                        onTap: () =>
-                            _copyToClipboard(context, employee.personalEmail),
-                      ),
-                      _ActionButton(
-                        icon: LucideIcons.mail,
-                        onTap: () =>
-                            _launchURL('mailto:${employee.personalEmail}'),
-                      ),
-                      _ActionButton(
-                        icon: LucideIcons.share2,
-                        onTap: () => Share.share(employee.personalEmail),
-                      ),
-                    ],
-                  ),
-                  _buildInfoRow(
-                    context,
-                    Icons.work_outline,
-                    'Official Email',
-                    employee.officialEmail,
-                    actions: [
-                      _ActionButton(
-                        icon: LucideIcons.copy,
-                        onTap: () =>
-                            _copyToClipboard(context, employee.officialEmail),
-                      ),
-                      _ActionButton(
-                        icon: LucideIcons.mail,
-                        onTap: () =>
-                            _launchURL('mailto:${employee.officialEmail}'),
-                      ),
-                      _ActionButton(
-                        icon: LucideIcons.share2,
-                        onTap: () => Share.share(employee.officialEmail),
-                      ),
-                    ],
-                  ),
-                ]),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _launchURL(String url) async {
-    final Uri uri = Uri.parse(url);
-    if (!await launchUrl(uri)) {
-      throw Exception('Could not launch $url');
-    }
-  }
-
-  Future<void> _copyToClipboard(BuildContext context, String text) async {
-    await Clipboard.setData(ClipboardData(text: text));
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Copied: $text'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  Widget _buildInfoSection(
-    BuildContext context,
-    String title,
-    List<Widget> children,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).primaryColor,
-          ),
-        ),
-        const Divider(height: 24),
-        ...children,
-      ],
-    );
-  }
-
-  Widget _buildInfoRow(
-    BuildContext context,
-    IconData icon,
-    String label,
-    String value, {
-    List<Widget>? actions,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(icon, size: 18, color: Colors.grey.shade600),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                ),
-                Text(
-                  value.isEmpty ? 'N/A' : value,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (actions != null && value.isNotEmpty) ...[
-            const SizedBox(width: 8),
-            Row(mainAxisSize: MainAxisSize.min, children: actions),
-          ],
-        ],
-      ),
-    );
+    //
+    SharePlus.instance.share(ShareParams(text: message));
   }
 
   void _showDeleteConfirmDialog(
@@ -830,32 +553,6 @@ class EmployeePage extends ConsumerWidget {
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _ActionButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, size: 14, color: Colors.blue.shade700),
-        ),
       ),
     );
   }

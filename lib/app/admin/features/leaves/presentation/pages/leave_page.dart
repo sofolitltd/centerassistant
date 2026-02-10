@@ -1,37 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:table_calendar/table_calendar.dart';
 
-import '/core/models/employee.dart';
 import '/core/models/leave.dart';
 import '/core/providers/employee_providers.dart';
 import '/core/providers/leave_providers.dart';
 
-class LeaveManagementPage extends ConsumerStatefulWidget {
-  const LeaveManagementPage({super.key});
+class LeavePage extends ConsumerStatefulWidget {
+  final String entityId;
+  final String entityName;
+
+  const LeavePage({
+    super.key,
+    required this.entityId,
+    required this.entityName,
+  });
 
   @override
-  ConsumerState<LeaveManagementPage> createState() =>
-      _LeaveManagementPageState();
+  ConsumerState<LeavePage> createState() => _LeavePageState();
 }
 
-class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
-  // For the "Mark Leave" action card
+class _LeavePageState extends ConsumerState<LeavePage> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   DateTime? _rangeStart;
   DateTime? _rangeEnd;
   RangeSelectionMode _rangeSelectionMode = RangeSelectionMode.toggledOn;
 
-  // For the history filter calendar
-  DateTime _historyFocusedDay = DateTime.now();
-  DateTime? _historySelectedDay;
-
-  // State for the "Mark Leave" form
-  String? _selectedEmployeeId;
   LeaveType _selectedType = LeaveType.annual;
   LeaveDuration _selectedDuration = LeaveDuration.full;
   final _reasonController = TextEditingController();
@@ -66,71 +64,48 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final allLeavesAsync = ref.watch(allLeavesProvider);
-    final employeesAsync = ref.watch(employeesProvider);
+    final leavesAsync = ref.watch(leavesByEntityProvider(widget.entityId));
+    final employeeAsync = ref.watch(employeeByIdProvider(widget.entityId));
     final double width = MediaQuery.of(context).size.width;
     final bool isDesktop = width > 1100;
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Breadcrumbs
-            Row(
-              children: [
-                InkWell(
-                  onTap: () => context.go('/admin/dashboard'),
-                  child: Text(
-                    'Admin',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey,
-                    ),
-                  ),
-                ),
-                const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
-                Text('Leave Request', style: theme.textTheme.bodyMedium),
-              ],
-            ),
-            const SizedBox(height: 8),
             Text(
               'Leave Management',
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 24),
-
+            const SizedBox(height: 10),
+            _buildSummaryGrid(leavesAsync, employeeAsync, width),
+            const SizedBox(height: 32),
             if (isDesktop)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     flex: 6,
-                    child: _buildHistorySection(
-                      theme,
-                      allLeavesAsync,
-                      employeesAsync,
-                    ),
+                    child: _buildHistorySection(theme, leavesAsync),
                   ),
                   const SizedBox(width: 32),
                   Expanded(
                     flex: 4,
-                    child: _buildActionCard(
-                      theme,
-                      allLeavesAsync,
-                      employeesAsync,
-                    ),
+                    child: _buildActionCard(theme, leavesAsync),
                   ),
                 ],
               )
             else
               Column(
                 children: [
-                  _buildActionCard(theme, allLeavesAsync, employeesAsync),
+                  _buildActionCard(theme, leavesAsync),
                   const SizedBox(height: 32),
-                  _buildHistorySection(theme, allLeavesAsync, employeesAsync),
+                  _buildHistorySection(theme, leavesAsync),
                 ],
               ),
           ],
@@ -139,132 +114,223 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
     );
   }
 
-  Widget _buildHistorySection(
-    ThemeData theme,
-    AsyncValue<List<Leave>> allLeavesAsync,
-    AsyncValue<List<Employee>> employeesAsync,
+  Widget _buildSummaryGrid(
+    AsyncValue<List<Leave>> leavesAsync,
+    AsyncValue<dynamic> employeeAsync,
+    double width,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Card(
-          elevation: 0,
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: Colors.grey.shade200),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: allLeavesAsync.when(
-              data: (leaves) => TableCalendar(
-                firstDay: DateTime.utc(2020, 1, 1),
-                lastDay: DateTime.utc(2030, 12, 31),
-                focusedDay: _historyFocusedDay,
-                selectedDayPredicate: (day) =>
-                    isSameDay(_historySelectedDay, day),
-                onDaySelected: (selected, focused) {
-                  setState(() {
-                    if (isSameDay(_historySelectedDay, selected)) {
-                      _historySelectedDay = null; // deselect
-                    } else {
-                      _historySelectedDay = selected;
-                    }
-                    _historyFocusedDay = focused;
-                  });
-                },
-                calendarFormat: CalendarFormat.month,
-                headerStyle: const HeaderStyle(
-                  formatButtonVisible: false,
-                  titleCentered: true,
-                ),
-                eventLoader: (day) =>
-                    leaves.where((l) => isSameDay(l.date, day)).toList(),
-                calendarStyle: CalendarStyle(
-                  markerDecoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.5),
-                    shape: BoxShape.circle,
-                  ),
-                  selectedDecoration: BoxDecoration(
-                    color: theme.colorScheme.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  todayDecoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  todayTextStyle: TextStyle(color: theme.colorScheme.primary),
-                ),
-              ),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Text('Error loading calendar: $e'),
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          _historySelectedDay == null
-              ? 'Recent Requests & History'
-              : 'Requests for ${DateFormat('MMM dd, yyyy').format(_historySelectedDay!)}',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        allLeavesAsync.when(
-          data: (leaves) {
-            final filteredLeaves = _historySelectedDay == null
-                ? leaves
-                : leaves
-                      .where((l) => isSameDay(l.date, _historySelectedDay!))
-                      .toList();
+    return leavesAsync.when(
+      data: (leaves) {
+        double calculateUsed(LeaveType type) {
+          return leaves
+              .where(
+                (l) => l.leaveType == type && l.status == LeaveStatus.approved,
+              )
+              .fold(
+                0.0,
+                (sum, l) =>
+                    sum + (l.duration == LeaveDuration.full ? 1.0 : 0.5),
+              );
+        }
 
-            return employeesAsync.when(
-              data: (employees) {
-                final employeeMap = {for (var e in employees) e.id: e};
-                final groupedLeaves = _groupConsecutiveLeaves(filteredLeaves);
+        final annualUsed = calculateUsed(LeaveType.annual);
+        final sickUsed = calculateUsed(LeaveType.sick);
+        final causalUsed = calculateUsed(LeaveType.causal);
 
-                if (groupedLeaves.isEmpty) {
-                  return Card(
-                    elevation: 0,
-                    color: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: Colors.grey.shade200),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(40),
-                      child: Center(
-                        child: Text(
-                          _historySelectedDay == null
-                              ? 'No leave history found.'
-                              : 'No requests for this day.',
-                        ),
-                      ),
-                    ),
+        final crossAxisCount = width > 1100 ? 4 : (width > 700 ? 2 : 1);
+
+        String formatCount(double count) {
+          return count == count.toInt().toDouble()
+              ? count.toInt().toString()
+              : count.toStringAsFixed(1);
+        }
+
+        return employeeAsync.when(
+          data: (employee) {
+            final carriedForward = (employee?.carriedForwardLeaves ?? 0);
+            final totalAnnualAvailable = 18 + carriedForward;
+
+            return MasonryGridView.count(
+              crossAxisCount: crossAxisCount,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              itemCount: 4,
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return _buildSummaryCard(
+                    'Annual Leave',
+                    '${formatCount(annualUsed)}/$totalAnnualAvailable',
+                    carriedForward > 0
+                        ? 'Includes $carriedForward carried forward'
+                        : 'days remaining',
+                    LucideIcons.userCheck,
+                    const Color(0xFF1976D2),
                   );
                 }
-
-                return ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: groupedLeaves.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final group = groupedLeaves[index];
-                    final employee = employeeMap[group.first.employeeId];
-                    return _buildHistoryGroupCard(group, employee, theme);
-                  },
+                if (index == 1) {
+                  return _buildSummaryCard(
+                    'Sick Leave',
+                    '${formatCount(sickUsed)}/10',
+                    'days remaining',
+                    LucideIcons.stethoscope,
+                    const Color(0xFFFFA000),
+                  );
+                }
+                if (index == 2) {
+                  return _buildSummaryCard(
+                    'Causal Leave',
+                    '${formatCount(causalUsed)}/5',
+                    'days remaining',
+                    LucideIcons.briefcase,
+                    const Color(0xFF388E3C),
+                  );
+                }
+                return _buildSummaryCard(
+                  'Unpaid Leave',
+                  'Available',
+                  'When Needed',
+                  LucideIcons.calendarX,
+                  const Color(0xFFD32F2F),
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Text('Error loading employees: $e'),
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Text('Error loading leaves: $e'),
+          error: (e, _) => Text('Error: $e'),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Text('Error: $e'),
+    );
+  }
+
+  Widget _buildSummaryCard(
+    String title,
+    String count,
+    String subtitle,
+    IconData icon,
+    Color iconColor,
+  ) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: iconColor, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(color: Colors.grey, fontSize: 14),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    spacing: 4,
+                    crossAxisAlignment: .baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        count,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      Text(
+                        "($subtitle)",
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 11,
+                          height: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildHistorySection(
+    ThemeData theme,
+    AsyncValue<List<Leave>> leavesAsync,
+  ) {
+    return Container(
+      padding: .all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Recent History',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          leavesAsync.when(
+            data: (leaves) {
+              if (leaves.isEmpty) {
+                return Card(
+                  elevation: 0,
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.all(40),
+                    child: Center(child: Text('No history found')),
+                  ),
+                );
+              }
+
+              final groupedLeaves = _groupConsecutiveLeaves(leaves);
+
+              return ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: groupedLeaves.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  final group = groupedLeaves[index];
+                  return _buildHistoryGroupCard(group, theme);
+                },
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Text('Error: $e'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -272,12 +338,7 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
     if (leaves.isEmpty) return [];
 
     final sorted = List<Leave>.from(leaves)
-      ..sort((a, b) {
-        int cmp = a.employeeId.compareTo(b.employeeId);
-        if (cmp != 0) return cmp;
-        return a.date.compareTo(b.date);
-      });
-
+      ..sort((a, b) => a.date.compareTo(b.date));
     List<List<Leave>> grouped = [];
     if (sorted.isEmpty) return grouped;
 
@@ -288,14 +349,12 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
       final curr = sorted[i];
 
       final isConsecutive = curr.date.difference(prev.date).inDays == 1;
-      final sameEmployee = curr.employeeId == prev.employeeId;
       final sameType = curr.leaveType == prev.leaveType;
       final sameStatus = curr.status == prev.status;
       final sameReason = curr.reason == prev.reason;
       final sameDuration = curr.duration == prev.duration;
 
       if (isConsecutive &&
-          sameEmployee &&
           sameType &&
           sameStatus &&
           sameReason &&
@@ -308,25 +367,12 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
     }
     grouped.add(currentGroup);
 
-    grouped.sort((a, b) {
-      bool aUrgent =
-          a.first.status == LeaveStatus.pending ||
-          a.first.status == LeaveStatus.cancelRequest;
-      bool bUrgent =
-          b.first.status == LeaveStatus.pending ||
-          b.first.status == LeaveStatus.cancelRequest;
-      if (aUrgent && !bUrgent) return -1;
-      if (!aUrgent && bUrgent) return 1;
-      return b.first.date.compareTo(a.first.date);
-    });
+    // Sort groups descending by start date
+    grouped.sort((a, b) => b[0].date.compareTo(a[0].date));
     return grouped;
   }
 
-  Widget _buildHistoryGroupCard(
-    List<Leave> group,
-    Employee? employee,
-    ThemeData theme,
-  ) {
+  Widget _buildHistoryGroupCard(List<Leave> group, ThemeData theme) {
     final first = group.first;
     final last = group.last;
     final isRange = group.length > 1;
@@ -347,25 +393,23 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
         side: BorderSide(color: Colors.grey.shade200),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         leading: CircleAvatar(
-          backgroundColor: theme.colorScheme.primaryContainer,
-          child: Text(employee?.name[0] ?? 'E'),
+          backgroundColor: _getLeaveColor(
+            first.leaveType,
+          ).withValues(alpha: 0.1),
+          child: Icon(
+            LucideIcons.calendar,
+            size: 18,
+            color: _getLeaveColor(first.leaveType),
+          ),
         ),
         title: Text(
-          employee?.name ?? 'Unknown Employee',
+          dateText,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              dateText,
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-              ),
-            ),
             Text(
               '${first.leaveType.name.toUpperCase()} • ${first.duration.name.toUpperCase()} DAY${isRange ? 'S' : ''} (${group.length})',
             ),
@@ -384,70 +428,93 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
           children: [
             _buildStatusBadge(first.status),
             const SizedBox(width: 8),
-            _buildActionButtons(group, theme),
+            if (first.status == LeaveStatus.pending ||
+                first.status == LeaveStatus.cancelRequest)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    onPressed: () =>
+                        _updateGroupStatus(group, LeaveStatus.approved),
+                    icon: const Icon(
+                      LucideIcons.checkCircle,
+                      color: Colors.green,
+                    ),
+                    tooltip: 'Approve',
+                  ),
+                  IconButton(
+                    onPressed: () =>
+                        _updateGroupStatus(group, LeaveStatus.rejected),
+                    icon: const Icon(LucideIcons.xCircle, color: Colors.red),
+                    tooltip: 'Reject',
+                  ),
+                ],
+              )
+            else if (first.status == LeaveStatus.approved)
+              IconButton(
+                icon: const Icon(
+                  LucideIcons.trash2,
+                  size: 18,
+                  color: Colors.red,
+                ),
+                onPressed: () => _showConfirmDialog(
+                  context,
+                  'Delete Entry',
+                  'Are you sure you want to remove this ${isRange ? 'range' : 'entry'}?',
+                  () => _deleteGroup(group),
+                ),
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildActionButtons(List<Leave> group, ThemeData theme) {
-    final leave = group.first;
-    if (leave.status == LeaveStatus.pending) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            onPressed: () => _updateGroupStatus(group, LeaveStatus.approved),
-            icon: const Icon(LucideIcons.checkCircle, color: Colors.green),
-            tooltip: 'Approve Request',
-          ),
-          IconButton(
-            onPressed: () => _updateGroupStatus(group, LeaveStatus.rejected),
-            icon: const Icon(LucideIcons.xCircle, color: Colors.red),
-            tooltip: 'Reject Request',
-          ),
-        ],
-      );
-    }
-
-    if (leave.status == LeaveStatus.cancelRequest) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            onPressed: () => _updateGroupStatus(group, LeaveStatus.cancelled),
-            icon: const Icon(LucideIcons.check, color: Colors.orange),
-            tooltip: 'Approve Cancellation',
-          ),
-          IconButton(
-            onPressed: () => _updateGroupStatus(group, LeaveStatus.approved),
-            icon: const Icon(LucideIcons.x, color: Colors.grey),
-            tooltip: 'Deny Cancellation',
-          ),
-        ],
-      );
-    }
-
-    if (leave.status == LeaveStatus.approved) {
-      return IconButton(
-        icon: const Icon(LucideIcons.trash2, size: 18, color: Colors.red),
-        onPressed: () => _showConfirmDialog(
-          context,
-          'Delete Entry',
-          'Are you sure you want to remove this approved ${group.length > 1 ? 'range' : 'entry'}?',
-          () => _deleteGroup(group),
+  Future<void> _updateGroupStatus(List<Leave> group, LeaveStatus status) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text('${status.name.toUpperCase()} Request'),
+        content: Text(
+          'Are you sure you want to ${status.name} this ${group.length > 1 ? 'range' : 'entry'}?',
         ),
-      );
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: status == LeaveStatus.approved
+                  ? Colors.green
+                  : Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      final service = ref.read(leaveServiceProvider);
+      for (var leave in group) {
+        await service.updateStatus(leaveId: leave.id, status: status);
+      }
     }
+  }
 
-    return const SizedBox.shrink();
+  Future<void> _deleteGroup(List<Leave> group) async {
+    final service = ref.read(leaveServiceProvider);
+    for (var leave in group) {
+      await service.removeLeave(leave.id);
+    }
   }
 
   Widget _buildActionCard(
     ThemeData theme,
-    AsyncValue<List<Leave>> leavesAsync,
-    AsyncValue<List<Employee>> employeesAsync,
+    AsyncValue<List<Leave>> existingLeavesAsync,
   ) {
     return Card(
       elevation: 0,
@@ -462,12 +529,12 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Add Leave',
+              'Mark Leave',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
-            const Divider(height: 24),
-            leavesAsync.when(
-              data: (leaves) => TableCalendar(
+            const SizedBox(height: 24),
+            existingLeavesAsync.when(
+              data: (existing) => TableCalendar(
                 firstDay: DateTime.now().subtract(const Duration(days: 365)),
                 lastDay: DateTime.now().add(const Duration(days: 365)),
                 focusedDay: _focusedDay,
@@ -475,10 +542,16 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
                 rangeStartDay: _rangeStart,
                 rangeEndDay: _rangeEnd,
                 rangeSelectionMode: _rangeSelectionMode,
-                onDaySelected: _onDaySelected,
+                onDaySelected: (sel, foc) => _onDaySelected(sel, foc),
                 onRangeSelected: _onRangeSelected,
-                eventLoader: (day) =>
-                    leaves.where((l) => isSameDay(l.date, day)).toList(),
+                eventLoader: (day) => existing
+                    .where(
+                      (l) =>
+                          isSameDay(l.date, day) &&
+                          (l.status == LeaveStatus.approved ||
+                              l.status == LeaveStatus.pending),
+                    )
+                    .toList(),
                 headerStyle: const HeaderStyle(
                   formatButtonVisible: false,
                   titleCentered: true,
@@ -504,10 +577,6 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
                     shape: BoxShape.circle,
                   ),
                   todayTextStyle: TextStyle(color: theme.colorScheme.primary),
-                  markerDecoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.5),
-                    shape: BoxShape.circle,
-                  ),
                 ),
               ),
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -515,31 +584,6 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
             ),
             const SizedBox(height: 24),
             if (_selectedDay != null || _rangeStart != null) ...[
-              employeesAsync.when(
-                data: (employees) => _buildField(
-                  'Employee',
-                  DropdownButtonFormField<String>(
-                    value: _selectedEmployeeId,
-                    isDense: true,
-                    items: employees
-                        .map(
-                          (e) => DropdownMenuItem(
-                            value: e.id,
-                            child: Text(
-                              e.name,
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) => setState(() => _selectedEmployeeId = v),
-                    decoration: _inputDecoration(hint: 'Select Employee'),
-                  ),
-                ),
-                loading: () => const LinearProgressIndicator(),
-                error: (e, _) => const Text('Error loading employees'),
-              ),
-              const SizedBox(height: 16),
               _buildField(
                 'Leave Type',
                 DropdownButtonFormField<LeaveType>(
@@ -588,16 +632,14 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
                   controller: _reasonController,
                   maxLines: 2,
                   style: const TextStyle(fontSize: 13),
-                  decoration: _inputDecoration(hint: 'Reason...'),
+                  decoration: _inputDecoration(hint: 'Reason for leave...'),
                 ),
               ),
               const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: (_isSaving || _selectedEmployeeId == null)
-                      ? null
-                      : _handleSave,
+                  onPressed: _isSaving ? null : _handleSave,
                   child: _isSaving
                       ? const SizedBox(
                           height: 20,
@@ -661,24 +703,29 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
     setState(() => _isSaving = true);
     try {
       final service = ref.read(leaveServiceProvider);
-      List<DateTime> dates = [];
+
+      List<DateTime> datesToProcess = [];
       if (_rangeStart != null && _rangeEnd != null) {
-        DateTime curr = _rangeStart!;
-        while (curr.isBefore(_rangeEnd!) || isSameDay(curr, _rangeEnd!)) {
-          dates.add(curr);
-          curr = curr.add(const Duration(days: 1));
+        DateTime current = _rangeStart!;
+        while (current.isBefore(_rangeEnd!) || isSameDay(current, _rangeEnd!)) {
+          datesToProcess.add(current);
+          current = current.add(const Duration(days: 1));
         }
-      } else {
-        dates.add(_selectedDay ?? _rangeStart!);
+      } else if (_rangeStart != null) {
+        datesToProcess.add(_rangeStart!);
+      } else if (_selectedDay != null) {
+        datesToProcess.add(_selectedDay!);
       }
 
-      for (var date in dates) {
+      for (var date in datesToProcess) {
         await service.addLeave(
-          employeeId: _selectedEmployeeId!,
+          employeeId: widget.entityId,
           date: date,
           reason: _reasonController.text.trim(),
           leaveType: _selectedType,
-          duration: dates.length > 1 ? LeaveDuration.full : _selectedDuration,
+          duration: datesToProcess.length > 1
+              ? LeaveDuration.full
+              : _selectedDuration,
         );
       }
 
@@ -701,51 +748,6 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
           context,
         ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
-    }
-  }
-
-  Future<void> _updateGroupStatus(List<Leave> group, LeaveStatus status) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: Text('${status.name.toUpperCase()} Leave'),
-        content: Text(
-          'Are you sure you want to process this ${group.length > 1 ? 'range' : 'request'}?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor:
-                  (status == LeaveStatus.approved ||
-                      status == LeaveStatus.cancelled)
-                  ? Colors.green
-                  : Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      final service = ref.read(leaveServiceProvider);
-      for (var leave in group) {
-        await service.updateStatus(leaveId: leave.id, status: status);
-      }
-    }
-  }
-
-  Future<void> _deleteGroup(List<Leave> group) async {
-    final service = ref.read(leaveServiceProvider);
-    for (var leave in group) {
-      await service.removeLeave(leave.id);
     }
   }
 
@@ -793,6 +795,9 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
       case LeaveStatus.rejected:
         color = Colors.red;
         break;
+      case LeaveStatus.pending:
+        color = Colors.orange;
+        break;
       case LeaveStatus.cancelled:
         color = Colors.grey;
         break;
@@ -800,24 +805,35 @@ class _LeaveManagementPageState extends ConsumerState<LeaveManagementPage> {
         color = Colors.purple;
         label = 'CANCEL REQ';
         break;
-      default:
-        color = Colors.orange;
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.5)),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: Text(
         label,
         style: TextStyle(
           color: color,
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: FontWeight.bold,
         ),
       ),
     );
+  }
+
+  Color _getLeaveColor(LeaveType type) {
+    switch (type) {
+      case LeaveType.annual:
+        return Colors.blue;
+      case LeaveType.sick:
+        return Colors.orange;
+      case LeaveType.causal:
+        return Colors.green;
+      case LeaveType.unpaid:
+        return Colors.red;
+    }
   }
 }

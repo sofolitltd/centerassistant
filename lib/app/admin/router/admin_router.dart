@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '/app/admin/features/auth/presentation/pages/admin_login_page.dart';
-import '/app/admin/features/availability/presentation/pages/admin_apply_leave_page.dart';
-import '/app/admin/features/availability/presentation/pages/availability_page.dart';
 import '/app/admin/features/clients/presentation/pages/add_client_page.dart';
 import '/app/admin/features/clients/presentation/pages/client_details_page.dart';
 import '/app/admin/features/clients/presentation/pages/client_leave_page.dart';
@@ -14,9 +12,12 @@ import '/app/admin/features/employees/presentation/pages/access_portal_page.dart
 import '/app/admin/features/employees/presentation/pages/add_employee_page.dart';
 import '/app/admin/features/employees/presentation/pages/department_page.dart';
 import '/app/admin/features/employees/presentation/pages/edit_employee_page.dart';
+import '/app/admin/features/employees/presentation/pages/employee_details_page.dart';
 import '/app/admin/features/employees/presentation/pages/employee_page.dart';
 import '/app/admin/features/layout/presentation/pages/admin_layout_page.dart';
 import '/app/admin/features/leave/presentation/pages/leave_management_page.dart';
+import '/app/admin/features/leaves/presentation/pages/admin_apply_leave_page.dart';
+import '/app/admin/features/leaves/presentation/pages/leave_page.dart';
 import '/app/admin/features/settings/presentation/pages/holiday_page.dart';
 import '/app/admin/features/settings/presentation/pages/service_rates_page.dart';
 import '/app/admin/features/time_slots/presentation/pages/time_slot_page.dart';
@@ -117,16 +118,34 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           ),
         ),
         GoRoute(
-          path: '/admin/employees/:employeeId/availability',
+          path: '/admin/employees/:employeeId',
+          redirect: (context, state) =>
+              '/admin/employees/${state.pathParameters['employeeId']}/details',
+        ),
+        GoRoute(
+          path: '/admin/employees/:employeeId/:tab',
+          pageBuilder: (context, state) {
+            final employeeId = state.pathParameters['employeeId']!;
+            final tab = state.pathParameters['tab'] ?? 'details';
+            return NoTransitionPage(
+              child: EmployeeDetailsPage(
+                employeeId: employeeId,
+                initialTab: tab,
+              ),
+            );
+          },
+        ),
+        GoRoute(
+          path: '/admin/employees/:employeeId/leave',
           pageBuilder: (context, state) {
             final employeeId = state.pathParameters['employeeId']!;
             final employeeName =
                 state.uri.queryParameters['name'] ?? 'Employee';
             return NoTransitionPage(
               child: Title(
-                title: 'Employee Availability | Center Assistant',
+                title: 'Employee Leave | Center Assistant',
                 color: Colors.black,
-                child: AvailabilityPage(
+                child: LeavePage(
                   entityId: employeeId,
                   entityName: employeeName,
                 ),
@@ -135,14 +154,14 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           },
         ),
         GoRoute(
-          path: '/admin/employees/:employeeId/availability/apply',
+          path: '/admin/employees/:employeeId/leave/apply',
           pageBuilder: (context, state) {
             final employeeId = state.pathParameters['employeeId']!;
             final employeeName =
                 state.uri.queryParameters['name'] ?? 'Employee';
             return NoTransitionPage(
               child: Title(
-                title: 'Mark Unavailability | Center Assistant',
+                title: 'Mark Leave | Center Assistant',
                 color: Colors.black,
                 child: AdminApplyLeavePage(
                   entityId: employeeId,
@@ -213,13 +232,13 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           },
         ),
         GoRoute(
-          path: '/admin/clients/:clientId/availability',
+          path: '/admin/clients/:clientId/absence',
           pageBuilder: (context, state) {
             final clientId = state.pathParameters['clientId']!;
             final clientName = state.uri.queryParameters['name'] ?? 'Client';
             return NoTransitionPage(
               child: Title(
-                title: 'Client Availability | Center Assistant',
+                title: 'Client Absence | Center Assistant',
                 color: Colors.black,
                 child: ClientLeavePage(
                   clientId: clientId,

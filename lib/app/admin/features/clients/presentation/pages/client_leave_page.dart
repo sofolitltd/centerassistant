@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:table_calendar/table_calendar.dart';
 
+import '/core/models/client_unavailability.dart';
 import '/core/providers/client_unavailability_providers.dart';
 
 class ClientLeavePage extends ConsumerStatefulWidget {
@@ -53,44 +53,13 @@ class _ClientLeavePageState extends ConsumerState<ClientLeavePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Breadcrumbs
-            Row(
-              children: [
-                InkWell(
-                  onTap: () => context.go('/admin/dashboard'),
-                  child: Text(
-                    'Admin',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey,
-                    ),
-                  ),
-                ),
-                const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
-                InkWell(
-                  onTap: () => context.go('/admin/clients'),
-                  child: Text(
-                    'Clients',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey,
-                    ),
-                  ),
-                ),
-                const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
-                Text(
-                  'Availability: ${widget.clientName}',
-                  style: theme.textTheme.bodyMedium,
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
             Text(
               'Manage Absence',
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
 
             if (isDesktop)
               Row(
@@ -132,7 +101,7 @@ class _ClientLeavePageState extends ConsumerState<ClientLeavePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Mark New Absence',
+              'Add New Absence',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
             const SizedBox(height: 24),
@@ -159,8 +128,7 @@ class _ClientLeavePageState extends ConsumerState<ClientLeavePage> {
                   setState(() {
                     _selectedDay = selectedDay;
                     _focusedDay = focusedDay;
-                    _rangeStart =
-                        null; // Important: Reset range when single day selected
+                    _rangeStart = null;
                     _rangeEnd = null;
                     _rangeSelectionMode = RangeSelectionMode.toggledOff;
                   });
@@ -268,7 +236,6 @@ class _ClientLeavePageState extends ConsumerState<ClientLeavePage> {
           note: _noteController.text.trim(),
         );
       } else if (_rangeStart != null) {
-        // Only start selected (single day range)
         await service.addUnavailability(
           clientId: widget.clientId,
           date: _rangeStart!,
@@ -306,97 +273,151 @@ class _ClientLeavePageState extends ConsumerState<ClientLeavePage> {
 
   Widget _buildHistorySection(
     ThemeData theme,
-    AsyncValue<List<dynamic>> unavailabilityAsync,
+    AsyncValue<List<ClientUnavailability>> unavailabilityAsync,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Absence History',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        const SizedBox(height: 16),
-        unavailabilityAsync.when(
-          data: (list) {
-            if (list.isEmpty) {
-              return Card(
-                elevation: 0,
-                color: Colors.white,
-                margin: .zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  side: BorderSide(color: Colors.grey.shade200),
-                ),
-                child: const Padding(
-                  padding: EdgeInsets.all(40),
-                  child: Center(child: Text('No history found.')),
-                ),
-              );
-            }
-            return ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: list.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final item = list[index];
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Absence History',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+          const SizedBox(height: 16),
+          unavailabilityAsync.when(
+            data: (list) {
+              if (list.isEmpty) {
                 return Card(
                   elevation: 0,
                   color: Colors.white,
-                  margin: .zero,
+                  margin: EdgeInsets.zero,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                     side: BorderSide(color: Colors.grey.shade200),
                   ),
-                  child: ListTile(
-                    visualDensity: .compact,
-                    dense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    leading: CircleAvatar(
-                      backgroundColor: theme.colorScheme.error.withOpacity(0.1),
-                      child: Icon(
-                        LucideIcons.calendarX,
-                        size: 18,
-                        color: theme.colorScheme.error,
-                      ),
-                    ),
-                    title: Text(
-                      DateFormat('EEEE, MMM dd, yyyy').format(item.date),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: item.note != null && item.note!.isNotEmpty
-                        ? Text(item.note!)
-                        : null,
-                    trailing: IconButton(
-                      icon: const Icon(
-                        LucideIcons.trash2,
-                        size: 18,
-                        color: Colors.red,
-                      ),
-                      onPressed: () => _confirmDelete(item.id),
-                    ),
+                  child: const Padding(
+                    padding: EdgeInsets.all(40),
+                    child: Center(child: Text('No history found.')),
                   ),
                 );
-              },
-            );
-          },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Text('Error: $e'),
-        ),
-      ],
+              }
+
+              final grouped = _groupConsecutiveAbsences(list);
+
+              return ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: grouped.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final group = grouped[index];
+                  return _buildHistoryGroupCard(theme, group);
+                },
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Text('Error: $e'),
+          ),
+        ],
+      ),
     );
   }
 
-  Future<void> _confirmDelete(String id) async {
+  List<List<ClientUnavailability>> _groupConsecutiveAbsences(
+    List<ClientUnavailability> list,
+  ) {
+    if (list.isEmpty) return [];
+
+    final sorted = List<ClientUnavailability>.from(list)
+      ..sort((a, b) => a.date.compareTo(b.date));
+
+    List<List<ClientUnavailability>> grouped = [];
+    List<ClientUnavailability> currentGroup = [sorted[0]];
+
+    for (int i = 1; i < sorted.length; i++) {
+      final prev = sorted[i - 1];
+      final curr = sorted[i];
+
+      final isConsecutive = curr.date.difference(prev.date).inDays == 1;
+      final sameNote = curr.note == prev.note;
+
+      if (isConsecutive && sameNote) {
+        currentGroup.add(curr);
+      } else {
+        grouped.add(currentGroup);
+        currentGroup = [curr];
+      }
+    }
+    grouped.add(currentGroup);
+
+    grouped.sort((a, b) => b[0].date.compareTo(a[0].date));
+    return grouped;
+  }
+
+  Widget _buildHistoryGroupCard(
+    ThemeData theme,
+    List<ClientUnavailability> group,
+  ) {
+    final first = group.first;
+    final last = group.last;
+    final isRange = group.length > 1;
+
+    String dateText;
+    if (isRange) {
+      dateText =
+          '${DateFormat('MMM dd').format(first.date)} - ${DateFormat('MMM dd, yyyy').format(last.date)}';
+    } else {
+      dateText = DateFormat('EEEE, MMM dd, yyyy').format(first.date);
+    }
+
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: ListTile(
+        visualDensity: VisualDensity.compact,
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        leading: CircleAvatar(
+          backgroundColor: theme.colorScheme.error.withOpacity(0.1),
+          child: Icon(
+            LucideIcons.calendarX,
+            size: 18,
+            color: theme.colorScheme.error,
+          ),
+        ),
+        title: Text(
+          dateText,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: first.note != null && first.note!.isNotEmpty
+            ? Text(first.note!)
+            : (isRange ? Text('${group.length} days absent') : null),
+        trailing: IconButton(
+          icon: const Icon(LucideIcons.trash2, size: 18, color: Colors.red),
+          onPressed: () => _confirmDeleteGroup(group),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteGroup(List<ClientUnavailability> group) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Entry'),
-        content: const Text(
-          'Are you sure you want to remove this absence mark?',
+        content: Text(
+          'Are you sure you want to remove this ${group.length > 1 ? 'absence range' : 'absence mark'}?',
         ),
         actions: [
           TextButton(
@@ -415,9 +436,10 @@ class _ClientLeavePageState extends ConsumerState<ClientLeavePage> {
       ),
     );
     if (confirmed == true) {
-      await ref
-          .read(clientUnavailabilityServiceProvider)
-          .removeUnavailability(id);
+      final service = ref.read(clientUnavailabilityServiceProvider);
+      for (var item in group) {
+        await service.removeUnavailability(item.id);
+      }
     }
   }
 }

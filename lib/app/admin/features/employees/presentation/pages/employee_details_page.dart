@@ -1,51 +1,51 @@
-import 'package:center_assistant/app/admin/features/clients/presentation/pages/client_information_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '/core/models/client.dart';
-import '/core/providers/client_providers.dart';
+import '/core/models/employee.dart';
+import '/core/providers/employee_providers.dart';
+import '../../../leaves/presentation/pages/leave_page.dart';
 import '../../../schedule/presentation/pages/home/schedule_specific_page.dart';
-import 'billing/client_billing_page.dart';
-import 'client_leave_page.dart';
+import 'employee_information_page.dart';
 
-class ClientDetailsPage extends ConsumerStatefulWidget {
-  final String clientId;
+class EmployeeDetailsPage extends ConsumerStatefulWidget {
+  final String employeeId;
   final String initialTab;
 
-  const ClientDetailsPage({
+  const EmployeeDetailsPage({
     super.key,
-    required this.clientId,
+    required this.employeeId,
     this.initialTab = 'details',
   });
 
   @override
-  ConsumerState<ClientDetailsPage> createState() => _ClientDetailsPageState();
+  ConsumerState<EmployeeDetailsPage> createState() =>
+      _EmployeeDetailsPageState();
 }
 
-class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
+class _EmployeeDetailsPageState extends ConsumerState<EmployeeDetailsPage> {
   void _onTabChanged(String tab) {
-    context.go('/admin/clients/${widget.clientId}/$tab');
+    context.go('/admin/employees/${widget.employeeId}/$tab');
   }
 
   @override
   Widget build(BuildContext context) {
-    final clientsAsync = ref.watch(clientsProvider);
+    final employeesAsync = ref.watch(employeesProvider);
 
     return Scaffold(
-      body: clientsAsync.when(
-        data: (clients) {
-          final client = clients
-              .where((c) => c.id == widget.clientId)
+      body: employeesAsync.when(
+        data: (employees) {
+          final employee = employees
+              .where((e) => e.id == widget.employeeId)
               .firstOrNull;
-          if (client == null) {
-            return const Center(child: Text('Client not found.'));
+          if (employee == null) {
+            return const Center(child: Text('Employee not found.'));
           }
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Responsive Breadcrumbs
+              // Breadcrumbs
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Wrap(
@@ -65,9 +65,9 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
                       color: Colors.grey,
                     ),
                     InkWell(
-                      onTap: () => context.go('/admin/clients'),
+                      onTap: () => context.go('/admin/employees'),
                       child: const Text(
-                        'Clients',
+                        'Employees',
                         style: TextStyle(color: Colors.grey, fontSize: 13),
                       ),
                     ),
@@ -77,7 +77,7 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
                       color: Colors.grey,
                     ),
                     Text(
-                      client.name,
+                      employee.name,
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
@@ -87,7 +87,7 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
                 ),
               ),
 
-              // Tab Switcher Container
+              // Tab Switcher
               Container(
                 width: double.infinity,
                 margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -95,10 +95,8 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
                   horizontal: 10,
                   vertical: 10,
                 ),
-
                 decoration: BoxDecoration(
                   color: Colors.white,
-
                   borderRadius: BorderRadius.circular(4),
                   border: Border(
                     bottom: BorderSide(color: Colors.grey.shade300),
@@ -108,7 +106,7 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
               ),
 
               // Content Area
-              Expanded(child: _buildTabContent(client)),
+              Expanded(child: _buildTabContent(employee)),
             ],
           );
         },
@@ -137,34 +135,26 @@ class _ClientDetailsPageState extends ConsumerState<ClientDetailsPage> {
           ),
           const SizedBox(width: 8),
           _TabButton(
-            label: 'Billing',
-            isSelected: widget.initialTab == 'billing',
-            onTap: () => _onTabChanged('billing'),
-          ),
-          const SizedBox(width: 8),
-          _TabButton(
-            label: 'Absence',
-            isSelected: widget.initialTab == 'absence',
-            onTap: () => _onTabChanged('absence'),
+            label: 'Leave',
+            isSelected: widget.initialTab == 'leave',
+            onTap: () => _onTabChanged('leave'),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTabContent(Client client) {
+  Widget _buildTabContent(Employee employee) {
     switch (widget.initialTab) {
       case 'details':
-        return SingleChildScrollView(
+        return Padding(
           padding: const EdgeInsets.all(16),
-          child: ClientInformationPage(client: client),
+          child: EmployeeInformationPage(employee: employee),
         );
       case 'schedule':
-        return ScheduleSpecificPage(clientId: client.id);
-      case 'billing':
-        return ClientBillingPage(clientId: client.id);
-      case 'absence':
-        return ClientLeavePage(clientId: client.id, clientName: client.name);
+        return ScheduleSpecificPage(employeeId: employee.id);
+      case 'leave':
+        return LeavePage(entityId: employee.id, entityName: employee.name);
       default:
         return const SizedBox();
     }
