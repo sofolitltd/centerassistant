@@ -13,16 +13,21 @@ class ServiceRateCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final status = _getStatus();
+    final statusColor = _getStatusColor(status);
+
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: rate.isActive ? Colors.grey.shade200 : Colors.red.shade100,
+          color: status == 'Expired'
+              ? Colors.red.shade100
+              : Colors.grey.shade200,
         ),
       ),
-      color: rate.isActive ? Colors.white : Colors.red.withOpacity(0.02),
+      color: status == 'Expired' ? Colors.red.withOpacity(0.02) : Colors.white,
       child: Stack(
         children: [
           Padding(
@@ -30,30 +35,24 @@ class ServiceRateCard extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                //
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: rate.isActive
-                        ? Colors.green.shade50
-                        : Colors.red.shade50,
+                    color: statusColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    rate.isActive ? 'ACTIVE' : 'ARCHIVED',
+                    status.toUpperCase(),
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.bold,
-                      color: rate.isActive
-                          ? Colors.green.shade700
-                          : Colors.red.shade700,
+                      color: statusColor,
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 8),
                 Text(
                   rate.serviceType,
@@ -76,6 +75,11 @@ class ServiceRateCard extends ConsumerWidget {
                   'Effective: ${DateFormat('dd MMM yyyy').format(rate.effectiveDate)}',
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                 ),
+                if (rate.endDate != null)
+                  Text(
+                    'Ends: ${DateFormat('dd MMM yyyy').format(rate.endDate!)}',
+                    style: TextStyle(color: Colors.red.shade400, fontSize: 12),
+                  ),
               ],
             ),
           ),
@@ -90,31 +94,15 @@ class ServiceRateCard extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               itemBuilder: (context) => [
-                if (rate.isActive) ...[
-                  const PopupMenuItem(
-                    value: 'edit',
-                    height: 40,
-                    child: Text('Edit Rate'),
-                  ),
-                  const PopupMenuItem(
-                    value: 'archive',
-                    height: 40,
-                    child: Text('Archive'),
-                  ),
-                ] else ...[
-                  const PopupMenuItem(
-                    value: 'unarchive',
-                    height: 40,
-                    child: Text('Restore'),
-                  ),
-                ],
+                const PopupMenuItem(
+                  value: 'edit',
+                  height: 40,
+                  child: Text('Edit Rate'),
+                ),
                 const PopupMenuItem(
                   value: 'delete',
                   height: 40,
-                  child: Text(
-                    'Delete Permanently',
-                    style: TextStyle(color: Colors.red),
-                  ),
+                  child: Text('Delete', style: TextStyle(color: Colors.red)),
                 ),
               ],
             ),
@@ -124,64 +112,59 @@ class ServiceRateCard extends ConsumerWidget {
     );
   }
 
-  void _handleAction(BuildContext context, WidgetRef ref, String action) {
-    switch (action) {
-      case 'edit':
-        showDialog(
-          context: context,
-          builder: (context) => EditServiceRateDialog(rate: rate),
-        );
-        break;
-      case 'archive':
-        _showConfirm(
-          context,
-          ref,
-          'Archive Rate',
-          'Hide this rate from billing?',
-          () {
-            ref.read(serviceRateServiceProvider).archiveRate(rate.id);
-          },
-        );
-        break;
-      case 'unarchive':
-        _showConfirm(
-          context,
-          ref,
-          'Restore Rate',
-          'Make this rate active again?',
-          () {
-            ref.read(serviceRateServiceProvider).unarchiveRate(rate.id);
-          },
-        );
-        break;
-      case 'delete':
-        _showConfirm(
-          context,
-          ref,
-          'Delete Permanently',
-          'Warning: This may affect historical billing calculations!',
-          () {
-            ref.read(serviceRateServiceProvider).deleteRatePermanently(rate.id);
-          },
-          isDanger: true,
-        );
-        break;
+  String _getStatus() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final start = DateTime(
+      rate.effectiveDate.year,
+      rate.effectiveDate.month,
+      rate.effectiveDate.day,
+    );
+
+    if (start.isAfter(today)) return 'Upcoming';
+    if (rate.endDate != null &&
+        DateTime(
+          rate.endDate!.year,
+          rate.endDate!.month,
+          rate.endDate!.day,
+        ).isBefore(today)) {
+      return 'Expired';
+    }
+    return 'Active';
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Active':
+        return Colors.green.shade700;
+      case 'Upcoming':
+        return Colors.blue.shade700;
+      case 'Expired':
+        return Colors.red.shade700;
+      default:
+        return Colors.grey;
     }
   }
 
-  void _showConfirm(
-    BuildContext context,
-    WidgetRef ref,
-    String title,
-    String msg,
-    VoidCallback onConfirm, {
-    bool isDanger = false,
-  }) {
+  void _handleAction(BuildContext context, WidgetRef ref, String action) {
+    if (action == 'edit') {
+      showDialog(
+        context: context,
+        builder: (context) => EditServiceRateDialog(rate: rate),
+      );
+    } else if (action == 'delete') {
+      _showDeleteConfirm(context, ref);
+    }
+  }
+
+  void _showDeleteConfirm(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(msg),
+        title: const Text('Delete Rate'),
+        content: const Text(
+          'Warning: This may affect historical billing calculations!',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -189,14 +172,14 @@ class ServiceRateCard extends ConsumerWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              onConfirm();
+              ref.read(serviceRateServiceProvider).deleteRate(rate.id);
               Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: isDanger ? Colors.red : null,
-              foregroundColor: isDanger ? Colors.white : null,
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
             ),
-            child: Text(title),
+            child: const Text('Delete'),
           ),
         ],
       ),

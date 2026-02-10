@@ -19,6 +19,7 @@ class _AddServiceRateDialogState extends ConsumerState<AddServiceRateDialog> {
   final _rateController = TextEditingController();
   String? _selectedType;
   DateTime _effectiveDate = DateTime.now();
+  DateTime? _endDate;
 
   @override
   void dispose() {
@@ -118,33 +119,114 @@ class _AddServiceRateDialogState extends ConsumerState<AddServiceRateDialog> {
                       : null,
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Effective Date',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-                const SizedBox(height: 8),
-                InkWell(
-                  onTap: _selectDate,
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 14,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Effective Date',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          InkWell(
+                            onTap: () => _selectDate(true),
+                            child: InputDecorator(
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    DateFormat(
+                                      'dd MMM yyyy',
+                                    ).format(_effectiveDate),
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                  const Icon(
+                                    LucideIcons.calendar,
+                                    size: 16,
+                                    color: Colors.grey,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(DateFormat('dd MMM yyyy').format(_effectiveDate)),
-                        const Icon(
-                          LucideIcons.calendar,
-                          size: 16,
-                          color: Colors.grey,
-                        ),
-                      ],
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'End Date (Optional)',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          InkWell(
+                            onTap: () => _selectDate(false),
+                            child: InputDecorator(
+                              decoration: InputDecoration(
+                                border: const OutlineInputBorder(),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                suffixIcon: _endDate != null
+                                    ? IconButton(
+                                        icon: const Icon(Icons.clear, size: 16),
+                                        onPressed: () {
+                                          setState(() => _endDate = null);
+                                        },
+                                      )
+                                    : null,
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    _endDate != null
+                                        ? DateFormat(
+                                            'dd MMM yyyy',
+                                          ).format(_endDate!)
+                                        : 'Set End Date',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: _endDate == null
+                                          ? Colors.grey
+                                          : Colors.black,
+                                    ),
+                                  ),
+                                  if (_endDate == null)
+                                    const Icon(
+                                      LucideIcons.calendar,
+                                      size: 16,
+                                      color: Colors.grey,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
                 const SizedBox(height: 32),
                 Row(
@@ -169,24 +251,35 @@ class _AddServiceRateDialogState extends ConsumerState<AddServiceRateDialog> {
     );
   }
 
-  Future<void> _selectDate() async {
+  Future<void> _selectDate(bool isStart) async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _effectiveDate,
+      initialDate: isStart ? _effectiveDate : (_endDate ?? DateTime.now()),
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
     );
-    if (picked != null) setState(() => _effectiveDate = picked);
+    if (picked != null) {
+      setState(() {
+        if (isStart) {
+          _effectiveDate = picked;
+        } else {
+          _endDate = picked;
+        }
+      });
+    }
   }
 
   void _handleSave() async {
     if (_formKey.currentState!.validate() && _selectedType != null) {
+      // Need to update the provider/service to support endDate in addRate
+      // Actually, I'll update the ServiceRateActionService first if it's missing it.
       await ref
           .read(serviceRateServiceProvider)
           .addRate(
             serviceType: _selectedType!,
             hourlyRate: double.parse(_rateController.text),
             effectiveDate: _effectiveDate,
+            endDate: _endDate,
           );
       if (mounted) Navigator.pop(context);
     }

@@ -10,7 +10,10 @@ class ServiceRateRepositoryImpl implements IServiceRateRepository {
 
   @override
   Stream<List<ServiceRate>> getServiceRates() {
-    return _firestore.collection('service_rates').snapshots().map((snapshot) {
+    return _firestore
+        .collection('service_rates')
+        .snapshots()
+        .map((snapshot) {
       return snapshot.docs
           .map((doc) => ServiceRate.fromFirestore(doc))
           .toList();
@@ -22,6 +25,7 @@ class ServiceRateRepositoryImpl implements IServiceRateRepository {
     required String serviceType,
     required double hourlyRate,
     required DateTime effectiveDate,
+    DateTime? endDate,
   }) async {
     final docRef = _firestore.collection('service_rates').doc();
     final newRate = ServiceRate(
@@ -29,7 +33,7 @@ class ServiceRateRepositoryImpl implements IServiceRateRepository {
       serviceType: serviceType,
       hourlyRate: hourlyRate,
       effectiveDate: effectiveDate,
-      isActive: true,
+      endDate: endDate,
     );
     await docRef.set(newRate.toJson());
   }
@@ -43,21 +47,7 @@ class ServiceRateRepositoryImpl implements IServiceRateRepository {
   }
 
   @override
-  Future<void> archiveServiceRate(String id) async {
-    await _firestore.collection('service_rates').doc(id).update({
-      'isActive': false,
-    });
-  }
-
-  @override
-  Future<void> unarchiveServiceRate(String id) async {
-    await _firestore.collection('service_rates').doc(id).update({
-      'isActive': true,
-    });
-  }
-
-  @override
-  Future<void> deleteServiceRatePermanently(String id) async {
+  Future<void> deleteServiceRate(String id) async {
     await _firestore.collection('service_rates').doc(id).delete();
   }
 }

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,7 +18,8 @@ class HolidayPage extends ConsumerStatefulWidget {
 }
 
 class _HolidayPageState extends ConsumerState<HolidayPage> {
-  int _activeTab = 0; // 0: Weekly/Special, 1: Public Holidays
+  String _activeTab =
+      'Weekly Off-Days'; // 'Weekly Off-Days' or 'Public Holidays'
 
   final List<String> _daysOfWeek = [
     'Sunday',
@@ -35,87 +37,146 @@ class _HolidayPageState extends ConsumerState<HolidayPage> {
     final holidaysAsync = ref.watch(officeHolidaysProvider);
 
     return Scaffold(
-      body: Column(
-        children: [
-          _buildHeader(context),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  _buildTabSwitcher(),
-                  const SizedBox(height: 32),
-                  if (_activeTab == 0) ...[
-                    _buildWeeklySection(settingsAsync),
-                    const SizedBox(height: 48),
-                    _buildSpecialWorkSection(settingsAsync),
-                  ] else ...[
-                    _buildHolidaysSection(holidaysAsync),
+      backgroundColor: Colors.grey.shade50,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Breadcrumbs & Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        InkWell(
+                          onTap: () => context.go('/admin/dashboard'),
+                          child: const Text(
+                            'Admin',
+                            style: TextStyle(color: Colors.grey, fontSize: 13),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        const Text(
+                          'Settings',
+                          style: TextStyle(color: Colors.grey, fontSize: 13),
+                        ),
+                        const Icon(
+                          Icons.chevron_right,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        const Text(
+                          'Holidays',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Center Holidays',
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: Colors.black87,
+                          ),
+                    ),
                   ],
+                ),
+                if (_activeTab == 'Public Holidays')
+                  ElevatedButton.icon(
+                    onPressed: () => _showAddHolidayDialog(context),
+                    icon: const Icon(LucideIcons.plus, size: 16),
+                    label: const Text('Add Public Holiday'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
+                    ),
+                  )
+                else
+                  ElevatedButton.icon(
+                    onPressed: () => _showAddSpecialWorkDayDialog(context),
+                    icon: const Icon(LucideIcons.plus, size: 16),
+                    label: const Text('Add Special Day'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Filters (Tabs)
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  _buildFilterButton('Weekly Off-Days'),
+                  const SizedBox(width: 8),
+                  _buildFilterButton('Public Holidays'),
                 ],
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
+            const SizedBox(height: 32),
 
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Colors.grey.shade200, width: 1),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              InkWell(
-                onTap: () => context.go('/admin/dashboard'),
-                child: const Text(
-                  'Admin',
-                  style: TextStyle(color: Colors.grey, fontSize: 13),
-                ),
-              ),
-              const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
-              const Text(
-                'Settings',
-                style: TextStyle(color: Colors.grey, fontSize: 13),
-              ),
-              const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
-              const Text('Holidays', style: TextStyle(fontSize: 13)),
+            if (_activeTab == 'Weekly Off-Days') ...[
+              _buildWeeklySection(settingsAsync),
+              const SizedBox(height: 48),
+              _buildSpecialWorkSection(settingsAsync),
+            ] else ...[
+              _buildHolidaysSection(holidaysAsync),
             ],
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Holidays',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildTabSwitcher() {
-    return Row(
-      children: [
-        _TabButton(
-          label: 'Weekly & Special Days',
-          isSelected: _activeTab == 0,
-          onTap: () => setState(() => _activeTab = 0),
+  Widget _buildFilterButton(String label) {
+    final isSelected = _activeTab == label;
+    return InkWell(
+      onTap: () => setState(() => _activeTab = label),
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Theme.of(context).primaryColor : Colors.white,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: isSelected
+                ? Theme.of(context).primaryColor
+                : Colors.grey.shade300,
+          ),
         ),
-        const SizedBox(width: 8),
-        _TabButton(
-          label: 'Public Holidays',
-          isSelected: _activeTab == 1,
-          onTap: () => setState(() => _activeTab = 1),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.grey.shade700,
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
         ),
-      ],
+      ),
     );
   }
 
@@ -123,20 +184,31 @@ class _HolidayPageState extends ConsumerState<HolidayPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Weekly Off-Days', LucideIcons.calendar),
+        _buildSectionHeader('Weekly Recurring Off-Days', LucideIcons.calendar),
         const SizedBox(height: 16),
         settingsAsync.when(
-          data: (settings) => Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _daysOfWeek.map<Widget>((day) {
-              final isSelected = settings.weeklyOffDays.contains(day);
-              return FilterChip(
-                label: Text(day),
-                selected: isSelected,
-                onSelected: (selected) => _toggleDay(day, isSelected),
-              );
-            }).toList(),
+          data: (settings) => Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: Colors.grey.shade200),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: _daysOfWeek.map<Widget>((day) {
+                  final isSelected = settings.weeklyOffDays.contains(day);
+                  return ChoiceChip(
+                    label: Text(day, style: const TextStyle(fontSize: 13)),
+                    selected: isSelected,
+                    selectedColor: Theme.of(context).primaryColor,
+                    onSelected: (selected) => _toggleDay(day, isSelected),
+                  );
+                }).toList(),
+              ),
+            ),
           ),
           loading: () => const LinearProgressIndicator(),
           error: (e, _) => Text('Error: $e'),
@@ -149,61 +221,56 @@ class _HolidayPageState extends ConsumerState<HolidayPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader(
-          'Special Work Days (Override)',
-          LucideIcons.briefcase,
-        ),
+        _buildSectionHeader('Special Working Days', LucideIcons.briefcase),
         const SizedBox(height: 8),
         const Text(
-          'Select dates when the office remains OPEN even if it falls on a weekend or holiday.',
-          style: TextStyle(fontSize: 12, color: Colors.grey),
+          'Specific dates when the center will remain OPEN (overrides off-days or holidays).',
+          style: TextStyle(fontSize: 13, color: Colors.grey),
         ),
         const SizedBox(height: 16),
         settingsAsync.when(
-          data: (settings) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () => _showAddSpecialWorkDayDialog(context),
-                icon: const Icon(LucideIcons.plus, size: 18),
-                label: const Text('Add Special Work Day'),
-              ),
-              const SizedBox(height: 16),
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: settings.specialWorkDays.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final swd = settings.specialWorkDays[index];
-                  return Card(
-                    child: ListTile(
-                      leading: const CircleAvatar(
-                        backgroundColor: Colors.green,
-                        child: Icon(
-                          LucideIcons.briefcase,
-                          size: 16,
-                          color: Colors.white,
-                        ),
+          data: (settings) {
+            if (settings.specialWorkDays.isEmpty) {
+              return _buildEmptyState('No special working days defined.');
+            }
+            return _buildDataTable(
+              columns: const [
+                DataColumn2(label: Text('Date'), size: ColumnSize.L),
+                DataColumn2(label: Text('Holiday Title'), size: ColumnSize.L),
+                DataColumn2(label: Text('Day'), fixedWidth: 120),
+                DataColumn2(label: Text('Action'), fixedWidth: 80),
+              ],
+              rows: settings.specialWorkDays.map((swd) {
+                return DataRow2(
+                  cells: [
+                    DataCell(
+                      Text(
+                        DateFormat('dd-MM-yyyy').format(swd.date),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      title: Text(
-                        DateFormat('EEEE, MMM d, yyyy').format(swd.date),
+                    ),
+                    DataCell(
+                      Text(
+                        swd.note ?? '-',
+                        style: const TextStyle(color: Colors.grey),
                       ),
-                      subtitle: swd.note != null ? Text(swd.note!) : null,
-                      trailing: IconButton(
+                    ),
+                    DataCell(Text(DateFormat('EEEE').format(swd.date))),
+                    DataCell(
+                      IconButton(
                         icon: const Icon(
                           LucideIcons.trash2,
-                          color: Colors.red,
                           size: 18,
+                          color: Colors.red,
                         ),
                         onPressed: () => _confirmRemoveSpecialWorkDay(swd),
                       ),
                     ),
-                  );
-                },
-              ),
-            ],
-          ),
+                  ],
+                );
+              }).toList(),
+            );
+          },
           loading: () => const SizedBox(),
           error: (_, __) => const SizedBox(),
         ),
@@ -215,52 +282,50 @@ class _HolidayPageState extends ConsumerState<HolidayPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _buildSectionHeader('Public Holidays', LucideIcons.flag),
-            ElevatedButton.icon(
-              onPressed: () => _showAddHolidayDialog(context),
-              icon: const Icon(LucideIcons.plus, size: 18),
-              label: const Text('Add Holiday'),
-            ),
-          ],
-        ),
+        _buildSectionHeader('Public Holidays List', LucideIcons.flag),
         const SizedBox(height: 16),
         holidaysAsync.when(
-          data: (holidays) => ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: holidays.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final holiday = holidays[index];
-              return Card(
-                child: ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.redAccent,
-                    child: Icon(
-                      LucideIcons.calendar,
-                      size: 16,
-                      color: Colors.white,
-                    ),
-                  ),
-                  title: Text(holiday.title),
-                  subtitle: Text(
-                    DateFormat('EEEE, MMMM d, yyyy').format(holiday.date),
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(
-                      LucideIcons.trash2,
-                      color: Colors.red,
-                      size: 18,
-                    ),
-                    onPressed: () => _confirmDeleteHoliday(holiday),
-                  ),
-                ),
+          data: (holidays) {
+            if (holidays.isEmpty) {
+              return _buildEmptyState(
+                'No public holidays listed for this year.',
               );
-            },
-          ),
+            }
+            final sorted = List<OfficeHoliday>.from(holidays)
+              ..sort((a, b) => b.date.compareTo(a.date));
+            return _buildDataTable(
+              columns: const [
+                DataColumn2(label: Text('Date'), size: ColumnSize.L),
+                DataColumn2(label: Text('Holiday Title'), size: ColumnSize.L),
+                DataColumn2(label: Text('Day'), fixedWidth: 120),
+                DataColumn2(label: Text('Action'), fixedWidth: 80),
+              ],
+              rows: sorted.map((h) {
+                return DataRow2(
+                  cells: [
+                    DataCell(
+                      Text(
+                        DateFormat('dd-MM-yyyy').format(h.date),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataCell(Text(h.title)),
+                    DataCell(Text(DateFormat('EEEE').format(h.date))),
+                    DataCell(
+                      IconButton(
+                        icon: const Icon(
+                          LucideIcons.trash2,
+                          size: 18,
+                          color: Colors.red,
+                        ),
+                        onPressed: () => _confirmDeleteHoliday(h),
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            );
+          },
           loading: () => const LinearProgressIndicator(),
           error: (e, _) => Text('Error: $e'),
         ),
@@ -268,14 +333,62 @@ class _HolidayPageState extends ConsumerState<HolidayPage> {
     );
   }
 
+  Widget _buildDataTable({
+    required List<DataColumn2> columns,
+    required List<DataRow2> rows,
+  }) {
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        color: Colors.white,
+        height: rows.length * 48 + 56,
+        child: DataTable2(
+          columnSpacing: 12,
+          horizontalMargin: 12,
+          minWidth: 600,
+          headingRowHeight: 48,
+          dataRowHeight: 48,
+          headingRowColor: WidgetStateProperty.all(Colors.grey.shade50),
+          border: TableBorder(
+            horizontalInside: BorderSide(color: Colors.grey.shade100),
+          ),
+          columns: columns,
+          rows: rows,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String message) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Center(
+          child: Text(message, style: const TextStyle(color: Colors.grey)),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSectionHeader(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: Colors.blueGrey),
-        const SizedBox(width: 8),
+        Icon(icon, size: 20, color: Colors.black87),
+        const SizedBox(width: 12),
         Text(
           title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
         ),
       ],
     );
@@ -320,8 +433,8 @@ class _HolidayPageState extends ConsumerState<HolidayPage> {
 
   Future<void> _confirmRemoveSpecialWorkDay(SpecialWorkDay swd) async {
     final confirmed = await _showConfirmDialog(
-      'Remove Special Work Day',
-      'Are you sure you want to remove the override for ${DateFormat('MMM d, yyyy').format(swd.date)}?',
+      'Remove Special Day',
+      'Are you sure you want to remove this override?',
     );
     if (confirmed == true) {
       final firestore = ref.read(firestoreProvider);
@@ -368,9 +481,6 @@ class _HolidayPageState extends ConsumerState<HolidayPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
-          final years = List.generate(11, (i) => 2020 + i);
-          final months = List.generate(12, (i) => i + 1);
-
           return Dialog(
             child: ConstrainedBox(
               constraints: const BoxConstraints(minWidth: 400, maxWidth: 450),
@@ -398,82 +508,12 @@ class _HolidayPageState extends ConsumerState<HolidayPage> {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<int>(
-                            initialValue: selectedDate.year,
-                            decoration: const InputDecoration(
-                              labelText: 'Year',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: years
-                                .map(
-                                  (y) => DropdownMenuItem(
-                                    value: y,
-                                    child: Text(y.toString()),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (v) {
-                              if (v != null) {
-                                setState(
-                                  () => selectedDate = DateTime(
-                                    v,
-                                    selectedDate.month,
-                                    selectedDate.day,
-                                  ),
-                                );
-                              }
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: DropdownButtonFormField<int>(
-                            initialValue: selectedDate.month,
-                            decoration: const InputDecoration(
-                              labelText: 'Month',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: months
-                                .map(
-                                  (m) => DropdownMenuItem(
-                                    value: m,
-                                    child: Text(
-                                      DateFormat(
-                                        'MMMM',
-                                      ).format(DateTime(2024, m)),
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (v) {
-                              if (v != null) {
-                                setState(
-                                  () => selectedDate = DateTime(
-                                    selectedDate.year,
-                                    v,
-                                    selectedDate.day,
-                                  ),
-                                );
-                              }
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
                     SizedBox(
                       height: 350,
                       child: CalendarDatePicker(
-                        key: ValueKey(
-                          '${selectedDate.year}-${selectedDate.month}',
-                        ),
                         initialDate: selectedDate,
                         firstDate: DateTime(2020),
                         lastDate: DateTime(2030),
-                        currentDate: selectedDate,
                         onDateChanged: (date) =>
                             setState(() => selectedDate = date),
                       ),
@@ -486,7 +526,7 @@ class _HolidayPageState extends ConsumerState<HolidayPage> {
                         border: OutlineInputBorder(),
                         contentPadding: EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: 8,
+                          vertical: 12,
                         ),
                       ),
                     ),
@@ -535,9 +575,6 @@ class _HolidayPageState extends ConsumerState<HolidayPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
-          final years = List.generate(11, (i) => 2020 + i);
-          final months = List.generate(12, (i) => i + 1);
-
           return Dialog(
             child: ConstrainedBox(
               constraints: const BoxConstraints(minWidth: 400, maxWidth: 450),
@@ -550,7 +587,7 @@ class _HolidayPageState extends ConsumerState<HolidayPage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'Add Special Work Day',
+                          'Add Special Day',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -564,88 +601,13 @@ class _HolidayPageState extends ConsumerState<HolidayPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Office will be open on this day.',
-                      style: TextStyle(fontSize: 13, color: Colors.grey),
-                    ),
                     const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<int>(
-                            initialValue: selectedDate.year,
-                            decoration: const InputDecoration(
-                              labelText: 'Year',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: years
-                                .map(
-                                  (y) => DropdownMenuItem(
-                                    value: y,
-                                    child: Text(y.toString()),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (v) {
-                              if (v != null) {
-                                setState(
-                                  () => selectedDate = DateTime(
-                                    v,
-                                    selectedDate.month,
-                                    selectedDate.day,
-                                  ),
-                                );
-                              }
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: DropdownButtonFormField<int>(
-                            initialValue: selectedDate.month,
-                            decoration: const InputDecoration(
-                              labelText: 'Month',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: months
-                                .map(
-                                  (m) => DropdownMenuItem(
-                                    value: m,
-                                    child: Text(
-                                      DateFormat(
-                                        'MMMM',
-                                      ).format(DateTime(2024, m)),
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (v) {
-                              if (v != null) {
-                                setState(
-                                  () => selectedDate = DateTime(
-                                    selectedDate.year,
-                                    v,
-                                    selectedDate.day,
-                                  ),
-                                );
-                              }
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
                     SizedBox(
                       height: 350,
                       child: CalendarDatePicker(
-                        key: ValueKey(
-                          '${selectedDate.year}-${selectedDate.month}',
-                        ),
                         initialDate: selectedDate,
                         firstDate: DateTime(2020),
                         lastDate: DateTime(2030),
-                        currentDate: selectedDate,
                         onDateChanged: (date) =>
                             setState(() => selectedDate = date),
                       ),
@@ -654,11 +616,11 @@ class _HolidayPageState extends ConsumerState<HolidayPage> {
                     TextField(
                       controller: noteController,
                       decoration: const InputDecoration(
-                        labelText: 'Note (Optional)',
+                        labelText: 'Reason / Note',
                         border: OutlineInputBorder(),
                         contentPadding: EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: 8,
+                          vertical: 12,
                         ),
                       ),
                     ),
@@ -682,10 +644,7 @@ class _HolidayPageState extends ConsumerState<HolidayPage> {
                             );
 
                             if (!newWorkDays.any(
-                              (d) =>
-                                  d.date.year == selectedDate.year &&
-                                  d.date.month == selectedDate.month &&
-                                  d.date.day == selectedDate.day,
+                              (d) => isSameDay(d.date, selectedDate),
                             )) {
                               newWorkDays.add(
                                 SpecialWorkDay(
@@ -708,7 +667,7 @@ class _HolidayPageState extends ConsumerState<HolidayPage> {
 
                             if (context.mounted) Navigator.pop(context);
                           },
-                          child: const Text('Add Work Day'),
+                          child: const Text('Add Override'),
                         ),
                       ],
                     ),
@@ -721,46 +680,7 @@ class _HolidayPageState extends ConsumerState<HolidayPage> {
       ),
     );
   }
-}
 
-class _TabButton extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _TabButton({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(4),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Theme.of(context).primaryColor
-              : Colors.grey.shade50,
-          border: Border.all(
-            color: isSelected
-                ? Theme.of(context).primaryColor
-                : Colors.grey.shade300,
-          ),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            color: isSelected ? Colors.white : Colors.black54,
-            fontSize: 14,
-          ),
-        ),
-      ),
-    );
-  }
+  bool isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 }

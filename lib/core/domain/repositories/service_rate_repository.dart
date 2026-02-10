@@ -6,9 +6,8 @@ abstract class IServiceRateRepository {
     required String serviceType,
     required double hourlyRate,
     required DateTime effectiveDate,
+    DateTime? endDate,
   });
   Future<void> updateServiceRate(ServiceRate rate);
-  Future<void> archiveServiceRate(String id);
-  Future<void> unarchiveServiceRate(String id);
-  Future<void> deleteServiceRatePermanently(String id);
+  Future<void> deleteServiceRate(String id);
 }

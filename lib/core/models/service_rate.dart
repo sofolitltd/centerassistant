@@ -5,14 +5,14 @@ class ServiceRate {
   final String serviceType; // e.g., "ABA", "SLT", "OT"
   final double hourlyRate;
   final DateTime effectiveDate;
-  final bool isActive;
+  final DateTime? endDate;
 
   ServiceRate({
     required this.id,
     required this.serviceType,
     required this.hourlyRate,
     required this.effectiveDate,
-    this.isActive = true,
+    this.endDate,
   });
 
   Map<String, dynamic> toJson() {
@@ -20,7 +20,7 @@ class ServiceRate {
       'serviceType': serviceType,
       'hourlyRate': hourlyRate,
       'effectiveDate': Timestamp.fromDate(effectiveDate),
-      'isActive': isActive,
+      'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
     };
   }
 
@@ -31,7 +31,23 @@ class ServiceRate {
       serviceType: data['serviceType'] ?? '',
       hourlyRate: (data['hourlyRate'] as num?)?.toDouble() ?? 0.0,
       effectiveDate: (data['effectiveDate'] as Timestamp).toDate(),
-      isActive: data['isActive'] ?? true,
+      endDate: (data['endDate'] as Timestamp?)?.toDate(),
+    );
+  }
+
+  ServiceRate copyWith({
+    String? id,
+    String? serviceType,
+    double? hourlyRate,
+    DateTime? effectiveDate,
+    DateTime? endDate,
+  }) {
+    return ServiceRate(
+      id: id ?? this.id,
+      serviceType: serviceType ?? this.serviceType,
+      hourlyRate: hourlyRate ?? this.hourlyRate,
+      effectiveDate: effectiveDate ?? this.effectiveDate,
+      endDate: endDate ?? this.endDate,
     );
   }
 }

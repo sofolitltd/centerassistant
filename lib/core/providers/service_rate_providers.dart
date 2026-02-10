@@ -17,7 +17,12 @@ final activeServiceRatesProvider = Provider<AsyncValue<List<ServiceRate>>>((
   ref,
 ) {
   return ref.watch(allServiceRatesProvider).whenData((rates) {
-    return rates.where((r) => r.isActive).toList();
+    final now = DateTime.now();
+    return rates.where((r) {
+      final isEffective = !r.effectiveDate.isAfter(now);
+      final isNotEnded = r.endDate == null || r.endDate!.isAfter(now);
+      return isEffective && isNotEnded;
+    }).toList();
   });
 });
 
@@ -33,6 +38,7 @@ class ServiceRateActionService {
     required String serviceType,
     required double hourlyRate,
     required DateTime effectiveDate,
+    DateTime? endDate,
   }) {
     return _ref
         .read(serviceRateRepositoryProvider)
@@ -40,6 +46,7 @@ class ServiceRateActionService {
           serviceType: serviceType,
           hourlyRate: hourlyRate,
           effectiveDate: effectiveDate,
+          endDate: endDate,
         );
   }
 
@@ -47,17 +54,7 @@ class ServiceRateActionService {
     return _ref.read(serviceRateRepositoryProvider).updateServiceRate(rate);
   }
 
-  Future<void> archiveRate(String id) {
-    return _ref.read(serviceRateRepositoryProvider).archiveServiceRate(id);
-  }
-
-  Future<void> unarchiveRate(String id) {
-    return _ref.read(serviceRateRepositoryProvider).unarchiveServiceRate(id);
-  }
-
-  Future<void> deleteRatePermanently(String id) {
-    return _ref
-        .read(serviceRateRepositoryProvider)
-        .deleteServiceRatePermanently(id);
+  Future<void> deleteRate(String id) {
+    return _ref.read(serviceRateRepositoryProvider).deleteServiceRate(id);
   }
 }
