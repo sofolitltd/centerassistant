@@ -316,93 +316,174 @@ class BillingSnapshotsTab extends ConsumerWidget {
               columns: const [
                 DataColumn(label: _HeaderCell('Date')),
                 DataColumn(label: _HeaderCell('Service')),
-                DataColumn(label: _HeaderCell('Hour')),
+                DataColumn(label: _HeaderCell('Time')),
+                DataColumn(label: _HeaderCell('Hours')),
                 DataColumn(label: _HeaderCell('Rate')),
                 DataColumn(label: _HeaderCell('Discount')),
+                DataColumn(label: _HeaderCell('Type')),
                 DataColumn(label: _HeaderCell('Status')),
                 DataColumn(label: _HeaderCell('Bill'), numeric: true),
               ],
               rows: sessions.map((s) {
-                double sessionBill = 0;
-                List<String> ratesText = [];
-                List<String> discountsText = [];
+                double totalBill = 0;
                 final date = s.date.toDate();
 
-                for (var service in s.services) {
+                List<Widget> serviceWidgets = [];
+                List<Widget> timeWidgets = [];
+                List<Widget> hourWidgets = [];
+                List<Widget> rateWidgets = [];
+                List<Widget> discountWidgets = [];
+                List<Widget> typeWidgets = [];
+
+                for (int i = 0; i < s.services.length; i++) {
+                  final sv = s.services[i];
                   final r =
                       BillingExportHelper.getApplicableRate(
                         allRates,
-                        service.type,
+                        sv.type,
                         date,
                       )?.hourlyRate ??
                       0.0;
                   final d =
                       BillingExportHelper.getApplicableDiscount(
                         allDiscounts,
-                        service.type,
+                        sv.type,
                         date,
                       )?.discountPerHour ??
                       0.0;
+
                   if (s.status == SessionStatus.completed ||
                       s.status == SessionStatus.scheduled) {
-                    sessionBill += service.duration * (r - d);
+                    totalBill += sv.duration * (r - d);
                   }
-                  ratesText.add('৳${currencyFormat.format(r)}');
-                  discountsText.add('৳${currencyFormat.format(d)}');
+
+                  serviceWidgets.add(
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(sv.type, style: const TextStyle(fontSize: 10)),
+                    ),
+                  );
+
+                  timeWidgets.add(
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(
+                        '${AddScheduleUtils.formatTimeToAmPm(sv.startTime)}-${AddScheduleUtils.formatTimeToAmPm(sv.endTime)}',
+                        style: const TextStyle(fontSize: 9),
+                      ),
+                    ),
+                  );
+
+                  hourWidgets.add(
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(
+                        '${sv.duration}h',
+                        style: const TextStyle(fontSize: 10),
+                      ),
+                    ),
+                  );
+
+                  rateWidgets.add(
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(
+                        '৳${currencyFormat.format(r)}',
+                        style: const TextStyle(fontSize: 9),
+                      ),
+                    ),
+                  );
+
+                  discountWidgets.add(
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(
+                        '৳${currencyFormat.format(d)}',
+                        style: const TextStyle(
+                          fontSize: 9,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                    ),
+                  );
+
+                  typeWidgets.add(
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(
+                        sv.sessionType.displayName,
+                        style: const TextStyle(fontSize: 9),
+                      ),
+                    ),
+                  );
+
+                  if (i < s.services.length - 1) {
+                    const divider = Divider(height: 1, thickness: 0.5);
+                    serviceWidgets.add(divider);
+                    timeWidgets.add(divider);
+                    hourWidgets.add(divider);
+                    rateWidgets.add(divider);
+                    discountWidgets.add(divider);
+                    typeWidgets.add(divider);
+                  }
                 }
 
                 return DataRow(
                   cells: [
                     DataCell(
                       Text(
-                        DateFormat('dd-MM-yy').format(date),
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                    ),
-                    DataCell(
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: s.services
-                              .map(
-                                (sv) => Text(
-                                  '${sv.type} (${sv.sessionType.displayName}) | ${AddScheduleUtils.formatTimeToAmPm(sv.startTime)}-${AddScheduleUtils.formatTimeToAmPm(sv.endTime)}',
-                                  style: const TextStyle(fontSize: 11),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        '${s.totalDuration}h',
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        ratesText.join('\n'),
+                        DateFormat('dd-MM-yyyy').format(date),
                         style: const TextStyle(fontSize: 10),
                       ),
                     ),
                     DataCell(
-                      Text(
-                        discountsText.join('\n'),
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Colors.redAccent,
-                        ),
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: serviceWidgets,
+                      ),
+                    ),
+                    DataCell(
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: timeWidgets,
+                      ),
+                    ),
+                    DataCell(
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: hourWidgets,
+                      ),
+                    ),
+                    DataCell(
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: rateWidgets,
+                      ),
+                    ),
+                    DataCell(
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: discountWidgets,
+                      ),
+                    ),
+                    DataCell(
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: typeWidgets,
                       ),
                     ),
                     DataCell(_buildStatusBadge(s.status)),
                     DataCell(
                       Text(
-                        '৳${currencyFormat.format(sessionBill)}',
+                        '৳${currencyFormat.format(totalBill)}',
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -677,6 +758,6 @@ class _HeaderCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     label,
-    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
   );
 }

@@ -1,11 +1,11 @@
 import 'package:center_assistant/app/admin/features/billing/presentation/pages/all_transactions_page.dart';
+import 'package:center_assistant/app/admin/features/dashboard/presentation/pages/admin_report_page.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '/app/admin/features/auth/presentation/pages/admin_login_page.dart';
 import '/app/admin/features/clients/presentation/pages/add_client_page.dart';
 import '/app/admin/features/clients/presentation/pages/client_details_page.dart';
-import '/app/admin/features/clients/presentation/pages/client_leave_page.dart';
 import '/app/admin/features/clients/presentation/pages/client_page.dart';
 import '/app/admin/features/dashboard/presentation/pages/admin_dashboard_page.dart';
 import '/app/admin/features/employees/presentation/pages/access_portal_page.dart';
@@ -16,13 +16,10 @@ import '/app/admin/features/employees/presentation/pages/employee_details_page.d
 import '/app/admin/features/employees/presentation/pages/employee_page.dart';
 import '/app/admin/features/layout/presentation/pages/admin_layout_page.dart';
 import '/app/admin/features/leave/presentation/pages/leave_management_page.dart';
-import '/app/admin/features/leaves/presentation/pages/admin_apply_leave_page.dart';
-import '/app/admin/features/leaves/presentation/pages/leave_page.dart';
 import '/app/admin/features/settings/presentation/pages/holiday_page.dart';
 import '/app/admin/features/settings/presentation/pages/service_rates_page.dart';
 import '/app/admin/features/time_slots/presentation/pages/time_slot_page.dart';
 import '/app/admin/features/utilization/presentation/pages/therapist_utilization_page.dart';
-import '../features/clients/presentation/pages/billing/client_billing_page.dart';
 import '../features/contact/presentation/pages/employee_contact_page.dart';
 import '../features/schedule/presentation/pages/add/add_schedule_page.dart';
 import '../features/schedule/presentation/pages/edit/edit_schedule_page.dart';
@@ -54,9 +51,19 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           path: '/admin/dashboard',
           pageBuilder: (context, state) => NoTransitionPage(
             child: Title(
-              title: 'Overview | Center Assistant',
+              title: 'Dashboard | Center Assistant',
               color: Colors.black,
               child: const AdminDashboardPage(),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/admin/reports',
+          pageBuilder: (context, state) => NoTransitionPage(
+            child: Title(
+              title: 'Reports | Center Assistant',
+              color: Colors.black,
+              child: const AdminReportPage(),
             ),
           ),
         ),
@@ -106,7 +113,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           },
         ),
 
-        ///  employee
+        ///  employee directory
         GoRoute(
           path: '/admin/employees',
           pageBuilder: (context, state) => NoTransitionPage(
@@ -117,60 +124,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
             ),
           ),
         ),
-        GoRoute(
-          path: '/admin/employees/:employeeId',
-          redirect: (context, state) =>
-              '/admin/employees/${state.pathParameters['employeeId']}/details',
-        ),
-        GoRoute(
-          path: '/admin/employees/:employeeId/:tab',
-          pageBuilder: (context, state) {
-            final employeeId = state.pathParameters['employeeId']!;
-            final tab = state.pathParameters['tab'] ?? 'details';
-            return NoTransitionPage(
-              child: EmployeeDetailsPage(
-                employeeId: employeeId,
-                initialTab: tab,
-              ),
-            );
-          },
-        ),
-        GoRoute(
-          path: '/admin/employees/:employeeId/leave',
-          pageBuilder: (context, state) {
-            final employeeId = state.pathParameters['employeeId']!;
-            final employeeName =
-                state.uri.queryParameters['name'] ?? 'Employee';
-            return NoTransitionPage(
-              child: Title(
-                title: 'Employee Leave | Center Assistant',
-                color: Colors.black,
-                child: LeavePage(
-                  entityId: employeeId,
-                  entityName: employeeName,
-                ),
-              ),
-            );
-          },
-        ),
-        GoRoute(
-          path: '/admin/employees/:employeeId/leave/apply',
-          pageBuilder: (context, state) {
-            final employeeId = state.pathParameters['employeeId']!;
-            final employeeName =
-                state.uri.queryParameters['name'] ?? 'Employee';
-            return NoTransitionPage(
-              child: Title(
-                title: 'Mark Leave | Center Assistant',
-                color: Colors.black,
-                child: AdminApplyLeavePage(
-                  entityId: employeeId,
-                  entityName: employeeName,
-                ),
-              ),
-            );
-          },
-        ),
+
         GoRoute(
           path: '/admin/employees/add',
           pageBuilder: (context, state) => NoTransitionPage(
@@ -181,6 +135,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
             ),
           ),
         ),
+
         GoRoute(
           path: '/admin/employees/:id/edit',
           pageBuilder: (context, state) => NoTransitionPage(
@@ -191,6 +146,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
             ),
           ),
         ),
+
         GoRoute(
           path: '/admin/employees/invite',
           pageBuilder: (context, state) {
@@ -205,7 +161,28 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           },
         ),
 
-        // client
+        // Tabbed details route (Details, Schedule, Leave)
+        GoRoute(
+          path: '/admin/employees/:employeeId/:tab',
+          pageBuilder: (context, state) {
+            final employeeId = state.pathParameters['employeeId']!;
+            final tab = state.pathParameters['tab'] ?? 'details';
+            return NoTransitionPage(
+              child: EmployeeDetailsPage(
+                employeeId: employeeId,
+                initialTab: tab,
+              ),
+            );
+          },
+        ),
+
+        GoRoute(
+          path: '/admin/employees/:employeeId',
+          redirect: (context, state) =>
+              '/admin/employees/${state.pathParameters['employeeId']}/details',
+        ),
+
+        // client directory
         GoRoute(
           path: '/admin/clients',
           pageBuilder: (context, state) => NoTransitionPage(
@@ -213,50 +190,6 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
               title: 'Clients | Center Assistant',
               color: Colors.black,
               child: const ClientPage(),
-            ),
-          ),
-        ),
-        GoRoute(
-          path: '/admin/clients/:clientId',
-          redirect: (context, state) =>
-              '/admin/clients/${state.pathParameters['clientId']}/details',
-        ),
-        GoRoute(
-          path: '/admin/clients/:clientId/:tab',
-          pageBuilder: (context, state) {
-            final clientId = state.pathParameters['clientId']!;
-            final tab = state.pathParameters['tab'] ?? 'details';
-            return NoTransitionPage(
-              child: ClientDetailsPage(clientId: clientId, initialTab: tab),
-            );
-          },
-        ),
-        GoRoute(
-          path: '/admin/clients/:clientId/absence',
-          pageBuilder: (context, state) {
-            final clientId = state.pathParameters['clientId']!;
-            final clientName = state.uri.queryParameters['name'] ?? 'Client';
-            return NoTransitionPage(
-              child: Title(
-                title: 'Client Absence | Center Assistant',
-                color: Colors.black,
-                child: ClientLeavePage(
-                  clientId: clientId,
-                  clientName: clientName,
-                ),
-              ),
-            );
-          },
-        ),
-        GoRoute(
-          path: '/admin/clients/:clientId/billing',
-          pageBuilder: (context, state) => NoTransitionPage(
-            child: Title(
-              title: 'Billing & Sessions | Center Assistant',
-              color: Colors.black,
-              child: ClientBillingPage(
-                clientId: state.pathParameters['clientId']!,
-              ),
             ),
           ),
         ),
@@ -269,6 +202,24 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
               child: const AddClientPage(),
             ),
           ),
+        ),
+
+        // Tabbed details route (Details, Schedule, Billing, Absence)
+        GoRoute(
+          path: '/admin/clients/:clientId/:tab',
+          pageBuilder: (context, state) {
+            final clientId = state.pathParameters['clientId']!;
+            final tab = state.pathParameters['tab'] ?? 'details';
+            return NoTransitionPage(
+              child: ClientDetailsPage(clientId: clientId, initialTab: tab),
+            );
+          },
+        ),
+
+        GoRoute(
+          path: '/admin/clients/:clientId',
+          redirect: (context, state) =>
+              '/admin/clients/${state.pathParameters['clientId']}/details',
         ),
 
         /// settings

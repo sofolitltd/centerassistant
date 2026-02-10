@@ -1,48 +1,27 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
-import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '/core/models/employee.dart';
-import '/core/models/invoice_snapshot.dart';
-import '/core/models/leave.dart';
 import '/core/models/session.dart';
-import '/core/models/transaction.dart';
-import '/core/providers/billing_providers.dart';
-import '/core/providers/client_providers.dart';
 import '/core/providers/employee_providers.dart';
-import '/core/providers/invoice_snapshot_providers.dart';
 import '/core/providers/leave_providers.dart';
 import '/core/providers/session_providers.dart';
+import '../../../../../../core/models/leave.dart';
 
 class AdminDashboardPage extends ConsumerWidget {
   const AdminDashboardPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final clientsAsync = ref.watch(clientsProvider);
     final employeesAsync = ref.watch(employeesProvider);
     final schedulableDeptsAsync = ref.watch(schedulableDepartmentsProvider);
     final todayScheduleAsync = ref.watch(scheduleViewProvider);
     final leavesAsync = ref.watch(allLeavesProvider);
-    final monthKey = DateFormat('yyyy-MM').format(DateTime.now());
 
-    final monthlySnapshotsAsync = ref.watch(
-      allInvoiceSnapshotsByMonthProvider((
-        monthKey: monthKey,
-        type: InvoiceType.post,
-      )),
-    );
-    final monthlySnapshotsByRangeAsync = ref.watch(
-      allInvoiceSnapshotsByRangeProvider(6),
-    );
     final allMonthlySessionsAsync = ref.watch(allMonthlySessionsProvider);
     final allWeeklySessionsAsync = ref.watch(allWeeklySessionsProvider);
-
-    final transactionsAsync = ref.watch(allTransactionsProvider);
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -54,70 +33,105 @@ class AdminDashboardPage extends ConsumerWidget {
             _buildHeader(context),
             const SizedBox(height: 32),
 
-            // KPI Grid - Responsive Layout
-            _buildKpiGrid(context, monthlySnapshotsAsync, clientsAsync),
-
-            const SizedBox(height: 32),
-
-            // Main Charts & Lists Section
             LayoutBuilder(
               builder: (context, constraints) {
                 bool isWide = constraints.maxWidth > 1000;
-                return Column(
-                  children: [
-                    if (isWide)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: _buildLeftColumn(
+                if (isWide) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          children: [
+                            _buildSectionTitle(
                               context,
-                              ref,
-                              transactionsAsync,
-                              monthlySnapshotsByRangeAsync,
+                              'Therapist Weekly Load & Capacity (Action Required)',
+                              icon: LucideIcons.userCheck,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildTherapistWorkloadList(
+                              context,
                               allWeeklySessionsAsync,
                               employeesAsync,
                               schedulableDeptsAsync,
-                              clientsAsync,
                             ),
-                          ),
-                          const SizedBox(width: 24),
-                          Expanded(
-                            flex: 2,
-                            child: _buildRightColumn(
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          children: [
+                            _buildSectionTitle(
+                              context,
+                              'Session Distribution Breakdown',
+                              icon: LucideIcons.pieChart,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildSessionStatusChart(
                               context,
                               allMonthlySessionsAsync,
+                            ),
+                            const SizedBox(height: 32),
+                            _buildSectionTitle(
+                              context,
+                              'Operational Activity Pulse',
+                              icon: LucideIcons.activity,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildOperationsCard(
                               todayScheduleAsync,
                               leavesAsync,
+                              allMonthlySessionsAsync,
                             ),
-                          ),
-                        ],
-                      )
-                    else
-                      Column(
-                        children: [
-                          _buildLeftColumn(
-                            context,
-                            ref,
-                            transactionsAsync,
-                            monthlySnapshotsByRangeAsync,
-                            allWeeklySessionsAsync,
-                            employeesAsync,
-                            schedulableDeptsAsync,
-                            clientsAsync,
-                          ),
-                          const SizedBox(height: 32),
-                          _buildRightColumn(
-                            context,
-                            allMonthlySessionsAsync,
-                            todayScheduleAsync,
-                            leavesAsync,
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                  ],
-                );
+                    ],
+                  );
+                } else {
+                  return Column(
+                    children: [
+                      _buildSectionTitle(
+                        context,
+                        'Therapist Weekly Load & Capacity (Action Required)',
+                        icon: LucideIcons.userCheck,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTherapistWorkloadList(
+                        context,
+                        allWeeklySessionsAsync,
+                        employeesAsync,
+                        schedulableDeptsAsync,
+                      ),
+                      const SizedBox(height: 32),
+                      _buildSectionTitle(
+                        context,
+                        'Session Distribution Breakdown',
+                        icon: LucideIcons.pieChart,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildSessionStatusChart(
+                        context,
+                        allMonthlySessionsAsync,
+                      ),
+                      const SizedBox(height: 32),
+                      _buildSectionTitle(
+                        context,
+                        'Operational Activity Pulse',
+                        icon: LucideIcons.activity,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildOperationsCard(
+                        todayScheduleAsync,
+                        leavesAsync,
+                        allMonthlySessionsAsync,
+                      ),
+                    ],
+                  );
+                }
               },
             ),
           ],
@@ -126,389 +140,22 @@ class AdminDashboardPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildLeftColumn(
-    BuildContext context,
-    WidgetRef ref,
-    AsyncValue<List<ClientTransaction>> transactionsAsync,
-    AsyncValue<List<InvoiceSnapshot>> monthlySnapshotsByRangeAsync,
-    AsyncValue<List<Session>> weeklySessionsAsync,
-    AsyncValue<List<Employee>> employeesAsync,
-    AsyncValue<Set<String>> schedulableDeptsAsync,
-    AsyncValue<dynamic> clientsAsync,
-  ) {
-    return Column(
-      children: [
-        _buildSectionTitle(
-          context,
-          'Strategic Financial Growth (Realized Revenue)',
-          icon: LucideIcons.trendingUp,
-        ),
-        const SizedBox(height: 16),
-        _buildRevenueChart(context, ref, monthlySnapshotsByRangeAsync),
-        const SizedBox(height: 32),
-        _buildSectionTitle(
-          context,
-          'Therapist Weekly Load & Capacity (Action Required)',
-          icon: LucideIcons.userCheck,
-        ),
-        const SizedBox(height: 16),
-        _buildTherapistWorkloadList(
-          context,
-          weeklySessionsAsync,
-          employeesAsync,
-          schedulableDeptsAsync,
-        ),
-        const SizedBox(height: 32),
-        _buildSectionTitle(
-          context,
-          'Latest Transactions Activity',
-          icon: LucideIcons.history,
-        ),
-        const SizedBox(height: 16),
-        _buildRecentTransactions(context, transactionsAsync, clientsAsync),
-      ],
-    );
-  }
-
-  Widget _buildRightColumn(
-    BuildContext context,
-    AsyncValue<List<Session>> monthlySessionsAsync,
-    AsyncValue<dynamic> scheduleAsync,
-    AsyncValue<dynamic> leavesAsync,
-  ) {
-    return Column(
-      children: [
-        _buildSectionTitle(
-          context,
-          'Session Distribution Breakdown',
-          icon: LucideIcons.pieChart,
-        ),
-        const SizedBox(height: 16),
-        _buildSessionStatusChart(context, monthlySessionsAsync),
-        const SizedBox(height: 32),
-        _buildSectionTitle(
-          context,
-          'Operational Activity Pulse',
-          icon: LucideIcons.activity,
-        ),
-        const SizedBox(height: 16),
-        _buildOperationsCard(scheduleAsync, leavesAsync, monthlySessionsAsync),
-      ],
-    );
-  }
-
   Widget _buildHeader(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Center Overview',
+          'Dashboard',
           style: Theme.of(context).textTheme.headlineMedium!.copyWith(
             fontWeight: FontWeight.w900,
             color: Colors.black87,
           ),
         ),
         Text(
-          'Detailed insights of your center',
+          'Quick overview of current operations',
           style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
         ),
       ],
-    );
-  }
-
-  Widget _buildKpiGrid(
-    BuildContext context,
-    AsyncValue<List<InvoiceSnapshot>> snapshotsAsync,
-    AsyncValue<dynamic> clientsAsync,
-  ) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        int crossAxisCount = constraints.maxWidth > 1000 ? 4 : 2;
-        int maxItems = 4;
-
-        return MasonryGridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: crossAxisCount,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          itemCount: maxItems,
-          itemBuilder: (context, index) {
-            if (index == 0) {
-              return snapshotsAsync.when(
-                data: (snapshots) {
-                  final total = snapshots.fold<double>(
-                    0,
-                    (sum, s) => sum + s.totalAmount,
-                  );
-                  return _buildKpiCard(
-                    context,
-                    'Monthly Revenue',
-                    '৳${NumberFormat('#,##,###').format(total)}',
-                    LucideIcons.banknote,
-                    Colors.black,
-                    'Realized this month',
-                  );
-                },
-                loading: () => _buildKpiCard(
-                  context,
-                  'Monthly Revenue',
-                  '...',
-                  LucideIcons.banknote,
-                  Colors.black,
-                  'Loading...',
-                ),
-                error: (_, __) => _buildKpiCard(
-                  context,
-                  'Monthly Revenue',
-                  '৳0',
-                  LucideIcons.banknote,
-                  Colors.black,
-                  'Error',
-                ),
-              );
-            }
-            if (index == 1) {
-              return clientsAsync.when(
-                data: (clients) {
-                  final totalDue = (clients as List).fold<double>(
-                    0,
-                    (sum, c) =>
-                        c.walletBalance < 0 ? sum + c.walletBalance.abs() : sum,
-                  );
-                  return _buildKpiCard(
-                    context,
-                    'Total Outstanding Due',
-                    '৳${NumberFormat('#,##,###').format(totalDue)}',
-                    LucideIcons.alertCircle,
-                    Colors.red,
-                    'Collectable from clients',
-                  );
-                },
-                loading: () => _buildKpiCard(
-                  context,
-                  'Total Outstanding Due',
-                  '...',
-                  LucideIcons.alertCircle,
-                  Colors.red,
-                  'Loading...',
-                ),
-                error: (_, _) => _buildKpiCard(
-                  context,
-                  'Total Outstanding Due',
-                  '৳0',
-                  LucideIcons.alertCircle,
-                  Colors.red,
-                  'Error',
-                ),
-              );
-            }
-            if (index == 2) {
-              return clientsAsync.when(
-                data: (clients) {
-                  final totalAdvance = (clients as List).fold<double>(
-                    0,
-                    (sum, c) =>
-                        c.walletBalance > 0 ? sum + c.walletBalance : sum,
-                  );
-                  return _buildKpiCard(
-                    context,
-                    'Total Advance Balance',
-                    '৳${NumberFormat('#,##,###').format(totalAdvance)}',
-                    LucideIcons.wallet,
-                    Colors.blueAccent,
-                    'Prepaid by clients',
-                  );
-                },
-                loading: () => _buildKpiCard(
-                  context,
-                  'Total Advance Balance',
-                  '...',
-                  LucideIcons.wallet,
-                  Colors.blueAccent,
-                  'Loading...',
-                ),
-                error: (_, __) => _buildKpiCard(
-                  context,
-                  'Total Advance Balance',
-                  '0',
-                  LucideIcons.wallet,
-                  Colors.blueAccent,
-                  'Error',
-                ),
-              );
-            }
-            return clientsAsync.when(
-              data: (clients) {
-                final totalDeposit = (clients as List).fold<double>(
-                  0,
-                  (sum, c) => sum + c.securityDeposit,
-                );
-                return _buildKpiCard(
-                  context,
-                  'Total Security Deposit',
-                  '৳${NumberFormat('#,##,###').format(totalDeposit)}',
-                  LucideIcons.shieldCheck,
-                  Colors.orange.shade800,
-                  'Held security funds',
-                );
-              },
-              loading: () => _buildKpiCard(
-                context,
-                'Total Security Deposit',
-                '...',
-                LucideIcons.shieldCheck,
-                Colors.orange.shade800,
-                'Loading...',
-              ),
-              error: (_, __) => _buildKpiCard(
-                context,
-                'Total Security Deposit',
-                '0',
-                LucideIcons.shieldCheck,
-                Colors.orange.shade800,
-                'Error',
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildRevenueChart(
-    BuildContext context,
-    WidgetRef ref,
-    AsyncValue<List<InvoiceSnapshot>> snapshotsByRangeAsync,
-  ) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      child: Container(
-        height: 300,
-        padding: const EdgeInsets.fromLTRB(16, 40, 24, 16),
-        child: snapshotsByRangeAsync.when(
-          data: (snapshots) {
-            final Map<String, double> monthlyRevenue = {};
-            final now = DateTime.now();
-
-            for (int i = 0; i < 6; i++) {
-              final date = DateTime(now.year, now.month - i);
-              final monthKey = DateFormat('yyyy-MM').format(date);
-              monthlyRevenue[monthKey] = 0.0;
-            }
-
-            for (var s in snapshots) {
-              final monthKey = s.monthKey;
-              if (monthlyRevenue.containsKey(monthKey)) {
-                monthlyRevenue[monthKey] =
-                    monthlyRevenue[monthKey]! + s.totalAmount;
-              }
-            }
-
-            final sortedMonths = monthlyRevenue.keys.toList()..sort();
-            final List<BarChartGroupData> barGroups = [];
-
-            double maxVal = 0;
-            for (int i = 0; i < sortedMonths.length; i++) {
-              final month = sortedMonths[i];
-              final revenue = monthlyRevenue[month]!;
-              if (revenue > maxVal) maxVal = revenue;
-              barGroups.add(
-                BarChartGroupData(
-                  x: i,
-                  barRods: [
-                    BarChartRodData(
-                      toY: revenue,
-                      color: Colors.blueAccent,
-                      width: 22,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            double interval = (maxVal / 5);
-            if (interval < 1000) interval = 1000;
-            interval = (interval / 500).ceil() * 500.0;
-
-            return BarChart(
-              BarChartData(
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  getDrawingHorizontalLine: (value) =>
-                      FlLine(color: Colors.grey.shade100, strokeWidth: 1),
-                ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        if (value.toInt() >= 0 &&
-                            value.toInt() < sortedMonths.length) {
-                          final monthKey = sortedMonths[value.toInt()];
-                          final monthDate = DateTime.parse('$monthKey-01');
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              DateFormat('MMM yy').format(monthDate),
-                              style: const TextStyle(
-                                fontSize: 9,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          );
-                        }
-                        return const Text('');
-                      },
-                    ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 65,
-                      interval: interval,
-                      getTitlesWidget: (value, meta) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: Text(
-                            '৳${NumberFormat('#,###').format(value.toInt())}',
-                            style: const TextStyle(
-                              fontSize: 9,
-                              color: Colors.grey,
-                            ),
-                            textAlign: TextAlign.right,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                borderData: FlBorderData(show: false),
-                barGroups: barGroups,
-                maxY: (maxVal * 1.15).ceilToDouble(),
-              ),
-            );
-          },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stack) {
-            debugPrint('Error loading revenue data: $error');
-            return const Center(child: Text('Error loading revenue data'));
-          },
-        ),
-      ),
     );
   }
 
@@ -550,97 +197,82 @@ class AdminDashboardPage extends ConsumerWidget {
                     return (bCount - 10).abs().compareTo((aCount - 10).abs());
                   });
 
-                  final displayList = filteredEmployees.take(5).toList();
+                  final displayList = filteredEmployees.take(10).toList();
 
-                  return Column(
-                    children: [
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: displayList.length,
-                        separatorBuilder: (context, index) =>
-                            Divider(height: 1, color: Colors.grey.shade100),
-                        itemBuilder: (context, index) {
-                          final emp = displayList[index];
-                          final count = workload[emp.id] ?? 0;
-                          final percentage = (count / targetSessions).clamp(
-                            0.0,
-                            1.0,
-                          );
+                  return ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: displayList.length,
+                    separatorBuilder: (context, index) =>
+                        Divider(height: 1, color: Colors.grey.shade100),
+                    itemBuilder: (context, index) {
+                      final emp = displayList[index];
+                      final count = workload[emp.id] ?? 0;
+                      final percentage = (count / targetSessions).clamp(
+                        0.0,
+                        1.0,
+                      );
 
-                          Color statusColor = Colors.blue;
-                          if (count > 15)
-                            statusColor = Colors.red;
-                          else if (count >= 13)
-                            statusColor = Colors.orange;
-                          else if (count >= 6)
-                            statusColor = Colors.green;
+                      Color statusColor = Colors.blue;
+                      if (count > 15)
+                        statusColor = Colors.red;
+                      else if (count >= 13)
+                        statusColor = Colors.orange;
+                      else if (count >= 6)
+                        statusColor = Colors.green;
 
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 16,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      emp.name,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: statusColor.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Text(
-                                        '$count/$targetSessions',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: statusColor,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                Text(
+                                  emp.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
                                 ),
-                                const SizedBox(height: 12),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: LinearProgressIndicator(
-                                    value: percentage,
-                                    backgroundColor: Colors.grey.shade100,
-                                    color: statusColor,
-                                    minHeight: 8,
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: statusColor.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '$count/$targetSessions',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: statusColor,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                          );
-                        },
-                      ),
-                      ...[
-                        const Divider(height: 1),
-                        TextButton(
-                          onPressed: () => context.go('/admin/utilization'),
-                          child: Text(
-                            'View All ${filteredEmployees.length} Therapists',
-                          ),
+                            const SizedBox(height: 12),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: LinearProgressIndicator(
+                                value: percentage,
+                                backgroundColor: Colors.grey.shade100,
+                                color: statusColor,
+                                minHeight: 8,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                      ],
-                    ],
+                      );
+                    },
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
@@ -739,10 +371,8 @@ class AdminDashboardPage extends ConsumerWidget {
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) {
-            debugPrint('Error loading session data: $error');
-            return const Center(child: Text('Error loading session data'));
-          },
+          error: (error, _) =>
+              const Center(child: Text('Error loading session data')),
         ),
       ),
     );
@@ -779,104 +409,6 @@ class AdminDashboardPage extends ConsumerWidget {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildRecentTransactions(
-    BuildContext context,
-    AsyncValue<List<ClientTransaction>> transactionsAsync,
-    AsyncValue<dynamic> clientsAsync,
-  ) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        children: [
-          transactionsAsync.when(
-            data: (transactions) {
-              if (transactions.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.all(48.0),
-                  child: Center(child: Text('No recent transactions.')),
-                );
-              }
-              final displayList = transactions.take(6).toList();
-              return Column(
-                children: [
-                  ...displayList.map((tx) {
-                    final isCredit = tx.type == TransactionType.prepaid;
-
-                    // Fetch client name for better identification
-                    final client = (clientsAsync.value as List?)
-                        ?.where((c) => c.id == tx.clientId)
-                        .firstOrNull;
-
-                    return Container(
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(color: Colors.grey.shade100),
-                        ),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 8,
-                        ),
-                        leading: CircleAvatar(
-                          backgroundColor:
-                              (isCredit ? Colors.black : Colors.blue)
-                                  .withOpacity(0.1),
-                          child: Icon(
-                            isCredit
-                                ? LucideIcons.arrowDownLeft
-                                : LucideIcons.zap,
-                            size: 18,
-                            color: isCredit ? Colors.black : Colors.blue,
-                          ),
-                        ),
-                        title: Text(
-                          '${client?.name ?? "Unknown"} - ${tx.description}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        subtitle: Text(
-                          DateFormat('MMM dd, hh:mm a').format(tx.timestamp),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                        trailing: Text(
-                          '${isCredit ? "+" : "-"} ৳${NumberFormat('#,###').format(tx.amount.abs())}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 16,
-                            color: isCredit ? Colors.black : Colors.black87,
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                ],
-              );
-            },
-            loading: () => const LinearProgressIndicator(),
-            error: (_, __) =>
-                const Center(child: Text('Error loading activity')),
-          ),
-          const Divider(height: 1),
-          TextButton(
-            onPressed: () => context.go('/admin/transactions'),
-            child: const Text('View All Transactions Activity'),
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
     );
   }
 
@@ -949,76 +481,6 @@ class AdminDashboardPage extends ConsumerWidget {
               ),
               LucideIcons.xCircle,
               Colors.red,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildKpiCard(
-    BuildContext context,
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-    String subtitle,
-  ) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Icon(icon, color: color, size: 24),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 24, // Refined font size
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.5,
-                height: 1,
-              ),
             ),
           ],
         ),

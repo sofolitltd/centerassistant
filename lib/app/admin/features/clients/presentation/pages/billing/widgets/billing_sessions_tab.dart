@@ -566,19 +566,28 @@ class _DataTableWidget extends ConsumerWidget {
             border: TableBorder.all(color: Colors.grey.shade200, width: 1),
             columns: const [
               DataColumn(label: _HeaderCell('Date')),
-              DataColumn(label: _HeaderCell('Service Breakdown')),
+              DataColumn(label: _HeaderCell('Service')),
+              DataColumn(label: _HeaderCell('Time')),
               DataColumn(label: _HeaderCell('Hours')),
               DataColumn(label: _HeaderCell('Rate')),
-              DataColumn(label: _HeaderCell('Disc')),
+              DataColumn(label: _HeaderCell('Discount')),
+              DataColumn(label: _HeaderCell('Type')),
               DataColumn(label: _HeaderCell('Status')),
               DataColumn(label: _HeaderCell('Bill'), numeric: true),
             ],
             rows: sorted.map((s) {
-              double bill = 0;
-              List<String> rates = [];
-              List<String> discounts = [];
+              double totalBill = 0;
               final date = s.date.toDate();
-              for (var sv in s.services) {
+
+              List<Widget> serviceWidgets = [];
+              List<Widget> timeWidgets = [];
+              List<Widget> hourWidgets = [];
+              List<Widget> rateWidgets = [];
+              List<Widget> discountWidgets = [];
+              List<Widget> typeWidgets = [];
+
+              for (int i = 0; i < s.services.length; i++) {
+                final sv = s.services[i];
                 final r =
                     BillingExportHelper.getApplicableRate(
                       allRates,
@@ -593,53 +602,131 @@ class _DataTableWidget extends ConsumerWidget {
                       date,
                     )?.discountPerHour ??
                     0.0;
+
                 if (s.status == SessionStatus.completed ||
-                    s.status == SessionStatus.scheduled)
-                  bill += sv.duration * (r - d);
-                rates.add('৳${currencyFormat.format(r)}');
-                discounts.add('৳${currencyFormat.format(d)}');
-              }
-              return DataRow(
-                cells: [
-                  DataCell(
-                    Text(
-                      DateFormat('dd-MM').format(date),
-                      style: const TextStyle(fontSize: 11),
+                    s.status == SessionStatus.scheduled) {
+                  totalBill += sv.duration * (r - d);
+                }
+
+                serviceWidgets.add(
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(sv.type, style: const TextStyle(fontSize: 10)),
+                  ),
+                );
+
+                timeWidgets.add(
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      '${AddScheduleUtils.formatTimeToAmPm(sv.startTime)}-${AddScheduleUtils.formatTimeToAmPm(sv.endTime)}',
+                      style: const TextStyle(fontSize: 9),
                     ),
                   ),
-                  DataCell(
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: s.services
-                            .map(
-                              (sv) => Text(
-                                '${sv.type} | ${AddScheduleUtils.formatTimeToAmPm(sv.startTime)}-${AddScheduleUtils.formatTimeToAmPm(sv.endTime)}',
-                                style: const TextStyle(fontSize: 10),
-                              ),
-                            )
-                            .toList(),
-                      ),
+                );
+
+                hourWidgets.add(
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      '${sv.duration}h',
+                      style: const TextStyle(fontSize: 10),
                     ),
                   ),
-                  DataCell(
-                    Text(
-                      '${s.totalDuration}h',
-                      style: const TextStyle(fontSize: 11),
+                );
+
+                rateWidgets.add(
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      '৳${currencyFormat.format(r)}',
+                      style: const TextStyle(fontSize: 9),
                     ),
                   ),
-                  DataCell(
-                    Text(rates.join('\n'), style: const TextStyle(fontSize: 9)),
-                  ),
-                  DataCell(
-                    Text(
-                      discounts.join('\n'),
+                );
+
+                discountWidgets.add(
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      '৳${currencyFormat.format(d)}',
                       style: const TextStyle(
                         fontSize: 9,
                         color: Colors.redAccent,
                       ),
+                    ),
+                  ),
+                );
+
+                typeWidgets.add(
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      sv.sessionType.displayName,
+                      style: const TextStyle(fontSize: 9),
+                    ),
+                  ),
+                );
+
+                if (i < s.services.length - 1) {
+                  const divider = Divider(height: 1, thickness: 0.5);
+                  serviceWidgets.add(divider);
+                  timeWidgets.add(divider);
+                  hourWidgets.add(divider);
+                  rateWidgets.add(divider);
+                  discountWidgets.add(divider);
+                  typeWidgets.add(divider);
+                }
+              }
+
+              return DataRow(
+                cells: [
+                  DataCell(
+                    Text(
+                      DateFormat('dd-MM-yyyy').format(date),
+                      style: const TextStyle(fontSize: 10),
+                    ),
+                  ),
+                  DataCell(
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: serviceWidgets,
+                    ),
+                  ),
+                  DataCell(
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: timeWidgets,
+                    ),
+                  ),
+                  DataCell(
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: hourWidgets,
+                    ),
+                  ),
+                  DataCell(
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: rateWidgets,
+                    ),
+                  ),
+                  DataCell(
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: discountWidgets,
+                    ),
+                  ),
+                  DataCell(
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: typeWidgets,
                     ),
                   ),
                   DataCell(
@@ -676,9 +763,9 @@ class _DataTableWidget extends ConsumerWidget {
                   ),
                   DataCell(
                     Text(
-                      '৳${currencyFormat.format(bill)}',
+                      '৳${currencyFormat.format(totalBill)}',
                       style: const TextStyle(
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

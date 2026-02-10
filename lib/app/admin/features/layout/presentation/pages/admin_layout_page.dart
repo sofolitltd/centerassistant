@@ -167,7 +167,7 @@ class _SideMenuState extends State<_SideMenu> {
     super.didChangeDependencies();
     final location = GoRouterState.of(context).matchedLocation;
 
-    if (location.contains('/admin/settings')) {
+    if (location.contains('/admin/settings') || location.contains('/admin/reports')) {
       _isSettingsSubmenuOpen = true;
     }
   }
@@ -213,7 +213,7 @@ class _SideMenuState extends State<_SideMenu> {
                     ),
                     const SizedBox(height: 24),
                   ],
-                  _buildNavItem(0, selectedIndex, LucideIcons.home, 'Overview'),
+                  _buildNavItem(0, selectedIndex, LucideIcons.home, 'Dashboard'),
                   const SizedBox(height: 4),
                   _buildNavItem(
                     1,
@@ -255,7 +255,7 @@ class _SideMenuState extends State<_SideMenu> {
                       children: [
                         _buildNavHeader(
                           selectedIndex,
-                          [6, 7, 8, 9],
+                          [6, 7, 8, 9, 10],
                           LucideIcons.settings,
                           'Settings',
                           isOpen: _isSettingsSubmenuOpen,
@@ -293,12 +293,18 @@ class _SideMenuState extends State<_SideMenu> {
                             onTap: () =>
                                 context.go('/admin/settings/service-charges'),
                           ),
+                          _buildSubNavItem(
+                            10,
+                            selectedIndex,
+                            'Reports',
+                            onTap: () => context.go('/admin/reports'),
+                          ),
                         ],
                       ],
                     )
                   else
                     _buildCollapsedSubMenu(
-                      [6, 7, 8, 9],
+                      [6, 7, 8, 9, 10],
                       selectedIndex,
                       LucideIcons.settings,
                       'Settings',
@@ -328,6 +334,13 @@ class _SideMenuState extends State<_SideMenu> {
                           value: 9,
                           child: Text(
                             'Service Charges',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 10,
+                          child: Text(
+                            'Reports',
                             style: TextStyle(fontSize: 13),
                           ),
                         ),
@@ -583,6 +596,7 @@ class _SideMenuState extends State<_SideMenu> {
   int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith('/admin/dashboard')) return 0;
+    if (location.startsWith('/admin/reports')) return 10;
     if (location.startsWith('/admin/schedule')) return 1;
     if (location.startsWith('/admin/clients')) return 2;
     if (location.startsWith('/admin/employees')) return 3;
@@ -602,6 +616,9 @@ class _SideMenuState extends State<_SideMenu> {
     switch (index) {
       case 0:
         context.go('/admin/dashboard');
+        break;
+      case 10:
+        context.go('/admin/reports');
         break;
       case 1:
         context.go('/admin/schedule');
