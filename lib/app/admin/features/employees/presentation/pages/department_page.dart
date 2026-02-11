@@ -45,9 +45,11 @@ class _DepartmentManagementPageState
 
   Widget _buildActionTabs(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(10),
+      width: .infinity,
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: Colors.white,
+        border: .all(color: Colors.grey.shade200),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

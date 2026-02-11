@@ -102,11 +102,19 @@ class SessionTable extends ConsumerWidget {
                     ...List.generate(sessions.length, (index) {
                       final s = sessions[index];
                       final bool isEven = index % 2 == 0;
+
+                      final bool hasAbsence =
+                          s.isClientAbsent || s.absentTherapistIds.isNotEmpty;
+
                       return TableRow(
                         decoration: BoxDecoration(
-                          color: isEven
-                              ? Colors.white
-                              : Colors.blueGrey.shade50,
+                          color: hasAbsence
+                              ? Colors.orange.withOpacity(
+                                  0.1,
+                                ) // Alert color for absences
+                              : (isEven
+                                    ? Colors.white
+                                    : Colors.blueGrey.shade50),
                         ),
                         children: [
                           _buildDataCell(
@@ -133,12 +141,45 @@ class SessionTable extends ConsumerWidget {
                                     vertical: 4,
                                     horizontal: 2,
                                   ),
-                                  child: Text(
-                                    s.displayFullName,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          s.clientNickName ?? s.clientName,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      if (s.isClientAbsent) ...[
+                                        const SizedBox(width: 4),
+                                        Container(
+                                          height: 15,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red,
+                                            borderRadius: BorderRadius.circular(
+                                              2,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'Absent',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              height: 1,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ),
                               ),
@@ -151,7 +192,7 @@ class SessionTable extends ConsumerWidget {
                                     ? 100
                                     : 150,
                               ),
-                              child: _buildMultiServiceCell(s.therapists),
+                              child: _buildTherapistCell(s),
                             ),
                           ),
                           _buildDataCell(
@@ -245,6 +286,65 @@ class SessionTable extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: child,
+    );
+  }
+
+  Widget _buildTherapistCell(SessionCardData s) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: s.services.asMap().entries.map((entry) {
+        final i = entry.key;
+        final sv = entry.value;
+        final name = s.employeeNames[sv.employeeId] ?? '-';
+        final isAbsent = s.absentTherapistIds.contains(sv.employeeId);
+
+        return Container(
+          width: double.infinity,
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          decoration: BoxDecoration(
+            border: i < s.services.length - 1
+                ? Border(
+                    bottom: BorderSide(color: Colors.grey.shade200, width: 0.5),
+                  )
+                : null,
+          ),
+          child: Row(
+            children: [
+              Flexible(
+                child: Text(
+                  name,
+                  style: const TextStyle(fontSize: 11),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (isAbsent) ...[
+                const SizedBox(width: 4),
+                Container(
+                  height: 15,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.orange,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                  child: const Text(
+                    'Leave',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      height: 1,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 

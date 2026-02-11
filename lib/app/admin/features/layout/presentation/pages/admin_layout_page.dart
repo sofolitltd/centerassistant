@@ -167,7 +167,8 @@ class _SideMenuState extends State<_SideMenu> {
     super.didChangeDependencies();
     final location = GoRouterState.of(context).matchedLocation;
 
-    if (location.contains('/admin/settings') || location.contains('/admin/reports')) {
+    if (location.contains('/admin/settings') ||
+        location.contains('/admin/reports')) {
       _isSettingsSubmenuOpen = true;
     }
   }
@@ -213,7 +214,12 @@ class _SideMenuState extends State<_SideMenu> {
                     ),
                     const SizedBox(height: 24),
                   ],
-                  _buildNavItem(0, selectedIndex, LucideIcons.home, 'Dashboard'),
+                  _buildNavItem(
+                    0,
+                    selectedIndex,
+                    LucideIcons.home,
+                    'Dashboard',
+                  ),
                   const SizedBox(height: 4),
                   _buildNavItem(
                     1,

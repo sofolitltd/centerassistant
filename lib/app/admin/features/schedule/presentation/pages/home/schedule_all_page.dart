@@ -47,14 +47,12 @@ class _ScheduleAllPageState extends ConsumerState<ScheduleAllPage> {
   Widget build(BuildContext context) {
     final view = ref.watch(plannerViewNotifierProvider);
     final filter = ref.watch(scheduleFilterProvider);
-    final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
 
     return Scaffold(
-      key: scaffoldKey,
       endDrawer: const ScheduleDrawerFilter(),
       body: Column(
         children: [
-          _buildHeader(context, ref, filter, scaffoldKey),
+          _buildHeader(context, ref, filter),
 
           //
           const ScheduleFilterBar(),
@@ -70,7 +68,6 @@ class _ScheduleAllPageState extends ConsumerState<ScheduleAllPage> {
     BuildContext context,
     WidgetRef ref,
     ScheduleFilter filter,
-    GlobalKey<ScaffoldState> scaffoldKey,
   ) {
     final clientsAsync = ref.watch(clientsProvider);
     final employeesAsync = ref.watch(employeesProvider);
@@ -98,23 +95,7 @@ class _ScheduleAllPageState extends ConsumerState<ScheduleAllPage> {
                   ],
                 ),
               ),
-              Row(
-                children: [
-                  IconButton.filledTonal(
-                    onPressed: () => scaffoldKey.currentState?.openEndDrawer(),
-                    style: IconButton.styleFrom(
-                      shape: RoundedRectangleBorder(borderRadius: .circular(4)),
-                    ),
-                    icon: const Icon(LucideIcons.filter, size: 20),
-                    tooltip: 'Filter',
-                    visualDensity: .comfortable,
-                  ),
-                  const SizedBox(width: 12),
-
-                  //
-                  _buildAddButton(context, filter),
-                ],
-              ),
+              _buildAddButton(context, filter),
             ],
           ),
         ],
