@@ -19,7 +19,7 @@ import '/core/utils/billing_export_helper.dart';
 import 'billing_month_navigator.dart';
 import 'billing_snapshots_tab.dart';
 
-class BillingSessionsTab extends ConsumerWidget {
+class BillingSessionsTab extends ConsumerStatefulWidget {
   final Client client;
   final AsyncValue<List<Session>> sessionsAsync;
 
@@ -30,83 +30,122 @@ class BillingSessionsTab extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<BillingSessionsTab> createState() => _BillingSessionsTabState();
+}
+
+class _BillingSessionsTabState extends ConsumerState<BillingSessionsTab>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: ref.read(billingSessionsTabIndexProvider),
+    );
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        ref.read(billingSessionsTabIndexProvider.notifier).state =
+            _tabController.index;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final selectedMonth = ref.watch(selectedBillingMonthProvider);
     final monthKey = DateFormat('yyyy-MM').format(selectedMonth);
 
-    return DefaultTabController(
-      length: 3,
-      child: Column(
-        children: [
-          // Content
-          Expanded(
-            child: TabBarView(
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                _LiveSessionsView(client: client, sessionsAsync: sessionsAsync),
-                BillingSnapshotsTab(
-                  clientId: client.id,
-                  type: InvoiceType.pre,
-                  monthKey: monthKey,
-                ),
-                BillingSnapshotsTab(
-                  clientId: client.id,
-                  type: InvoiceType.post,
-                  monthKey: monthKey,
-                ),
-              ],
-            ),
-          ),
+    // Sync tab controller if the provider changes from elsewhere
+    ref.listen(billingSessionsTabIndexProvider, (prev, next) {
+      if (next != _tabController.index) {
+        _tabController.animateTo(next);
+      }
+    });
 
-          // Bottom Excel-style Tabs & Month Navigator
-          Container(
-            height: 32,
-            decoration: BoxDecoration(
-              color: Colors.blueGrey.shade50,
-              border: Border(top: BorderSide(color: Colors.grey.shade300)),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TabBar(
-                    isScrollable: true,
-                    tabAlignment: TabAlignment.start,
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    labelColor: Theme.of(context).primaryColor,
-                    unselectedLabelColor: Colors.black54,
-                    dividerColor: Colors.transparent,
-                    indicator: BoxDecoration(
-                      color: Colors.white,
-                      border: Border(
-                        top: BorderSide(
-                          color: Theme.of(context).primaryColor,
-                          width: 3,
-                        ),
-                        left: BorderSide(color: Colors.grey.shade300),
-                        right: BorderSide(color: Colors.grey.shade300),
-                      ),
-                    ),
-                    labelStyle: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                    unselectedLabelStyle: const TextStyle(fontSize: 13),
-                    tabs: const [
-                      Tab(text: 'Live'),
-                      Tab(text: 'Pre Invoice'),
-                      Tab(text: 'Post Invoice'),
-                    ],
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(right: 2, left: 8),
-                  child: BillingMonthNavigator(),
-                ),
-              ],
-            ),
+    return Column(
+      children: [
+        // Content
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              _LiveSessionsView(
+                client: widget.client,
+                sessionsAsync: widget.sessionsAsync,
+              ),
+              BillingSnapshotsTab(
+                clientId: widget.client.id,
+                type: InvoiceType.pre,
+                monthKey: monthKey,
+              ),
+              BillingSnapshotsTab(
+                clientId: widget.client.id,
+                type: InvoiceType.post,
+                monthKey: monthKey,
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+
+        // Bottom Excel-style Tabs & Month Navigator
+        Container(
+          height: 32,
+          decoration: BoxDecoration(
+            color: Colors.blueGrey.shade50,
+            border: Border(top: BorderSide(color: Colors.grey.shade300)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  labelColor: Theme.of(context).primaryColor,
+                  unselectedLabelColor: Colors.black54,
+                  dividerColor: Colors.transparent,
+                  indicator: BoxDecoration(
+                    color: Colors.white,
+                    border: Border(
+                      top: BorderSide(
+                        color: Theme.of(context).primaryColor,
+                        width: 3,
+                      ),
+                      left: BorderSide(color: Colors.grey.shade300),
+                      right: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
+                  labelStyle: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                  unselectedLabelStyle: const TextStyle(fontSize: 13),
+                  tabs: const [
+                    Tab(text: 'Live'),
+                    Tab(text: 'Pre Invoice'),
+                    Tab(text: 'Post Invoice'),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(right: 2, left: 8),
+                child: BillingMonthNavigator(),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -340,6 +379,8 @@ class _LiveSessionsView extends ConsumerWidget {
     required NumberFormat currencyFormat,
     required bool isBilled,
   }) {
+    final double finalBalance = walletBalance - totalNet;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
@@ -360,7 +401,7 @@ class _LiveSessionsView extends ConsumerWidget {
           ),
           _buildSummaryRow(
             'Total Discount',
-            '- ৳ ${currencyFormat.format(totalDiscount)}',
+            '৳ ${currencyFormat.format(totalDiscount)}',
             color: Colors.red,
           ),
 
@@ -376,14 +417,19 @@ class _LiveSessionsView extends ConsumerWidget {
             const Divider(height: 24),
 
             _buildSummaryRow(
-              'Advances/Previous Due',
-              '৳ ${currencyFormat.format(walletBalance)}',
+              walletBalance >= 0 ? 'Advance Paid' : 'Due Amount',
+              '৳ ${currencyFormat.format(walletBalance.abs())}',
+              color: walletBalance >= 0
+                  ? Colors.green.shade700
+                  : Colors.red.shade700,
             ),
             _buildSummaryRow(
-              'Net Payable / Remaining Balance',
-              '৳ ${currencyFormat.format(walletBalance - totalNet)}',
+              finalBalance >= 0 ? 'Remaining Balance' : 'Net Payable',
+              '৳ ${currencyFormat.format(finalBalance.abs())}',
               isBold: true,
-              color: Colors.blue.shade800,
+              color: finalBalance >= 0
+                  ? Colors.green.shade800
+                  : Colors.red.shade800,
             ),
           ],
         ],
@@ -405,7 +451,7 @@ class _LiveSessionsView extends ConsumerWidget {
           Text(
             label,
             style: TextStyle(
-              color: isBold ? Colors.black87 : Colors.grey.shade700,
+              color: color ?? (isBold ? Colors.black87 : Colors.grey.shade700),
               fontSize: 14,
               fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
             ),
@@ -683,7 +729,7 @@ class _DataTableWidget extends ConsumerWidget {
                 cells: [
                   DataCell(
                     Text(
-                      DateFormat('dd-MM-yyyy').format(date),
+                      DateFormat('dd MMM, yyyy').format(date),
                       style: const TextStyle(fontSize: 10),
                     ),
                   ),

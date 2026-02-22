@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '/core/constants/app_constants.dart';
 import '/core/models/employee.dart';
 import '/core/providers/employee_providers.dart';
 
@@ -16,7 +17,7 @@ class EmployeePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final employeesAsync = ref.watch(employeesProvider);
-    final schedulableDeptsAsync = ref.watch(schedulableDepartmentsProvider);
+    final deptsAsync = ref.watch(schedulableDepartmentsProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -73,7 +74,6 @@ class EmployeePage extends ConsumerWidget {
                 ),
               ],
             ),
-
             const SizedBox(height: 24),
 
             // Table Card
@@ -92,20 +92,8 @@ class EmployeePage extends ConsumerWidget {
                       return const Center(child: Text('No employees found.'));
                     }
 
-                    return schedulableDeptsAsync.when(
+                    return deptsAsync.when(
                       data: (schedulableDepts) {
-                        // Reverse numeric sort by employeeId
-                        final sortedEmployees = List<Employee>.from(employees)
-                          ..sort((a, b) {
-                            try {
-                              final idA = int.parse(a.employeeId);
-                              final idB = int.parse(b.employeeId);
-                              return idB.compareTo(idA);
-                            } catch (_) {
-                              return b.employeeId.compareTo(a.employeeId);
-                            }
-                          });
-
                         return ScrollConfiguration(
                           behavior: ScrollConfiguration.of(context).copyWith(
                             dragDevices: {
@@ -117,7 +105,7 @@ class EmployeePage extends ConsumerWidget {
                           child: DataTable2(
                             columnSpacing: 24,
                             horizontalMargin: 12,
-                            minWidth: 1100,
+                            minWidth: 1000,
                             headingRowColor: WidgetStateProperty.all(
                               theme.colorScheme.surfaceContainerHighest
                                   .withValues(alpha: 0.3),
@@ -150,12 +138,6 @@ class EmployeePage extends ConsumerWidget {
                               ),
                               DataColumn2(
                                 label: Text(
-                                  'Designation',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              DataColumn2(
-                                label: Text(
                                   'Contact',
                                   style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
@@ -163,22 +145,23 @@ class EmployeePage extends ConsumerWidget {
                               ),
                               DataColumn2(
                                 label: Text(
-                                  'Portal Access',
+                                  'Portal',
                                   style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
-                                fixedWidth: 120,
+                                fixedWidth: 100,
                               ),
                               DataColumn2(
                                 label: Text(
                                   'Actions',
                                   style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
-                                fixedWidth: 130,
+                                fixedWidth: 140,
                               ),
                             ],
-                            rows: sortedEmployees.map((employee) {
-                              final bool isSchedulable = schedulableDepts
-                                  .contains(employee.department);
+                            rows: employees.map((employee) {
+                              final isSchedulable = schedulableDepts.contains(
+                                employee.department,
+                              );
 
                               return DataRow2(
                                 onTap: () => context.go(
@@ -213,21 +196,38 @@ class EmployeePage extends ConsumerWidget {
                                         ),
                                         const SizedBox(width: 12),
                                         Expanded(
-                                          child: Text(
-                                            employee.name,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                employee.name,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              if (employee
+                                                  .designation
+                                                  .isNotEmpty)
+                                                Text(
+                                                  employee.designation,
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: Colors.grey.shade600,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                            ],
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
-                                  DataCell(
-                                    Text(employee.department.toUpperCase()),
-                                  ),
-                                  DataCell(Text(employee.designation)),
+                                  DataCell(Text(employee.department)),
                                   DataCell(
                                     Column(
                                       mainAxisAlignment:
@@ -519,15 +519,18 @@ class EmployeePage extends ConsumerWidget {
 
   void _shareAccess(Employee employee) {
     final String message =
-        'Center Assistant Portal Access\n\n'
+        '${AppConstants.appName} Portal Access\n\n'
         'Hello ${employee.name},\n\n'
         'Your portal access has been set up.\n\n'
         'Login Email: ${employee.email}\n'
-        'Temporary Password: ${employee.password}\n\n'
+        'Temporary Password:\n'
+        '------------------------\n'
+        '${employee.password}\n'
+        '------------------------\n\n'
+        'Login here: ${AppConstants.baseUrl}/employee/login\n\n'
         'Please change your password after your first login.';
 
-    //
-    SharePlus.instance.share(ShareParams(text: message));
+    Share.share(message);
   }
 
   void _showDeleteConfirmDialog(
@@ -545,12 +548,13 @@ class EmployeePage extends ConsumerWidget {
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
               ref.read(employeeServiceProvider).deleteEmployee(employee.id);
               Navigator.pop(context);
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

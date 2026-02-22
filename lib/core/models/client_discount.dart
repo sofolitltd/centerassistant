@@ -6,6 +6,7 @@ class ClientDiscount {
   final String serviceType;
   final double discountPerHour;
   final DateTime effectiveDate;
+  final DateTime? endDate;
   final bool isActive;
 
   ClientDiscount({
@@ -14,6 +15,7 @@ class ClientDiscount {
     required this.serviceType,
     required this.discountPerHour,
     required this.effectiveDate,
+    this.endDate,
     this.isActive = true,
   });
 
@@ -23,6 +25,7 @@ class ClientDiscount {
       'serviceType': serviceType,
       'discountPerHour': discountPerHour,
       'effectiveDate': Timestamp.fromDate(effectiveDate),
+      'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
       'isActive': isActive,
     };
   }
@@ -35,6 +38,7 @@ class ClientDiscount {
       serviceType: data['serviceType'] ?? '',
       discountPerHour: (data['discountPerHour'] as num?)?.toDouble() ?? 0.0,
       effectiveDate: (data['effectiveDate'] as Timestamp).toDate(),
+      endDate: (data['endDate'] as Timestamp?)?.toDate(),
       isActive: data['isActive'] ?? true,
     );
   }
@@ -43,6 +47,7 @@ class ClientDiscount {
     String? serviceType,
     double? discountPerHour,
     DateTime? effectiveDate,
+    DateTime? Function()? endDate,
     bool? isActive,
   }) {
     return ClientDiscount(
@@ -51,6 +56,7 @@ class ClientDiscount {
       serviceType: serviceType ?? this.serviceType,
       discountPerHour: discountPerHour ?? this.discountPerHour,
       effectiveDate: effectiveDate ?? this.effectiveDate,
+      endDate: endDate != null ? endDate() : this.endDate,
       isActive: isActive ?? this.isActive,
     );
   }

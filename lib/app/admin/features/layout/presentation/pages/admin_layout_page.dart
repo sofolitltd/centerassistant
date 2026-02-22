@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '/core/constants/app_constants.dart';
 import '/core/providers/auth_providers.dart';
 
 class AdminLayoutPage extends ConsumerWidget {
@@ -44,15 +45,7 @@ class AdminLayoutPage extends ConsumerWidget {
                   child: GestureDetector(
                     onTap: () => context.go('/admin/dashboard'),
                     child: Row(
-                      children: const [
-                        Text(
-                          'Center Assistant',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
+                      children: [Image.asset(AppConstants.appLogo, height: 32)],
                     ),
                   ),
                 ),
@@ -64,15 +57,8 @@ class AdminLayoutPage extends ConsumerWidget {
                 child: GestureDetector(
                   onTap: () => context.go('/admin/dashboard'),
                   child: Row(
-                    children: const [
-                      Text(
-                        'Center Assistant',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                    mainAxisSize: MainAxisSize.min,
+                    children: [Image.asset(AppConstants.appLogo, height: 32)],
                   ),
                 ),
               )
@@ -202,12 +188,10 @@ class _SideMenuState extends State<_SideMenu> {
                             Navigator.pop(context);
                             context.go('/admin/dashboard');
                           },
-                          child: const Text(
-                            'Center Assistant',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          child: Row(
+                            children: [
+                              Image.asset(AppConstants.appLogo, height: 32),
+                            ],
                           ),
                         ),
                       ),

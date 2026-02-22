@@ -2,7 +2,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '/core/models/employee.dart';
@@ -25,7 +24,6 @@ class AdminDashboardPage extends ConsumerWidget {
     final allMonthlySessionsAsync = ref.watch(allMonthlySessionsProvider);
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(

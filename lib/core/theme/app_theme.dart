@@ -35,6 +35,7 @@ ThemeData buildTheme(ColorScheme colorScheme) {
     textTheme: GoogleFonts.outfitTextTheme(
       ThemeData(brightness: colorScheme.brightness).textTheme,
     ),
+    buttonTheme: ButtonThemeData(alignedDropdown: true),
     cardTheme: CardThemeData(
       elevation: 0,
       color: Colors.white,
@@ -53,6 +54,9 @@ ThemeData buildTheme(ColorScheme colorScheme) {
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         elevation: 0,
+        minimumSize: const Size(0, 40), // Minimum height of 40
+        maximumSize: const Size(double.infinity, 40), // Maximum height of 40
+        visualDensity: VisualDensity.compact, // Tightens up the spacing
         backgroundColor: colorScheme.primary,
         foregroundColor: Colors.white,
         // textStyle: GoogleFonts.lato(fontWeight: FontWeight.bold, fontSize: 14),
@@ -62,6 +66,9 @@ ThemeData buildTheme(ColorScheme colorScheme) {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
+        minimumSize: const Size(0, 40), // Minimum height of 40
+        maximumSize: const Size(double.infinity, 40), // Maximum height of 40
+        visualDensity: VisualDensity.compact, // Tightens up the spacing
         foregroundColor: colorScheme.primary,
         side: BorderSide(color: colorScheme.primary.withValues(alpha: 0.5)),
         textStyle: GoogleFonts.outfit(
@@ -74,6 +81,9 @@ ThemeData buildTheme(ColorScheme colorScheme) {
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
+        minimumSize: const Size(0, 40), // Minimum height of 40
+        maximumSize: const Size(double.infinity, 40), // Maximum height of 40
+        visualDensity: VisualDensity.compact, // Tightens up the spacing
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),

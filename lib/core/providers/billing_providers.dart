@@ -32,6 +32,18 @@ final selectedBillingMonthProvider =
       SelectedBillingMonthNotifier.new,
     );
 
+/// Persists the selected sub-tab index (Live, Pre, Post) in the Billing Sessions view.
+class BillingSessionsTabIndexNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+  void setIndex(int index) => state = index;
+}
+
+final billingSessionsTabIndexProvider =
+    NotifierProvider<BillingSessionsTabIndexNotifier, int>(
+      BillingSessionsTabIndexNotifier.new,
+    );
+
 final isMonthBilledProvider = StreamProvider.family<bool, String>((
   ref,
   clientId,

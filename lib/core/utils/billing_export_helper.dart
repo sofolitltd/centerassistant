@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io' as io;
 import 'dart:js_interop';
 
+import 'package:center_assistant/core/constants/app_constants.dart';
 import 'package:csv/csv.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
@@ -21,7 +22,7 @@ import '../models/session.dart';
 
 class BillingExportHelper {
   static final _currencyFormat = NumberFormat('#,###');
-  static final _displayDateFormat = DateFormat('dd-MM-yyyy');
+  static final _displayDateFormat = DateFormat('dd MMM, yyyy');
 
   /// Find applicable global rate for a service on a specific date
   static ServiceRate? getApplicableRate(
@@ -167,21 +168,23 @@ class BillingExportHelper {
     required List<ClientDiscount> allDiscounts,
     required DateTime monthDate,
     required double totalMonthlyBill,
+    required double openingBalance,
     bool isDraft = true,
   }) async {
     final pdf = pw.Document();
 
     pw.MemoryImage? logo;
     try {
-      final ByteData data = await rootBundle.load(
-        'assets/images/tender_twig.png',
-      );
+      final ByteData data = await rootBundle.load(AppConstants.appLogo);
       logo = pw.MemoryImage(data.buffer.asUint8List());
     } catch (e) {
       /* ignore */
     }
 
-    final String invoiceMonth = DateFormat('MMM-yy').format(monthDate);
+    final String monthKey = DateFormat('yyyy-MM').format(monthDate);
+    final String reference =
+        '${isDraft ? "PRE" : "FIN"}-$monthKey-${client.clientId}';
+    final String invoiceMonth = DateFormat('MMM yy').format(monthDate);
     final String invoiceDate = _displayDateFormat.format(DateTime.now());
     final String dueDate = _displayDateFormat.format(
       DateTime.now().add(const Duration(days: 7)),
@@ -259,6 +262,7 @@ class BillingExportHelper {
                         invoiceDate,
                         invoiceMonth,
                         dueDate,
+                        reference,
                       ),
                     ],
                   ),
@@ -268,9 +272,7 @@ class BillingExportHelper {
               _buildSummaryTable(sessions, allRates, allDiscounts),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.end,
-                children: [
-                  _buildTotalsTable(totalMonthlyBill, client.walletBalance),
-                ],
+                children: [_buildTotalsTable(totalMonthlyBill, openingBalance)],
               ),
               pw.SizedBox(height: 30),
               _buildPaymentTerms(),
@@ -289,7 +291,7 @@ class BillingExportHelper {
           alignment: pw.Alignment.centerRight,
           margin: const pw.EdgeInsets.only(bottom: 10),
           child: pw.Text(
-            'Invoice Breakdown - Client #${client.clientId} - Page ${context.pageNumber}',
+            'Invoice Breakdown - Client #${client.clientId} - Reference: $reference - Page ${context.pageNumber}',
             style: const pw.TextStyle(color: PdfColors.grey, fontSize: 8),
           ),
         ),
@@ -317,17 +319,19 @@ class BillingExportHelper {
     String date,
     String month,
     String due,
+    String reference,
   ) {
     const s = pw.TextStyle(fontSize: 10);
     var b = pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold);
     return pw.Table(
       columnWidths: {
         0: const pw.FixedColumnWidth(100),
-        1: const pw.FixedColumnWidth(100),
+        1: const pw.FixedColumnWidth(120),
       },
       border: pw.TableBorder.all(color: PdfColors.black, width: 0.5),
       children: [
-        _buildGridRow('Bill To', client.clientId, s, b),
+        _buildGridRow('Invoice ID', reference, s, b),
+        _buildGridRow('Bill To (Client ID)', client.clientId, s, b),
         _buildGridRow('Invoice Date', date, s, b),
         _buildGridRow('Invoice Month', month, s, b),
         _buildGridRow('Payment Due Date', due, s, b),
@@ -439,7 +443,9 @@ class BillingExportHelper {
     );
   }
 
-  static pw.Widget _buildTotalsTable(double totalBill, double advance) {
+  static pw.Widget _buildTotalsTable(double totalBill, double openingBalance) {
+    final double netResult = openingBalance - totalBill;
+
     return pw.Table(
       columnWidths: {
         0: const pw.FixedColumnWidth(160),
@@ -447,15 +453,27 @@ class BillingExportHelper {
       },
       border: pw.TableBorder.all(color: PdfColors.black, width: 1),
       children: [
-        _buildSimpleRow('Total', _currencyFormat.format(totalBill)),
+        // 1. The Current Charges
         _buildSimpleRow(
-          'Advance/(Previous Due)',
-          _currencyFormat.format(advance),
+          'Current Month Charges',
+          _currencyFormat.format(totalBill),
         ),
+
+        // 2. The Opening State (Pre-Invoice Connection)
         _buildSimpleRow(
-          'Net Payable/ (Remaining Balance)',
-          _currencyFormat.format(advance - totalBill),
+          openingBalance >= 0
+              ? 'Advance Paid (Opening)'
+              : 'Due Amount (Opening)',
+          _currencyFormat.format(openingBalance.abs()),
+          color: openingBalance >= 0 ? PdfColors.green700 : PdfColors.red700,
+        ),
+
+        // 3. The Final Result (Post-Invoice)
+        _buildSimpleRow(
+          netResult >= 0 ? 'Remaining Balance' : 'Net Payable Amount',
+          _currencyFormat.format(netResult.abs()),
           isBold: true,
+          color: netResult >= 0 ? PdfColors.green800 : PdfColors.red800,
         ),
       ],
     );
@@ -465,10 +483,12 @@ class BillingExportHelper {
     String l,
     String v, {
     bool isBold = false,
+    PdfColor? color,
   }) {
     final style = pw.TextStyle(
       fontSize: 10,
       fontWeight: isBold ? pw.FontWeight.bold : null,
+      color: color ?? PdfColors.black,
     );
     return pw.TableRow(
       children: [
@@ -655,6 +675,7 @@ class BillingExportHelper {
     required List<ClientDiscount> allDiscounts,
     required DateTime monthDate,
     required double totalMonthlyBill,
+    required double openingBalance,
     bool isDraft = true,
   }) async {
     final pdf = await _buildInvoiceDocument(
@@ -664,6 +685,7 @@ class BillingExportHelper {
       allDiscounts: allDiscounts,
       monthDate: monthDate,
       totalMonthlyBill: totalMonthlyBill,
+      openingBalance: openingBalance,
       isDraft: isDraft,
     );
 
@@ -696,6 +718,7 @@ class BillingExportHelper {
     required List<ClientDiscount> allDiscounts,
     required DateTime monthDate,
     required double totalMonthlyBill,
+    required double openingBalance,
     bool isDraft = true,
   }) async {
     final pdf = await _buildInvoiceDocument(
@@ -705,6 +728,7 @@ class BillingExportHelper {
       allDiscounts: allDiscounts,
       monthDate: monthDate,
       totalMonthlyBill: totalMonthlyBill,
+      openingBalance: openingBalance,
       isDraft: isDraft,
     );
     await Printing.layoutPdf(
@@ -719,6 +743,7 @@ class BillingExportHelper {
     required List<ClientDiscount> allDiscounts,
     required DateTime monthDate,
     required double totalMonthlyBill,
+    required double openingBalance,
     bool isDraft = true,
   }) async {
     final pdf = await _buildInvoiceDocument(
@@ -728,6 +753,7 @@ class BillingExportHelper {
       allDiscounts: allDiscounts,
       monthDate: monthDate,
       totalMonthlyBill: totalMonthlyBill,
+      openingBalance: openingBalance,
       isDraft: isDraft,
     );
     final bytes = await pdf.save();
@@ -741,6 +767,7 @@ class BillingExportHelper {
         allDiscounts: allDiscounts,
         monthDate: monthDate,
         totalMonthlyBill: totalMonthlyBill,
+        openingBalance: openingBalance,
         isDraft: isDraft,
       );
     } else {

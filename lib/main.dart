@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/constants/app_constants.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/url_strategy/url_strategy_stub.dart'
@@ -37,7 +38,7 @@ class MyApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'Center Assistant',
+      title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
       theme: buildTheme(lightColorScheme),
       darkTheme: buildTheme(darkColorScheme),

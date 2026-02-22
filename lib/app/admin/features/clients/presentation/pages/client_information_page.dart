@@ -63,7 +63,7 @@ class ClientInformationPage extends StatelessWidget {
   }
 
   Widget _buildPersonalCard() {
-    return _buildInfoCard('1. Personal Information', [
+    return _buildInfoCard('Personal Information', [
       Row(
         children: [
           CircleAvatar(
@@ -111,7 +111,7 @@ class ClientInformationPage extends StatelessWidget {
   }
 
   Widget _buildParentCard() {
-    return _buildInfoCard('2. Parent Information', [
+    return _buildInfoCard('Parent Information', [
       _buildInfoRow('Father Name', client.fatherName, icon: LucideIcons.user),
       _buildInfoRow(
         'Father Contact',
@@ -129,7 +129,7 @@ class ClientInformationPage extends StatelessWidget {
   }
 
   Widget _buildContactCard() {
-    return _buildInfoCard('3. Contact & Address', [
+    return _buildInfoCard('Contact & Address', [
       _buildInfoRow('Mobile Number', client.mobileNo, icon: LucideIcons.phone),
       _buildInfoRow('Email Address', client.email, icon: LucideIcons.mail),
       _buildInfoRow('Home Address', client.address, icon: LucideIcons.mapPin),
@@ -137,7 +137,7 @@ class ClientInformationPage extends StatelessWidget {
   }
 
   Widget _buildEnrollmentCard() {
-    return _buildInfoCard('4. Enrollment Status', [
+    return _buildInfoCard('Enrollment Status', [
       _buildInfoRow(
         'Enrollment Date',
         DateFormat('dd MMM, yyyy').format(client.enrollmentDate),
@@ -177,7 +177,7 @@ class ClientInformationPage extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.blueAccent,
+                color: Colors.blueGrey,
               ),
             ),
             const Divider(height: 32),

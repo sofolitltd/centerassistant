@@ -22,7 +22,14 @@ final clientDiscountsProvider =
 final activeClientDiscountsProvider =
     Provider.family<AsyncValue<List<ClientDiscount>>, String>((ref, clientId) {
       return ref.watch(clientDiscountsProvider(clientId)).whenData((discounts) {
-        return discounts.where((d) => d.isActive).toList();
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        return discounts.where((d) {
+          if (!d.isActive) return false;
+          final isEffective = !d.effectiveDate.isAfter(today);
+          final isNotExpired = d.endDate == null || !d.endDate!.isBefore(today);
+          return isEffective && isNotExpired;
+        }).toList();
       });
     });
 
@@ -39,6 +46,7 @@ class ClientDiscountActionService {
     required String serviceType,
     required double discountPerHour,
     required DateTime effectiveDate,
+    DateTime? endDate,
   }) async {
     final firestore = _ref.read(firestoreProvider);
     final docRef = firestore
@@ -53,6 +61,7 @@ class ClientDiscountActionService {
       serviceType: serviceType,
       discountPerHour: discountPerHour,
       effectiveDate: effectiveDate,
+      endDate: endDate,
       isActive: true,
     );
 

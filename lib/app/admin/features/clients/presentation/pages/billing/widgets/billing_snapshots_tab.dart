@@ -360,7 +360,10 @@ class BillingSnapshotsTab extends ConsumerWidget {
                   serviceWidgets.add(
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Text(sv.type, style: const TextStyle(fontSize: 10)),
+                      child: Text(
+                        sv.type,
+                        style: const TextStyle(fontSize: 10),
+                      ),
                     ),
                   );
 
@@ -432,7 +435,7 @@ class BillingSnapshotsTab extends ConsumerWidget {
                   cells: [
                     DataCell(
                       Text(
-                        DateFormat('dd-MM-yyyy').format(date),
+                        DateFormat('dd MMM, yyyy').format(date),
                         style: const TextStyle(fontSize: 10),
                       ),
                     ),
@@ -533,6 +536,8 @@ class BillingSnapshotsTab extends ConsumerWidget {
       }
     }
     final totalGross = snapshot.totalAmount + totalDiscount;
+    final double finalBalance =
+        snapshot.walletBalanceAtTime - snapshot.totalAmount;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -561,7 +566,7 @@ class BillingSnapshotsTab extends ConsumerWidget {
           ),
           _buildSummaryRow(
             'Total Discount',
-            '- ৳ ${currencyFormat.format(totalDiscount)}',
+            '৳ ${currencyFormat.format(totalDiscount)}',
             color: Colors.red,
           ),
 
@@ -576,14 +581,19 @@ class BillingSnapshotsTab extends ConsumerWidget {
           //
           const Divider(),
           _buildSummaryRow(
-            'Advances/Previous Due',
-            '৳ ${currencyFormat.format(snapshot.walletBalanceAtTime)}',
+            snapshot.walletBalanceAtTime >= 0 ? 'Advance Paid' : 'Due Amount',
+            '৳ ${currencyFormat.format(snapshot.walletBalanceAtTime.abs())}',
+            color: snapshot.walletBalanceAtTime >= 0
+                ? Colors.green.shade700
+                : Colors.red.shade700,
           ),
           _buildSummaryRow(
-            'Net Payable / Remaining Balance',
-            '৳ ${currencyFormat.format(snapshot.walletBalanceAtTime - snapshot.totalAmount)}',
+            finalBalance >= 0 ? 'Remaining Balance' : 'Net Payable',
+            '৳ ${currencyFormat.format(finalBalance.abs())}',
             isBold: true,
-            color: Colors.blue.shade800,
+            color: finalBalance >= 0
+                ? Colors.green.shade800
+                : Colors.red.shade800,
           ),
         ],
       ),
@@ -602,7 +612,7 @@ class BillingSnapshotsTab extends ConsumerWidget {
         Text(
           label,
           style: TextStyle(
-            color: isBold ? Colors.black87 : Colors.grey.shade700,
+            color: color ?? (isBold ? Colors.black87 : Colors.grey.shade700),
             fontSize: 14,
             fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
           ),
@@ -651,6 +661,7 @@ class BillingSnapshotsTab extends ConsumerWidget {
             allDiscounts: allDiscounts,
             monthDate: monthDate,
             totalMonthlyBill: snapshot.totalAmount,
+            openingBalance: snapshot.walletBalanceAtTime,
             isDraft: snapshot.type == InvoiceType.pre,
           );
         } else if (value == 'print') {
@@ -661,6 +672,7 @@ class BillingSnapshotsTab extends ConsumerWidget {
             allDiscounts: allDiscounts,
             monthDate: monthDate,
             totalMonthlyBill: snapshot.totalAmount,
+            openingBalance: snapshot.walletBalanceAtTime,
             isDraft: snapshot.type == InvoiceType.pre,
           );
         } else if (value == 'share') {
@@ -671,6 +683,7 @@ class BillingSnapshotsTab extends ConsumerWidget {
             allDiscounts: allDiscounts,
             monthDate: monthDate,
             totalMonthlyBill: snapshot.totalAmount,
+            openingBalance: snapshot.walletBalanceAtTime,
             isDraft: snapshot.type == InvoiceType.pre,
           );
         }

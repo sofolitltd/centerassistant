@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -22,31 +21,67 @@ class _BillingDiscountTabState extends ConsumerState<BillingDiscountTab> {
 
   @override
   Widget build(BuildContext context) {
-    final discountsAsync = _filter == 'Archived'
-        ? ref
-              .watch(clientDiscountsProvider(widget.client.id))
-              .whenData((list) => list.where((d) => !d.isActive).toList())
-        : ref.watch(activeClientDiscountsProvider(widget.client.id));
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final discountsAsync = ref
+        .watch(clientDiscountsProvider(widget.client.id))
+        .whenData((list) {
+          if (_filter == 'Active') {
+            return list.where((d) {
+              final isEffective = !d.effectiveDate.isAfter(today);
+              final isNotExpired =
+                  d.endDate == null || !d.endDate!.isBefore(today);
+              return isEffective && isNotExpired;
+            }).toList();
+          } else if (_filter == 'Upcoming') {
+            return list.where((d) => d.effectiveDate.isAfter(today)).toList();
+          } else if (_filter == 'Expired') {
+            return list
+                .where((d) => d.endDate != null && d.endDate!.isBefore(today))
+                .toList();
+          }
+          return list; // 'All'
+        });
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                _buildFilterButton('Active'),
-                const SizedBox(width: 8),
-                _buildFilterButton('Archived'),
-              ],
-            ),
-            ElevatedButton.icon(
-              onPressed: () => _showAddDialog(context),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add Discount'),
-            ),
-          ],
+        Container(
+          padding: .symmetric(vertical: 8, horizontal: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              //
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  spacing: 8,
+                  children: [
+                    _buildFilterButton('Active'),
+                    _buildFilterButton('Upcoming'),
+                    _buildFilterButton('Expired'),
+                    _buildFilterButton('All'),
+                  ],
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => _showAddDialog(context),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add Discount'),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 24),
         Expanded(
@@ -56,63 +91,18 @@ class _BillingDiscountTabState extends ConsumerState<BillingDiscountTab> {
                 return Center(child: Text('No $_filter discounts found.'));
               }
 
-              final grouped = <DateTime, List<ClientDiscount>>{};
-              for (var d in discounts) {
-                final date = DateTime(
-                  d.effectiveDate.year,
-                  d.effectiveDate.month,
-                  d.effectiveDate.day,
-                );
-                grouped.putIfAbsent(date, () => []).add(d);
-              }
-
-              final sortedDates = grouped.keys.toList()
-                ..sort((a, b) => b.compareTo(a));
+              // In 'All' view or others, maybe sort by effective date
+              final sortedDiscounts = List<ClientDiscount>.from(discounts)
+                ..sort((a, b) => b.effectiveDate.compareTo(a.effectiveDate));
 
               return ListView.separated(
-                itemCount: sortedDates.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 32),
+                itemCount: sortedDiscounts.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 16),
                 itemBuilder: (context, index) {
-                  final date = sortedDates[index];
-                  final list = grouped[date]!;
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.calendar_today,
-                            size: 14,
-                            color: Colors.blueGrey,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Effective from ${DateFormat('MMM dd, yyyy').format(date)}',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blueGrey,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          const Expanded(child: Divider()),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      MasonryGridView.count(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisCount: MediaQuery.of(context).size.width > 900
-                            ? 3
-                            : (MediaQuery.of(context).size.width > 600 ? 2 : 1),
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
-                        itemCount: list.length,
-                        itemBuilder: (context, idx) =>
-                            _DiscountCard(discount: list[idx]),
-                      ),
-                    ],
+                  return _DiscountCard(
+                    discount: sortedDiscounts[index],
+                    onEdit: () =>
+                        _showEditDialog(context, sortedDiscounts[index]),
                   );
                 },
               );
@@ -129,23 +119,21 @@ class _BillingDiscountTabState extends ConsumerState<BillingDiscountTab> {
     final isSelected = _filter == label;
     return InkWell(
       onTap: () => setState(() => _filter = label),
-      borderRadius: BorderRadius.circular(50),
+      borderRadius: BorderRadius.circular(4),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? Theme.of(context).primaryColor : Colors.white,
-          borderRadius: BorderRadius.circular(50),
-          border: Border.all(
-            color: isSelected
-                ? Theme.of(context).primaryColor
-                : Colors.grey.shade300,
-          ),
+          color: isSelected
+              ? Theme.of(context).primaryColor
+              : Colors.grey.shade100,
+          border: Border.all(color: Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(5),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.grey.shade700,
-            fontWeight: FontWeight.bold,
+            color: isSelected ? Colors.white : Colors.grey.shade600,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             fontSize: 12,
           ),
         ),
@@ -156,27 +144,46 @@ class _BillingDiscountTabState extends ConsumerState<BillingDiscountTab> {
   void _showAddDialog(BuildContext context) {
     showDialog(
       context: context,
+      builder: (context) => _DiscountFormDialog(clientId: widget.client.id),
+    );
+  }
+
+  void _showEditDialog(BuildContext context, ClientDiscount discount) {
+    showDialog(
+      context: context,
       builder: (context) =>
-          _AddClientDiscountDialog(clientId: widget.client.id),
+          _DiscountFormDialog(clientId: widget.client.id, discount: discount),
     );
   }
 }
 
 class _DiscountCard extends ConsumerWidget {
   final ClientDiscount discount;
-  const _DiscountCard({required this.discount});
+  final VoidCallback onEdit;
+  const _DiscountCard({required this.discount, required this.onEdit});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    String status = 'ACTIVE';
+    Color statusColor = Colors.green;
+
+    if (discount.effectiveDate.isAfter(today)) {
+      status = 'UPCOMING';
+      statusColor = Colors.blue;
+    } else if (discount.endDate != null && discount.endDate!.isBefore(today)) {
+      status = 'EXPIRED';
+      statusColor = Colors.red;
+    }
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: discount.isActive ? Colors.grey.shade200 : Colors.red.shade100,
-        ),
+        side: BorderSide(color: Colors.grey.shade200),
       ),
-      color: discount.isActive ? Colors.white : Colors.red.withOpacity(0.01),
       child: Stack(
         children: [
           Padding(
@@ -184,29 +191,37 @@ class _DiscountCard extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: discount.isActive
-                        ? Colors.green.shade50
-                        : Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    discount.isActive ? 'ACTIVE' : 'ARCHIVED',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                      color: discount.isActive
-                          ? Colors.green.shade700
-                          : Colors.red.shade700,
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        status,
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: statusColor,
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${DateFormat('MMM dd, yyyy').format(discount.effectiveDate)} - ${discount.endDate != null ? DateFormat('MMM dd, yyyy').format(discount.endDate!) : 'Present'}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Text(
                   discount.serviceType,
                   style: const TextStyle(
@@ -223,11 +238,6 @@ class _DiscountCard extends ConsumerWidget {
                     fontSize: 15,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Discount applied to base rate',
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
-                ),
               ],
             ),
           ),
@@ -237,10 +247,8 @@ class _DiscountCard extends ConsumerWidget {
             child: PopupMenuButton<String>(
               icon: const Icon(LucideIcons.moreVertical, size: 16),
               onSelected: (val) async {
-                if (val == 'toggle') {
-                  await ref
-                      .read(clientDiscountServiceProvider)
-                      .toggleDiscountStatus(discount);
+                if (val == 'edit') {
+                  onEdit();
                 } else if (val == 'delete') {
                   await ref
                       .read(clientDiscountServiceProvider)
@@ -248,16 +256,10 @@ class _DiscountCard extends ConsumerWidget {
                 }
               },
               itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: 'toggle',
-                  child: Text(discount.isActive ? 'Archive' : 'Restore'),
-                ),
+                const PopupMenuItem(value: 'edit', child: Text('Edit')),
                 const PopupMenuItem(
                   value: 'delete',
-                  child: Text(
-                    'Delete Permanently',
-                    style: TextStyle(color: Colors.red),
-                  ),
+                  child: Text('Delete', style: TextStyle(color: Colors.red)),
                 ),
               ],
             ),
@@ -268,85 +270,136 @@ class _DiscountCard extends ConsumerWidget {
   }
 }
 
-class _AddClientDiscountDialog extends ConsumerStatefulWidget {
+class _DiscountFormDialog extends ConsumerStatefulWidget {
   final String clientId;
-  const _AddClientDiscountDialog({required this.clientId});
+  final ClientDiscount? discount;
+  const _DiscountFormDialog({required this.clientId, this.discount});
 
   @override
-  ConsumerState<_AddClientDiscountDialog> createState() =>
-      _AddClientDiscountDialogState();
+  ConsumerState<_DiscountFormDialog> createState() =>
+      _DiscountFormDialogState();
 }
 
-class _AddClientDiscountDialogState
-    extends ConsumerState<_AddClientDiscountDialog> {
+class _DiscountFormDialogState extends ConsumerState<_DiscountFormDialog> {
   final _formKey = GlobalKey<FormState>();
   final _discountController = TextEditingController();
   String? _selectedService;
   DateTime _effectiveDate = DateTime.now();
+  DateTime? _endDate;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.discount != null) {
+      _discountController.text = widget.discount!.discountPerHour.toString();
+      _selectedService = widget.discount!.serviceType;
+      _effectiveDate = widget.discount!.effectiveDate;
+      _endDate = widget.discount!.endDate;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final activeGlobalRates = ref.watch(activeServiceRatesProvider);
 
     return AlertDialog(
-      title: const Text('Add Client Discount'),
+      title: Text(
+        widget.discount == null
+            ? 'Add Client Discount'
+            : 'Edit Client Discount',
+      ),
       content: Form(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            activeGlobalRates.when(
-              data: (rates) => DropdownButtonFormField<String>(
-                value: _selectedService,
-                decoration: const InputDecoration(
-                  labelText: 'Service Type',
-                  border: OutlineInputBorder(),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              activeGlobalRates.when(
+                data: (rates) => DropdownButtonFormField<String>(
+                  value: _selectedService,
+                  decoration: const InputDecoration(
+                    labelText: 'Service Type',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: rates
+                      .map(
+                        (r) => DropdownMenuItem(
+                          value: r.serviceType,
+                          child: Text(r.serviceType),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) => setState(() => _selectedService = v),
+                  validator: (v) => v == null ? 'Required' : null,
                 ),
-                items: rates
-                    .map(
-                      (r) => DropdownMenuItem(
-                        value: r.serviceType,
-                        child: Text(r.serviceType),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (v) => setState(() => _selectedService = v),
-                validator: (v) => v == null ? 'Required' : null,
+                loading: () => const LinearProgressIndicator(),
+                error: (_, __) => const Text('Error loading services'),
               ),
-              loading: () => const LinearProgressIndicator(),
-              error: (_, __) => const Text('Error loading services'),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _discountController,
-              decoration: const InputDecoration(
-                labelText: 'Discount per Hour (Tk)',
-                border: OutlineInputBorder(),
-                prefixText: '৳ ',
-              ),
-              keyboardType: TextInputType.number,
-              validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
-            ),
-            const SizedBox(height: 16),
-            InkWell(
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: _effectiveDate,
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime(2100),
-                );
-                if (picked != null) setState(() => _effectiveDate = picked);
-              },
-              child: InputDecorator(
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _discountController,
                 decoration: const InputDecoration(
-                  labelText: 'Effective Date',
+                  labelText: 'Discount per Hour (Tk)',
                   border: OutlineInputBorder(),
+                  prefixText: '৳ ',
                 ),
-                child: Text(DateFormat('MMMM dd, yyyy').format(_effectiveDate)),
+                keyboardType: TextInputType.number,
+                validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _effectiveDate,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime(2100),
+                  );
+                  if (picked != null) setState(() => _effectiveDate = picked);
+                },
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Effective Date',
+                    border: OutlineInputBorder(),
+                  ),
+                  child: Text(
+                    DateFormat('MMMM dd, yyyy').format(_effectiveDate),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate:
+                        _endDate ??
+                        _effectiveDate.add(const Duration(days: 30)),
+                    firstDate: _effectiveDate,
+                    lastDate: DateTime(2100),
+                  );
+                  if (picked != null) setState(() => _endDate = picked);
+                },
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'End Date (Optional)',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: _endDate != null
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () => setState(() => _endDate = null),
+                          )
+                        : null,
+                  ),
+                  child: Text(
+                    _endDate == null
+                        ? 'No End Date'
+                        : DateFormat('MMMM dd, yyyy').format(_endDate!),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
       actions: [
@@ -357,18 +410,34 @@ class _AddClientDiscountDialogState
         ElevatedButton(
           onPressed: () async {
             if (_formKey.currentState!.validate() && _selectedService != null) {
-              await ref
-                  .read(clientDiscountServiceProvider)
-                  .addDiscount(
-                    clientId: widget.clientId,
-                    serviceType: _selectedService!,
-                    discountPerHour: double.parse(_discountController.text),
-                    effectiveDate: _effectiveDate,
-                  );
+              if (widget.discount == null) {
+                await ref
+                    .read(clientDiscountServiceProvider)
+                    .addDiscount(
+                      clientId: widget.clientId,
+                      serviceType: _selectedService!,
+                      discountPerHour: double.parse(_discountController.text),
+                      effectiveDate: _effectiveDate,
+                      endDate: _endDate,
+                    );
+              } else {
+                await ref
+                    .read(clientDiscountServiceProvider)
+                    .updateDiscount(
+                      widget.discount!.copyWith(
+                        serviceType: _selectedService,
+                        discountPerHour: double.parse(_discountController.text),
+                        effectiveDate: _effectiveDate,
+                        endDate: () => _endDate,
+                      ),
+                    );
+              }
               if (mounted) Navigator.pop(context);
             }
           },
-          child: const Text('Add Discount'),
+          child: Text(
+            widget.discount == null ? 'Add Discount' : 'Update Discount',
+          ),
         ),
       ],
     );

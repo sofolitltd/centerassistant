@@ -5,9 +5,9 @@ import 'package:go_router/go_router.dart';
 
 import '/app/admin/features/auth/presentation/pages/admin_login_page.dart';
 import '/app/admin/features/clients/presentation/pages/add_client_page.dart';
-import '/app/admin/features/clients/presentation/pages/edit_client_page.dart';
 import '/app/admin/features/clients/presentation/pages/client_details_page.dart';
 import '/app/admin/features/clients/presentation/pages/client_page.dart';
+import '/app/admin/features/clients/presentation/pages/edit_client_page.dart';
 import '/app/admin/features/dashboard/presentation/pages/admin_dashboard_page.dart';
 import '/app/admin/features/employees/presentation/pages/access_portal_page.dart';
 import '/app/admin/features/employees/presentation/pages/add_employee_page.dart';
@@ -21,6 +21,7 @@ import '/app/admin/features/settings/presentation/pages/holiday_page.dart';
 import '/app/admin/features/settings/presentation/pages/service_rates_page.dart';
 import '/app/admin/features/time_slots/presentation/pages/time_slot_page.dart';
 import '/app/admin/features/utilization/presentation/pages/therapist_utilization_page.dart';
+import '/core/constants/app_constants.dart';
 import '../features/contact/presentation/pages/employee_contact_page.dart';
 import '../features/schedule/presentation/pages/add/add_schedule_page.dart';
 import '../features/schedule/presentation/pages/edit/edit_schedule_page.dart';
@@ -32,7 +33,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
       path: '/admin/login',
       pageBuilder: (context, state) => NoTransitionPage(
         child: Title(
-          title: 'Admin Login | Center Assistant',
+          title: 'Admin Login | ${AppConstants.appName}',
           color: Colors.black,
           child: wrapWithSelectionArea(const AdminLoginPage()),
         ),
@@ -52,7 +53,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           path: '/admin/dashboard',
           pageBuilder: (context, state) => NoTransitionPage(
             child: Title(
-              title: 'Dashboard | Center Assistant',
+              title: 'Dashboard | ${AppConstants.appName}',
               color: Colors.black,
               child: const AdminDashboardPage(),
             ),
@@ -62,7 +63,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           path: '/admin/reports',
           pageBuilder: (context, state) => NoTransitionPage(
             child: Title(
-              title: 'Reports | Center Assistant',
+              title: 'Reports | ${AppConstants.appName}',
               color: Colors.black,
               child: const AdminReportPage(),
             ),
@@ -73,7 +74,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           pageBuilder: (context, state) {
             return NoTransitionPage(
               child: Title(
-                title: 'Schedule | Center Assistant',
+                title: 'Schedule | ${AppConstants.appName}',
                 color: Colors.black,
                 child: const ScheduleAllPage(),
               ),
@@ -89,7 +90,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
 
             return NoTransitionPage(
               child: Title(
-                title: 'Add Schedule | Center Assistant',
+                title: 'Add Schedule | ${AppConstants.appName}',
                 color: Colors.black,
                 child: AddSchedulePage(
                   initialClientId: clientId,
@@ -106,7 +107,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
             final sessionId = state.pathParameters['sessionId']!;
             return NoTransitionPage(
               child: Title(
-                title: 'Edit Schedule | Center Assistant',
+                title: 'Edit Schedule | ${AppConstants.appName}',
                 color: Colors.black,
                 child: EditSchedulePage(sessionId: sessionId),
               ),
@@ -119,7 +120,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           path: '/admin/employees',
           pageBuilder: (context, state) => NoTransitionPage(
             child: Title(
-              title: 'Employees | Center Assistant',
+              title: 'Employees | ${AppConstants.appName}',
               color: Colors.black,
               child: const EmployeePage(),
             ),
@@ -130,7 +131,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           path: '/admin/employees/add',
           pageBuilder: (context, state) => NoTransitionPage(
             child: Title(
-              title: 'Add Employee | Center Assistant',
+              title: 'Add Employee | ${AppConstants.appName}',
               color: Colors.black,
               child: const AddEmployeePage(),
             ),
@@ -141,7 +142,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           path: '/admin/employees/:id/edit',
           pageBuilder: (context, state) => NoTransitionPage(
             child: Title(
-              title: 'Edit Employee | Center Assistant',
+              title: 'Edit Employee | ${AppConstants.appName}',
               color: Colors.black,
               child: EditEmployeePage(employeeId: state.pathParameters['id']!),
             ),
@@ -154,7 +155,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
             final userId = state.uri.queryParameters['userId'];
             return NoTransitionPage(
               child: Title(
-                title: 'Invite Employee | Center Assistant',
+                title: 'Invite Employee | ${AppConstants.appName}',
                 color: Colors.black,
                 child: AccessPortalPage(userId: userId),
               ),
@@ -188,7 +189,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           path: '/admin/clients',
           pageBuilder: (context, state) => NoTransitionPage(
             child: Title(
-              title: 'Clients | Center Assistant',
+              title: 'Clients | ${AppConstants.appName}',
               color: Colors.black,
               child: const ClientPage(),
             ),
@@ -198,7 +199,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           path: '/admin/clients/add',
           pageBuilder: (context, state) => NoTransitionPage(
             child: Title(
-              title: 'Add Client | Center Assistant',
+              title: 'Add Client | ${AppConstants.appName}',
               color: Colors.black,
               child: const AddClientPage(),
             ),
@@ -209,7 +210,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           path: '/admin/clients/:id/edit',
           pageBuilder: (context, state) => NoTransitionPage(
             child: Title(
-              title: 'Edit Client | Center Assistant',
+              title: 'Edit Client | ${AppConstants.appName}',
               color: Colors.black,
               child: EditClientPage(clientId: state.pathParameters['id']!),
             ),
@@ -239,7 +240,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           path: '/admin/settings/departments',
           pageBuilder: (context, state) => NoTransitionPage(
             child: Title(
-              title: 'Departments | Center Assistant',
+              title: 'Departments | ${AppConstants.appName}',
               color: Colors.black,
               child: const DepartmentManagementPage(),
             ),
@@ -250,7 +251,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           path: '/admin/settings/time-slots',
           pageBuilder: (context, state) => NoTransitionPage(
             child: Title(
-              title: 'Time Slots | Center Assistant',
+              title: 'Time Slots | ${AppConstants.appName}',
               color: Colors.black,
               child: const TimeSlotPage(),
             ),
@@ -261,7 +262,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           path: '/admin/settings/holidays',
           pageBuilder: (context, state) => NoTransitionPage(
             child: Title(
-              title: 'Holidays | Center Assistant',
+              title: 'Holidays | ${AppConstants.appName}',
               color: Colors.black,
               child: const HolidayPage(),
             ),
@@ -272,7 +273,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           path: '/admin/settings/service-charges',
           pageBuilder: (context, state) => NoTransitionPage(
             child: Title(
-              title: 'Service Charges | Center Assistant',
+              title: 'Service Charges | ${AppConstants.appName}',
               color: Colors.black,
               child: const ServiceRatesPage(),
             ),
@@ -283,7 +284,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           path: '/admin/utilization',
           pageBuilder: (context, state) => NoTransitionPage(
             child: Title(
-              title: 'Therapist Utilization | Center Assistant',
+              title: 'Therapist Utilization | ${AppConstants.appName}',
               color: Colors.black,
               child: const TherapistUtilizationPage(),
             ),
@@ -294,7 +295,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           path: '/admin/transactions',
           pageBuilder: (context, state) => NoTransitionPage(
             child: Title(
-              title: 'All Transactions | Center Assistant',
+              title: 'All Transactions | ${AppConstants.appName}',
               color: Colors.black,
               child: const AllTransactionsPage(),
             ),
@@ -306,7 +307,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           path: '/admin/contacts',
           pageBuilder: (context, state) => NoTransitionPage(
             child: Title(
-              title: 'Employee Contact | Center Assistant',
+              title: 'Employee Contact | ${AppConstants.appName}',
               color: Colors.black,
               child: EmployeeContactPage(),
             ),
@@ -316,7 +317,7 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
           path: '/admin/leaves',
           pageBuilder: (context, state) => NoTransitionPage(
             child: Title(
-              title: 'Leave Management | Center Assistant',
+              title: 'Leave Management | ${AppConstants.appName}',
               color: Colors.black,
               child: const LeaveManagementPage(),
             ),
