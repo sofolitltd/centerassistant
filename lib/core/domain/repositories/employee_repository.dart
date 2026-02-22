@@ -5,6 +5,7 @@ abstract class IEmployeeRepository {
   Stream<Employee?> getEmployeeById(String id);
   Stream<List<String>> getDepartments();
   Future<void> addEmployee({
+    required String employeeId,
     required String name,
     String nickName = '',
     required String personalPhone,

@@ -12,45 +12,68 @@ class ClientInformationPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 800;
+        final isMobile = constraints.maxWidth < 900;
 
-        return Column(
-          children: [
-            if (isMobile)
-              Column(
-                children: [
-                  _buildPersonalCard(),
-                  const SizedBox(height: 16),
-                  _buildContactCard(),
-                ],
-              )
-            else
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: _buildPersonalCard()),
-                  const SizedBox(width: 24),
-                  Expanded(child: _buildContactCard()),
-                ],
-              ),
-            const SizedBox(height: 32),
-          ],
+        return SingleChildScrollView(
+          child: Column(
+            children: [
+              if (isMobile)
+                Column(
+                  children: [
+                    _buildPersonalCard(),
+                    const SizedBox(height: 24),
+                    _buildParentCard(),
+                    const SizedBox(height: 24),
+                    _buildContactCard(),
+                    const SizedBox(height: 24),
+                    _buildEnrollmentCard(),
+                  ],
+                )
+              else
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _buildPersonalCard(),
+                          const SizedBox(height: 24),
+                          _buildParentCard(),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _buildContactCard(),
+                          const SizedBox(height: 24),
+                          _buildEnrollmentCard(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 32),
+            ],
+          ),
         );
       },
     );
   }
 
   Widget _buildPersonalCard() {
-    return _buildInfoCard('Personal Information', [
+    return _buildInfoCard('1. Personal Information', [
       Row(
         children: [
           CircleAvatar(
             radius: 32,
+            backgroundColor: Colors.blue.shade50,
             backgroundImage: client.image.isNotEmpty
                 ? NetworkImage(client.image)
                 : null,
             child: client.image.isEmpty
-                ? const Icon(LucideIcons.user, size: 32)
+                ? const Icon(LucideIcons.user, size: 32, color: Colors.blue)
                 : null,
           ),
           const SizedBox(width: 16),
@@ -67,8 +90,8 @@ class ClientInformationPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Id: ${client.clientId.toUpperCase()}',
-                  style: const TextStyle(color: Colors.grey, fontSize: 18),
+                  'ID: ${client.clientId.toUpperCase()}',
+                  style: const TextStyle(color: Colors.grey, fontSize: 14),
                 ),
               ],
             ),
@@ -84,18 +107,55 @@ class ClientInformationPage extends StatelessWidget {
         'Date of Birth',
         DateFormat('dd MMM, yyyy').format(client.dateOfBirth),
       ),
+    ]);
+  }
+
+  Widget _buildParentCard() {
+    return _buildInfoCard('2. Parent Information', [
+      _buildInfoRow('Father Name', client.fatherName, icon: LucideIcons.user),
       _buildInfoRow(
-        'Registration Date',
-        DateFormat('dd MMM, yyyy').format(client.createdAt),
+        'Father Contact',
+        client.fatherContact,
+        icon: LucideIcons.phone,
+      ),
+      const Divider(height: 32),
+      _buildInfoRow('Mother Name', client.motherName, icon: LucideIcons.user),
+      _buildInfoRow(
+        'Mother Contact',
+        client.motherContact,
+        icon: LucideIcons.phone,
       ),
     ]);
   }
 
   Widget _buildContactCard() {
-    return _buildInfoCard('Contact Information', [
-      _buildInfoRow('Mobile Number', client.mobileNo),
-      _buildInfoRow('Email Address', client.email),
-      _buildInfoRow('Home Address', client.address),
+    return _buildInfoCard('3. Contact & Address', [
+      _buildInfoRow('Mobile Number', client.mobileNo, icon: LucideIcons.phone),
+      _buildInfoRow('Email Address', client.email, icon: LucideIcons.mail),
+      _buildInfoRow('Home Address', client.address, icon: LucideIcons.mapPin),
+    ]);
+  }
+
+  Widget _buildEnrollmentCard() {
+    return _buildInfoCard('4. Enrollment Status', [
+      _buildInfoRow(
+        'Enrollment Date',
+        DateFormat('dd MMM, yyyy').format(client.enrollmentDate),
+        icon: LucideIcons.calendar,
+      ),
+      _buildInfoRow(
+        'Discontinue Date',
+        client.discontinueDate != null
+            ? DateFormat('dd MMM, yyyy').format(client.discontinueDate!)
+            : 'Active',
+        icon: LucideIcons.calendarX,
+        valueColor: client.discontinueDate != null ? Colors.red : Colors.green,
+      ),
+      _buildInfoRow(
+        'Registration Date',
+        DateFormat('dd MMM, yyyy').format(client.createdAt),
+        icon: LucideIcons.clock,
+      ),
     ]);
   }
 
@@ -104,17 +164,21 @@ class ClientInformationPage extends StatelessWidget {
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: Colors.grey.shade200),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.blueAccent,
+              ),
             ),
             const Divider(height: 32),
             ...children,
@@ -124,12 +188,21 @@ class ClientInformationPage extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(
+    String label,
+    String value, {
+    IconData? icon,
+    Color? valueColor,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (icon != null) ...[
+            Icon(icon, size: 16, color: Colors.grey.shade400),
+            const SizedBox(width: 8),
+          ],
           SizedBox(
             width: 120,
             child: Text(
@@ -145,7 +218,11 @@ class ClientInformationPage extends StatelessWidget {
           Expanded(
             child: Text(
               value.isNotEmpty ? value : '-',
-              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: valueColor,
+              ),
             ),
           ),
         ],

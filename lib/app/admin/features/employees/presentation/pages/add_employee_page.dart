@@ -67,15 +67,6 @@ class _AddEmployeePageState extends ConsumerState<AddEmployeePage> {
       }
     });
 
-    // Fallback: Listener for real-time changes
-    ref.listen(nextEmployeeIdProvider, (prev, next) {
-      next.whenData((id) {
-        if (_empIdFieldController.text.isEmpty) {
-          _empIdFieldController.text = id;
-        }
-      });
-    });
-
     return Scaffold(
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -655,9 +646,10 @@ class _AddEmployeePageState extends ConsumerState<AddEmployeePage> {
       }
 
       await ref
-          .read(employeeRepositoryProvider)
+          .read(employeeServiceProvider)
           .addEmployee(
             name: _nameController.text.trim(),
+            employeeId: _empIdFieldController.text.trim(),
             nickName: _nickNameController.text.trim(),
             personalPhone: _personalPhoneController.text.trim(),
             officialPhone: _officialPhoneController.text.trim(),

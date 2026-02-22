@@ -23,7 +23,6 @@ class AdminDashboardPage extends ConsumerWidget {
     final leavesAsync = ref.watch(allLeavesProvider);
 
     final allMonthlySessionsAsync = ref.watch(allMonthlySessionsProvider);
-    final allWeeklySessionsAsync = ref.watch(allWeeklySessionsProvider);
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -48,13 +47,21 @@ class AdminDashboardPage extends ConsumerWidget {
                           children: [
                             _buildSectionTitle(
                               context,
-                              'Therapist Weekly Load(Action Required)',
+                              'Therapist Monthly Load',
                               icon: LucideIcons.userCheck,
+                              trailing: TextButton(
+                                onPressed: () =>
+                                    context.go('/admin/utilization'),
+                                child: const Text(
+                                  'View All',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
                             ),
                             const SizedBox(height: 16),
                             _buildTherapistWorkloadList(
                               context,
-                              allWeeklySessionsAsync,
+                              allMonthlySessionsAsync,
                               employeesAsync,
                               schedulableDeptsAsync,
                             ),
@@ -98,13 +105,20 @@ class AdminDashboardPage extends ConsumerWidget {
                     children: [
                       _buildSectionTitle(
                         context,
-                        'Therapist Weekly Load(Action Required)',
+                        'Therapist Monthly Load',
                         icon: LucideIcons.userCheck,
+                        trailing: TextButton(
+                          onPressed: () => context.go('/admin/utilization'),
+                          child: const Text(
+                            'View All',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 16),
                       _buildTherapistWorkloadList(
                         context,
-                        allWeeklySessionsAsync,
+                        allMonthlySessionsAsync,
                         employeesAsync,
                         schedulableDeptsAsync,
                       ),
@@ -163,11 +177,12 @@ class AdminDashboardPage extends ConsumerWidget {
 
   Widget _buildTherapistWorkloadList(
     BuildContext context,
-    AsyncValue<List<Session>> weeklySessionsAsync,
+    AsyncValue<List<Session>> monthlySessionsAsync,
     AsyncValue<List<Employee>> employeesAsync,
     AsyncValue<Set<String>> schedulableDeptsAsync,
   ) {
-    const int targetSessions = 15;
+    // For monthly view, target is 52 sessions (13 per week)
+    const int targetSessions = 52;
 
     return Card(
       elevation: 0,
@@ -175,7 +190,7 @@ class AdminDashboardPage extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: Colors.grey.shade200),
       ),
-      child: weeklySessionsAsync.when(
+      child: monthlySessionsAsync.when(
         data: (sessions) {
           return employeesAsync.when(
             data: (employees) {
@@ -185,65 +200,70 @@ class AdminDashboardPage extends ConsumerWidget {
                       .where((e) => schedulableDepts.contains(e.department))
                       .toList();
 
-                  final Map<String, int> workload = {};
+                  final Map<String, int> workloadCount = {};
+                  final Map<String, double> workloadHours = {};
+
                   for (final s in sessions) {
                     for (final sv in s.services) {
-                      workload[sv.employeeId] =
-                          (workload[sv.employeeId] ?? 0) + 1;
+                      workloadCount[sv.employeeId] =
+                          (workloadCount[sv.employeeId] ?? 0) + 1;
+                      workloadHours[sv.employeeId] =
+                          (workloadHours[sv.employeeId] ?? 0.0) + sv.duration;
                     }
                   }
 
                   filteredEmployees.sort((a, b) {
-                    final aCount = workload[a.id] ?? 0;
-                    final bCount = workload[b.id] ?? 0;
-                    return (bCount - 10).abs().compareTo((aCount - 10).abs());
+                    final aCount = workloadCount[a.id] ?? 0;
+                    final bCount = workloadCount[b.id] ?? 0;
+                    // Sort by highest load
+                    return bCount.compareTo(aCount);
                   });
 
                   final displayList = filteredEmployees.take(10).toList();
 
-                  return Column(
-                    children: [
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: displayList.length,
-                        separatorBuilder: (context, index) =>
-                            Divider(height: 1, color: Colors.grey.shade100),
-                        itemBuilder: (context, index) {
-                          final emp = displayList[index];
-                          final count = workload[emp.id] ?? 0;
-                          final percentage = (count / targetSessions).clamp(
-                            0.0,
-                            1.0,
-                          );
+                  return ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: displayList.length,
+                    separatorBuilder: (context, index) =>
+                        Divider(height: 1, color: Colors.grey.shade100),
+                    itemBuilder: (context, index) {
+                      final emp = displayList[index];
+                      final count = workloadCount[emp.id] ?? 0;
+                      final hours = workloadHours[emp.id] ?? 0.0;
+                      final percentage = (count / targetSessions).clamp(
+                        0.0,
+                        1.0,
+                      );
 
-                          Color statusColor = Colors.blue;
-                          if (count > 15)
-                            statusColor = Colors.red;
-                          else if (count >= 13)
-                            statusColor = Colors.orange;
-                          else if (count >= 6)
-                            statusColor = Colors.green;
+                      Color statusColor = Colors.blue;
+                      if (count > targetSessions)
+                        statusColor = Colors.red;
+                      else if (count >= (targetSessions * 0.85).round())
+                        statusColor = Colors.orange;
+                      else if (count >= (targetSessions * 0.4).round())
+                        statusColor = Colors.green;
 
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 16,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
+                                Text(
+                                  emp.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
                                 Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      emp.name,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 8,
@@ -254,7 +274,26 @@ class AdminDashboardPage extends ConsumerWidget {
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Text(
-                                        '$count/$targetSessions',
+                                        'session: $count',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: statusColor,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: statusColor.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        'hour: ${hours.toStringAsFixed(1)}',
                                         style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.bold,
@@ -264,30 +303,22 @@ class AdminDashboardPage extends ConsumerWidget {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 12),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: LinearProgressIndicator(
-                                    value: percentage,
-                                    backgroundColor: Colors.grey.shade100,
-                                    color: statusColor,
-                                    minHeight: 8,
-                                  ),
-                                ),
                               ],
                             ),
-                          );
-                        },
-                      ),
-                      const Divider(height: 1),
-                      TextButton(
-                        onPressed: () => context.go('/admin/utilization'),
-                        child: Text(
-                          'View All ${filteredEmployees.length} Therapists Utilization',
+                            const SizedBox(height: 12),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: LinearProgressIndicator(
+                                value: percentage,
+                                backgroundColor: Colors.grey.shade100,
+                                color: statusColor,
+                                minHeight: 8,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                    ],
+                      );
+                    },
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
@@ -507,20 +538,24 @@ class AdminDashboardPage extends ConsumerWidget {
     BuildContext context,
     String title, {
     required IconData icon,
+    Widget? trailing,
   }) {
     return Row(
       children: [
         Icon(icon, size: 18, color: Colors.black54),
         const SizedBox(width: 8),
-        Text(
-          title.toUpperCase(),
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.1,
-            color: Colors.black54,
+        Expanded(
+          child: Text(
+            title.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.1,
+              color: Colors.black54,
+            ),
           ),
         ),
+        if (trailing != null) trailing,
       ],
     );
   }

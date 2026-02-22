@@ -4,16 +4,18 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '/core/models/client.dart';
 import '/core/providers/client_providers.dart';
 
-class AddClientPage extends ConsumerStatefulWidget {
-  const AddClientPage({super.key});
+class EditClientPage extends ConsumerStatefulWidget {
+  final String clientId;
+  const EditClientPage({super.key, required this.clientId});
 
   @override
-  ConsumerState<AddClientPage> createState() => _AddClientPageState();
+  ConsumerState<EditClientPage> createState() => _EditClientPageState();
 }
 
-class _AddClientPageState extends ConsumerState<AddClientPage> {
+class _EditClientPageState extends ConsumerState<EditClientPage> {
   final _formKey = GlobalKey<FormState>();
 
   // Controllers
@@ -34,6 +36,7 @@ class _AddClientPageState extends ConsumerState<AddClientPage> {
   DateTime _enrollmentDate = DateTime.now();
   DateTime? _discontinueDate;
   bool _isSaving = false;
+  bool _isInitialized = false;
 
   @override
   void dispose() {
@@ -50,77 +53,102 @@ class _AddClientPageState extends ConsumerState<AddClientPage> {
     super.dispose();
   }
 
+  void _initializeFields(Client client) {
+    if (_isInitialized) return;
+    _nameController.text = client.name;
+    _nickNameController.text = client.nickName;
+    _mobileController.text = client.mobileNo;
+    _emailController.text = client.email;
+    _addressController.text = client.address;
+    _clientIdController.text = client.clientId;
+    _fatherNameController.text = client.fatherName;
+    _fatherContactController.text = client.fatherContact;
+    _motherNameController.text = client.motherName;
+    _motherContactController.text = client.motherContact;
+    _selectedGender = client.gender;
+    _selectedDob = client.dateOfBirth;
+    _enrollmentDate = client.enrollmentDate;
+    _discontinueDate = client.discontinueDate;
+    _isInitialized = true;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final isMobile = width < 900;
+    final clientAsync = ref.watch(clientByIdProvider(widget.clientId));
 
-    // Pre-fill Client ID
-    final nextIdAsync = ref.watch(nextClientIdProvider);
-    nextIdAsync.whenData((id) {
-      if (_clientIdController.text.isEmpty) {
-        _clientIdController.text = id;
-      }
-    });
+    return clientAsync.when(
+      data: (client) {
+        if (client == null) {
+          return const Scaffold(body: Center(child: Text('Client not found')));
+        }
+        _initializeFields(client);
 
-    return Scaffold(
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Center(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 1200),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(),
-                const SizedBox(height: 32),
-                Form(
-                  key: _formKey,
-                  child: isMobile
-                      ? Column(
-                          children: [
-                            _buildBasicInfo(isMobile),
-                            const SizedBox(height: 24),
-                            _buildParentInfo(isMobile),
-                            const SizedBox(height: 24),
-                            _buildContactInfo(isMobile),
-                            const SizedBox(height: 24),
-                            _buildEnrollmentInfo(isMobile),
-                          ],
-                        )
-                      : Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                children: [
-                                  _buildBasicInfo(isMobile),
-                                  const SizedBox(height: 24),
-                                  _buildParentInfo(isMobile),
-                                ],
-                              ),
+        final width = MediaQuery.of(context).size.width;
+        final isMobile = width < 900;
+
+        return Scaffold(
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 1200),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(),
+                    const SizedBox(height: 32),
+                    Form(
+                      key: _formKey,
+                      child: isMobile
+                          ? Column(
+                              children: [
+                                _buildBasicInfo(isMobile),
+                                const SizedBox(height: 24),
+                                _buildParentInfo(isMobile),
+                                const SizedBox(height: 24),
+                                _buildContactInfo(isMobile),
+                                const SizedBox(height: 24),
+                                _buildEnrollmentInfo(isMobile),
+                              ],
+                            )
+                          : Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    children: [
+                                      _buildBasicInfo(isMobile),
+                                      const SizedBox(height: 24),
+                                      _buildParentInfo(isMobile),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 24),
+                                Expanded(
+                                  child: Column(
+                                    children: [
+                                      _buildContactInfo(isMobile),
+                                      const SizedBox(height: 24),
+                                      _buildEnrollmentInfo(isMobile),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 24),
-                            Expanded(
-                              child: Column(
-                                children: [
-                                  _buildContactInfo(isMobile),
-                                  const SizedBox(height: 24),
-                                  _buildEnrollmentInfo(isMobile),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                    ),
+                    const SizedBox(height: 48),
+                    _buildFooterActions(client),
+                    const SizedBox(height: 32),
+                  ],
                 ),
-                const SizedBox(height: 48),
-                _buildFooterActions(),
-                const SizedBox(height: 32),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (e, _) => Scaffold(body: Center(child: Text('Error: $e'))),
     );
   }
 
@@ -136,7 +164,7 @@ class _AddClientPageState extends ConsumerState<AddClientPage> {
       _buildResponsiveRow(
         isMobile: isMobile,
         children: [
-          _buildFieldBlock('Full Name *', _nameController, isRequired: true),
+          _buildFieldBlock('Full Name', _nameController, isRequired: true),
           _buildFieldBlock('Nick Name', _nickNameController),
         ],
       ),
@@ -146,7 +174,7 @@ class _AddClientPageState extends ConsumerState<AddClientPage> {
         children: [
           _buildGenderDropdown(),
           _buildDatePicker(
-            'Date of Birth *',
+            'Date of Birth',
             _selectedDob,
             (d) => setState(() => _selectedDob = d),
             isRequired: true,
@@ -198,7 +226,7 @@ class _AddClientPageState extends ConsumerState<AddClientPage> {
         isMobile: isMobile,
         children: [
           _buildFieldBlock(
-            'Mobile Number *',
+            'Mobile Number',
             _mobileController,
             icon: LucideIcons.phone,
             isRequired: true,
@@ -292,14 +320,14 @@ class _AddClientPageState extends ConsumerState<AddClientPage> {
             ),
             const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
             const Text(
-              'New Registration',
+              'Edit Profile',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
             ),
           ],
         ),
         const SizedBox(height: 8),
         const Text(
-          'Register Client',
+          'Edit Client',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 28),
         ),
       ],
@@ -343,7 +371,7 @@ class _AddClientPageState extends ConsumerState<AddClientPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildFieldTitle('Gender *'),
+        _buildFieldTitle('Gender'),
         ButtonTheme(
           alignedDropdown: true,
           child: DropdownButtonFormField<String>(
@@ -396,17 +424,14 @@ class _AddClientPageState extends ConsumerState<AddClientPage> {
     );
   }
 
-  Widget _buildFooterActions() {
+  Widget _buildFooterActions(Client client) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        TextButton(
-          onPressed: () => context.go('/admin/clients'),
-          child: const Text('Cancel'),
-        ),
+        TextButton(onPressed: () => context.pop(), child: const Text('Cancel')),
         const SizedBox(width: 16),
         ElevatedButton(
-          onPressed: _isSaving ? null : _handleSubmit,
+          onPressed: _isSaving ? null : () => _handleSubmit(client),
 
           child: _isSaving
               ? const SizedBox(
@@ -417,13 +442,13 @@ class _AddClientPageState extends ConsumerState<AddClientPage> {
                     color: Colors.white,
                   ),
                 )
-              : const Text('Add Client'),
+              : const Text('Update Client'),
         ),
       ],
     );
   }
 
-  void _handleSubmit() async {
+  void _handleSubmit(Client client) async {
     if (_formKey.currentState!.validate()) {
       if (_selectedDob == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -434,25 +459,24 @@ class _AddClientPageState extends ConsumerState<AddClientPage> {
 
       setState(() => _isSaving = true);
       try {
-        await ref
-            .read(clientServiceProvider)
-            .addClient(
-              clientId: _clientIdController.text.trim().toString(),
-              name: _nameController.text.trim(),
-              nickName: _nickNameController.text.trim(),
-              mobileNo: _mobileController.text.trim(),
-              email: _emailController.text.trim(),
-              address: _addressController.text.trim(),
-              gender: _selectedGender,
-              dateOfBirth: _selectedDob!,
-              fatherName: _fatherNameController.text.trim(),
-              fatherContact: _fatherContactController.text.trim(),
-              motherName: _motherNameController.text.trim(),
-              motherContact: _motherContactController.text.trim(),
-              enrollmentDate: _enrollmentDate,
-              discontinueDate: _discontinueDate,
-            );
-        if (mounted) context.go('/admin/clients');
+        final updatedClient = client.copyWith(
+          name: _nameController.text.trim(),
+          nickName: _nickNameController.text.trim(),
+          mobileNo: _mobileController.text.trim(),
+          email: _emailController.text.trim(),
+          address: _addressController.text.trim(),
+          gender: _selectedGender,
+          dateOfBirth: _selectedDob!,
+          fatherName: _fatherNameController.text.trim(),
+          fatherContact: _fatherContactController.text.trim(),
+          motherName: _motherNameController.text.trim(),
+          motherContact: _motherContactController.text.trim(),
+          enrollmentDate: _enrollmentDate,
+          discontinueDate: _discontinueDate,
+        );
+
+        await ref.read(clientServiceProvider).updateClient(updatedClient);
+        if (mounted) context.pop();
       } catch (e) {
         if (mounted) {
           setState(() => _isSaving = false);

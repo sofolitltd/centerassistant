@@ -8,7 +8,6 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '/core/models/client.dart';
 import '/core/providers/client_providers.dart';
-import '../widgets/edit_client_dialog.dart';
 
 class ClientPage extends ConsumerWidget {
   const ClientPage({super.key});
@@ -229,9 +228,8 @@ class ClientPage extends ConsumerWidget {
                                         LucideIcons.edit,
                                         size: 16,
                                       ),
-                                      onPressed: () => _showEditClientDialog(
-                                        context,
-                                        client,
+                                      onPressed: () => context.go(
+                                        '/admin/clients/${client.id}/edit',
                                       ),
                                       visualDensity: VisualDensity.compact,
                                     ),
@@ -303,13 +301,6 @@ class ClientPage extends ConsumerWidget {
           ),
         ],
       ),
-    );
-  }
-
-  void _showEditClientDialog(BuildContext context, Client client) {
-    showDialog(
-      context: context,
-      builder: (context) => EditClientDialog(client: client),
     );
   }
 }

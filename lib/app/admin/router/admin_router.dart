@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '/app/admin/features/auth/presentation/pages/admin_login_page.dart';
 import '/app/admin/features/clients/presentation/pages/add_client_page.dart';
+import '/app/admin/features/clients/presentation/pages/edit_client_page.dart';
 import '/app/admin/features/clients/presentation/pages/client_details_page.dart';
 import '/app/admin/features/clients/presentation/pages/client_page.dart';
 import '/app/admin/features/dashboard/presentation/pages/admin_dashboard_page.dart';
@@ -200,6 +201,17 @@ List<RouteBase> adminRoutes(Widget Function(Widget) wrapWithSelectionArea) {
               title: 'Add Client | Center Assistant',
               color: Colors.black,
               child: const AddClientPage(),
+            ),
+          ),
+        ),
+
+        GoRoute(
+          path: '/admin/clients/:id/edit',
+          pageBuilder: (context, state) => NoTransitionPage(
+            child: Title(
+              title: 'Edit Client | Center Assistant',
+              color: Colors.black,
+              child: EditClientPage(clientId: state.pathParameters['id']!),
             ),
           ),
         ),

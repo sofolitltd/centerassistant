@@ -200,18 +200,18 @@ class TherapistUtilizationPage extends ConsumerWidget {
         side: BorderSide(color: Colors.grey.shade200),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(10),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: color, size: 24),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,6 +225,8 @@ class TherapistUtilizationPage extends ConsumerWidget {
                   ),
                   Text(
                     value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -300,7 +302,7 @@ class _WeeklyUtilizationView extends ConsumerWidget {
 
             if (weekOffset == null) {
               displaySessions = sessions;
-              target = 60;
+              target = 52; // 13 sessions per week * 4 weeks
             } else {
               final weekStart = firstOfMonth.add(
                 Duration(days: 7 * weekOffset!),
@@ -314,22 +316,28 @@ class _WeeklyUtilizationView extends ConsumerWidget {
                     ) &&
                     date.isBefore(weekEnd);
               }).toList();
-              target = 15;
+              target = 13;
             }
 
             final filteredEmployees = employees
                 .where((e) => schedulableDepts.contains(e.department))
                 .toList();
 
-            final Map<String, int> workload = {};
+            final Map<String, int> workloadCount = {};
+            final Map<String, double> workloadHours = {};
             for (final s in displaySessions) {
               for (final sv in s.services) {
-                workload[sv.employeeId] = (workload[sv.employeeId] ?? 0) + 1;
+                workloadCount[sv.employeeId] =
+                    (workloadCount[sv.employeeId] ?? 0) + 1;
+                workloadHours[sv.employeeId] =
+                    (workloadHours[sv.employeeId] ?? 0.0) + sv.duration;
               }
             }
 
             filteredEmployees.sort(
-              (a, b) => (workload[b.id] ?? 0).compareTo(workload[a.id] ?? 0),
+              (a, b) => (workloadCount[b.id] ?? 0).compareTo(
+                workloadCount[a.id] ?? 0,
+              ),
             );
 
             return ListView.builder(
@@ -337,8 +345,9 @@ class _WeeklyUtilizationView extends ConsumerWidget {
               itemCount: filteredEmployees.length,
               itemBuilder: (context, index) {
                 final emp = filteredEmployees[index];
-                final count = workload[emp.id] ?? 0;
-                return _buildTherapistCard(emp, count, target);
+                final count = workloadCount[emp.id] ?? 0;
+                final hours = workloadHours[emp.id] ?? 0.0;
+                return _buildTherapistCard(emp, count, hours, target);
               },
             );
           },
@@ -353,7 +362,12 @@ class _WeeklyUtilizationView extends ConsumerWidget {
     );
   }
 
-  Widget _buildTherapistCard(Employee emp, int count, int target) {
+  Widget _buildTherapistCard(
+    Employee emp,
+    int count,
+    double hours,
+    int target,
+  ) {
     final percentage = (count / target).clamp(0.0, 1.0);
 
     Color color = Colors.blue;
@@ -376,49 +390,64 @@ class _WeeklyUtilizationView extends ConsumerWidget {
         child: Column(
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                CircleAvatar(
-                  backgroundColor: color.withOpacity(0.1),
-                  child: Icon(LucideIcons.user, color: color, size: 18),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        emp.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        emp.department,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '$count / $target',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        color: color,
+                      emp.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      emp.department,
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  ],
+                ),
+
+                //
+                Row(
+                  children: [
+                    //
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'Session: $count',
+                        style: TextStyle(fontSize: 12, color: color),
                       ),
                     ),
-                    const Text(
-                      'sessions',
-                      style: TextStyle(fontSize: 10, color: Colors.grey),
+
+                    const SizedBox(width: 8),
+                    //
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'Hour: ${hours.toStringAsFixed(1)}',
+                        style: TextStyle(fontSize: 12, color: color),
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+
+            // Spacer(),
+            const SizedBox(height: 10),
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: LinearProgressIndicator(

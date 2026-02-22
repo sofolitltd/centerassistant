@@ -37,6 +37,7 @@ class ClientRepositoryImpl implements IClientRepository {
 
   @override
   Future<void> addClient({
+    required String clientId,
     required String name,
     required String nickName,
     required String mobileNo,
@@ -44,30 +45,23 @@ class ClientRepositoryImpl implements IClientRepository {
     required String address,
     required String gender,
     required DateTime dateOfBirth,
+    String fatherName = '',
+    String fatherContact = '',
+    String motherName = '',
+    String motherContact = '',
+    DateTime? enrollmentDate,
+    DateTime? discontinueDate,
   }) async {
     final counterRef = _firestore.collection('counters').doc('clients');
 
     return _firestore.runTransaction((transaction) async {
-      final counterSnapshot = await transaction.get(counterRef);
-
-      int newIdNumber;
-      if (!counterSnapshot.exists) {
-        newIdNumber = 1;
-      } else {
-        final data = counterSnapshot.data();
-        newIdNumber = (data?['count'] as int? ?? 0) + 1;
-      }
-
-      // 1. Generate random document ID
+      // 1. Generate random document ID for Firestore
       final newClientRef = _firestore.collection('clients').doc();
       final docId = newClientRef.id;
 
-      // 2. Generate sequential ID field (e.g. 0001)
-      final sequentialId = newIdNumber.toString().padLeft(4, '0');
-
       final newClient = Client(
         id: docId,
-        clientId: sequentialId,
+        clientId: clientId,
         name: name,
         nickName: nickName,
         mobileNo: mobileNo,
@@ -76,10 +70,24 @@ class ClientRepositoryImpl implements IClientRepository {
         gender: gender,
         dateOfBirth: dateOfBirth,
         createdAt: DateTime.now(),
+        fatherName: fatherName,
+        fatherContact: fatherContact,
+        motherName: motherName,
+        motherContact: motherContact,
+        enrollmentDate: enrollmentDate ?? DateTime.now(),
+        discontinueDate: discontinueDate,
       );
 
       transaction.set(newClientRef, newClient.toJson());
-      transaction.set(counterRef, {'count': newIdNumber});
+
+      // 2. Update the counter to match the numeric part of the provided ID
+      // This ensures the next auto-generated ID is correct.
+      try {
+        final numericId = int.parse(clientId);
+        transaction.set(counterRef, {'count': numericId}, SetOptions(merge: true));
+      } catch (_) {
+        // If clientId is not numeric, we don't update the counter
+      }
     });
   }
 
@@ -95,7 +103,5 @@ class ClientRepositoryImpl implements IClientRepository {
   Future<void> deleteClient(String id) async {
     final clientRef = _firestore.collection('clients').doc(id);
     await clientRef.delete();
-    // Counter decrement is usually not recommended for sequential IDs 
-    // to avoid ID reuse and complexity, so we only delete the document.
   }
 }

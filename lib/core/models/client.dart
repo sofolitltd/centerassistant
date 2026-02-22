@@ -15,6 +15,13 @@ class Client {
   final double walletBalance; // Prepaid balance
   final double securityDeposit; // Safety money
 
+  final String fatherName;
+  final String fatherContact;
+  final String motherName;
+  final String motherContact;
+  final DateTime enrollmentDate;
+  final DateTime? discontinueDate;
+
   Client({
     required this.id,
     required this.clientId,
@@ -29,6 +36,12 @@ class Client {
     required this.createdAt,
     this.walletBalance = 0.0,
     this.securityDeposit = 0.0,
+    this.fatherName = '',
+    this.fatherContact = '',
+    this.motherName = '',
+    this.motherContact = '',
+    required this.enrollmentDate,
+    this.discontinueDate,
   });
 
   Map<String, dynamic> toJson() {
@@ -45,6 +58,13 @@ class Client {
       'createdAt': Timestamp.fromDate(createdAt),
       'walletBalance': walletBalance,
       'securityDeposit': securityDeposit,
+      'fatherName': fatherName,
+      'fatherContact': fatherContact,
+      'motherName': motherName,
+      'motherContact': motherContact,
+      'enrollmentDate': Timestamp.fromDate(enrollmentDate),
+      'discontinueDate':
+          discontinueDate != null ? Timestamp.fromDate(discontinueDate!) : null,
     };
   }
 
@@ -77,6 +97,14 @@ class Client {
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       walletBalance: (data['walletBalance'] as num? ?? 0.0).toDouble(),
       securityDeposit: (data['securityDeposit'] as num? ?? 0.0).toDouble(),
+      fatherName: data['fatherName'] as String? ?? '',
+      fatherContact: data['fatherContact'] as String? ?? '',
+      motherName: data['motherName'] as String? ?? '',
+      motherContact: data['motherContact'] as String? ?? '',
+      enrollmentDate:
+          (data['enrollmentDate'] as Timestamp?)?.toDate() ??
+          (data['createdAt'] as Timestamp).toDate(),
+      discontinueDate: (data['discontinueDate'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -91,6 +119,12 @@ class Client {
     String? image,
     double? walletBalance,
     double? securityDeposit,
+    String? fatherName,
+    String? fatherContact,
+    String? motherName,
+    String? motherContact,
+    DateTime? enrollmentDate,
+    DateTime? discontinueDate,
   }) {
     return Client(
       id: id,
@@ -106,6 +140,12 @@ class Client {
       createdAt: createdAt,
       walletBalance: walletBalance ?? this.walletBalance,
       securityDeposit: securityDeposit ?? this.securityDeposit,
+      fatherName: fatherName ?? this.fatherName,
+      fatherContact: fatherContact ?? this.fatherContact,
+      motherName: motherName ?? this.motherName,
+      motherContact: motherContact ?? this.motherContact,
+      enrollmentDate: enrollmentDate ?? this.enrollmentDate,
+      discontinueDate: discontinueDate ?? this.discontinueDate,
     );
   }
 }

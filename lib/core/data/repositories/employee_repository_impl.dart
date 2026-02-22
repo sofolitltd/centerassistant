@@ -58,6 +58,7 @@ class EmployeeRepositoryImpl implements IEmployeeRepository {
 
   @override
   Future<void> addEmployee({
+    required String employeeId,
     required String name,
     String nickName = '',
     required String personalPhone,
@@ -68,29 +69,15 @@ class EmployeeRepositoryImpl implements IEmployeeRepository {
     String designation = '',
     String gender = 'male',
     DateTime? dateOfBirth,
-    DateTime? joinedDate,
     required String email,
     String? password,
   }) async {
     final counterRef = _firestore.collection('counters').doc('employees');
 
     return _firestore.runTransaction((transaction) async {
-      final counterSnapshot = await transaction.get(counterRef);
-
-      int newIdNumber;
-      if (!counterSnapshot.exists) {
-        newIdNumber = 1;
-      } else {
-        final data = counterSnapshot.data();
-        newIdNumber = (data?['count'] as int? ?? 0) + 1;
-      }
-
-      // 1. Generate a RANDOM document ID
+      // 1. Generate a RANDOM document ID for Firestore
       final newEmployeeRef = _firestore.collection('employees').doc();
       final docId = newEmployeeRef.id;
-
-      // 2. Generate a SEQUENTIAL employeeId (e.g., 0001)
-      final sequentialId = newIdNumber.toString().padLeft(4, '0');
 
       // Generate random password if not provided
       final finalPassword = (password == null || password.isEmpty)
@@ -99,7 +86,7 @@ class EmployeeRepositoryImpl implements IEmployeeRepository {
 
       final newEmployee = Employee(
         id: docId, // Firestore random ID
-        employeeId: sequentialId, // The incrementing ID (0001, 0002, etc.)
+        employeeId: employeeId, // The provided ID
         name: name,
         nickName: nickName,
         personalPhone: personalPhone,
@@ -118,7 +105,16 @@ class EmployeeRepositoryImpl implements IEmployeeRepository {
       );
 
       transaction.set(newEmployeeRef, newEmployee.toJson());
-      transaction.set(counterRef, {'count': newIdNumber});
+
+      // 2. Sync the counter if the employeeId is numeric
+      try {
+        final numericId = int.parse(employeeId);
+        transaction.set(counterRef, {
+          'count': numericId,
+        }, SetOptions(merge: true));
+      } catch (_) {
+        // Not numeric, skip counter update
+      }
     });
   }
 
@@ -132,8 +128,6 @@ class EmployeeRepositoryImpl implements IEmployeeRepository {
 
   @override
   Future<void> deleteEmployee(String id) async {
-    // We no longer decrease the counter when an employee is deleted.
-    // This ensures employee IDs remain unique and sequential even if gaps are created.
     await _firestore.collection('employees').doc(id).delete();
   }
 }

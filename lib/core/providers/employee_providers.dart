@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '/core/domain/repositories/employee_repository.dart';
@@ -36,13 +37,96 @@ final schedulableDepartmentsProvider = StreamProvider<Set<String>>((ref) {
       );
 });
 
-final nextEmployeeIdProvider = FutureProvider<String>((ref) async {
+final nextEmployeeIdProvider = FutureProvider.autoDispose<String>((ref) async {
   final firestore = ref.watch(firestoreProvider);
+
+  // 1. Try to find the latest employee by createdAt (most reliable for sequence)
+  try {
+    final snapshot = await firestore
+        .collection('employees')
+        .orderBy('createdAt', descending: true)
+        .limit(20)
+        .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      final ids = snapshot.docs
+          .map((doc) => doc.data()['employeeId'] as String? ?? '')
+          .where((id) => id.isNotEmpty)
+          .toList();
+      if (ids.isNotEmpty) return _findNextIncrementalId(ids);
+    }
+  } catch (e) {
+    debugPrint('Error fetching nextEmployeeId by createdAt: $e');
+  }
+
+  // 2. Try by employeeId descending (lexicographical fallback)
+  try {
+    final snapshot = await firestore
+        .collection('employees')
+        .orderBy('employeeId', descending: true)
+        .limit(10)
+        .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      final ids = snapshot.docs
+          .map((doc) => doc.data()['employeeId'] as String? ?? '')
+          .where((id) => id.isNotEmpty)
+          .toList();
+      if (ids.isNotEmpty) return _findNextIncrementalId(ids);
+    }
+  } catch (e) {
+    debugPrint('Error fetching nextEmployeeId by employeeId: $e');
+  }
+
+  // 3. Fallback to counter if collection query failed or returned no IDs
   final doc = await firestore.collection('counters').doc('employees').get();
-  if (!doc.exists) return '0001';
-  final count = (doc.data()?['count'] as int? ?? 0) + 1;
-  return count.toString().padLeft(4, '0');
+  if (doc.exists) {
+    final count = (doc.data()?['count'] as int? ?? 0) + 1;
+    return count.toString().padLeft(4, '0');
+  }
+
+  return '0001';
 });
+
+String _findNextIncrementalId(List<String> existingIds) {
+  String? bestId;
+  int maxVal = -1;
+
+  for (final id in existingIds) {
+    // Find numeric suffix
+    final RegExp regExp = RegExp(r'(\d+)$');
+    final match = regExp.firstMatch(id);
+    if (match != null) {
+      final val = int.tryParse(match.group(1)!) ?? -1;
+      if (val > maxVal) {
+        maxVal = val;
+        bestId = id;
+      }
+    }
+  }
+
+  if (bestId == null) return _incrementId(existingIds.first);
+  return _incrementId(bestId);
+}
+
+String _incrementId(String lastId) {
+  if (lastId.isEmpty) return '0001';
+
+  final RegExp regExp = RegExp(r'(\d+)$');
+  final match = regExp.firstMatch(lastId);
+
+  if (match != null) {
+    final String numericPart = match.group(1)!;
+    final int nextValue = int.parse(numericPart) + 1;
+    final String prefix = lastId.substring(
+      0,
+      lastId.length - numericPart.length,
+    );
+    return prefix + nextValue.toString().padLeft(numericPart.length, '0');
+  }
+
+  return '${lastId}01';
+}
 
 // Model for Designation with Department link
 class Designation {
@@ -86,6 +170,7 @@ class EmployeeActionService {
   EmployeeActionService(this._ref);
 
   Future<void> addEmployee({
+    required String employeeId,
     required String name,
     String nickName = '',
     required String personalPhone,
@@ -98,12 +183,25 @@ class EmployeeActionService {
     DateTime? dateOfBirth,
     required String email,
     String? password,
-    String? customEmployeeId,
-  }) {
-    // Note: The repository should be updated to accept customEmployeeId if needed
-    return _ref
+  }) async {
+    final firestore = _ref.read(firestoreProvider);
+
+    // 1. Check for duplicate ID
+    final duplicate = await firestore
+        .collection('employees')
+        .where('employeeId', isEqualTo: employeeId)
+        .limit(1)
+        .get();
+
+    if (duplicate.docs.isNotEmpty) {
+      throw Exception('Employee ID "$employeeId" already exists.');
+    }
+
+    // 2. Perform addition
+    await _ref
         .read(employeeRepositoryProvider)
         .addEmployee(
+          employeeId: employeeId,
           name: name,
           nickName: nickName,
           personalPhone: personalPhone,
@@ -117,6 +215,9 @@ class EmployeeActionService {
           email: email,
           password: password,
         );
+
+    // 3. Refresh next ID state
+    _ref.invalidate(nextEmployeeIdProvider);
   }
 
   Future<void> updateEmployee(Employee employee) {

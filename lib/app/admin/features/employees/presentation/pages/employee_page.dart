@@ -129,11 +129,11 @@ class EmployeePage extends ConsumerWidget {
                             columns: const [
                               DataColumn2(
                                 label: Text(
-                                  'ID',
+                                  'Emp. ID',
                                   style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
                                 headingRowAlignment: MainAxisAlignment.center,
-                                fixedWidth: 60,
+                                fixedWidth: 80,
                               ),
                               DataColumn2(
                                 label: Text(
