@@ -206,7 +206,7 @@ class BillingExportHelper {
                   color: PdfColors.orange50,
                   child: pw.Center(
                     child: pw.Text(
-                      'PRO-FORMA INVOICE (DRAFT)',
+                      'PRE INVOICE (DRAFT)',
                       style: pw.TextStyle(
                         color: PdfColors.orange900,
                         fontSize: 10,
@@ -250,7 +250,7 @@ class BillingExportHelper {
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
                       pw.Text(
-                        isDraft ? 'Pro-forma Invoice' : 'Monthly Invoice',
+                        isDraft ? 'Pre Invoice' : 'Monthly Invoice',
                         style: pw.TextStyle(
                           fontSize: 24,
                           fontWeight: pw.FontWeight.bold,
@@ -332,8 +332,8 @@ class BillingExportHelper {
       children: [
         _buildGridRow('Invoice ID', reference, s, b),
         _buildGridRow('Bill To (Client ID)', client.clientId, s, b),
-        _buildGridRow('Invoice Date', date, s, b),
         _buildGridRow('Invoice Month', month, s, b),
+        _buildGridRow('Invoice Date', date, s, b),
         _buildGridRow('Payment Due Date', due, s, b),
       ],
     );
@@ -651,7 +651,7 @@ class BillingExportHelper {
             style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
           ),
           pw.Text(
-            'Account Name: M/S. TENDER TWIG, Account No:2077080460001, Bank Name: BRAC Bank Ltd., Bank Branch: Banani Branch, Routing No: 060260435.',
+            'Account Name: M/S. TENDER TWIG,\nAccount No:2077080460001,\nBank Name: BRAC Bank Ltd.,\nBank Branch: Banani Branch,\nRouting No: 060260435.',
             style: const pw.TextStyle(fontSize: 9),
           ),
           pw.SizedBox(height: 10),

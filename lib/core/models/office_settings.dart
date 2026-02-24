@@ -31,26 +31,68 @@ class OfficeHoliday {
 }
 
 class SpecialWorkDay {
+  final String id;
   final DateTime date;
   final String? note;
 
-  SpecialWorkDay({required this.date, this.note});
+  SpecialWorkDay({required this.id, required this.date, this.note});
 
   Map<String, dynamic> toJson() => {
     'date': Timestamp.fromDate(date),
     'note': note,
   };
 
-  factory SpecialWorkDay.fromMap(Map<String, dynamic> map) {
+  factory SpecialWorkDay.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
     return SpecialWorkDay(
-      date: (map['date'] as Timestamp).toDate(),
-      note: map['note'] as String?,
+      id: doc.id,
+      date: (data['date'] as Timestamp).toDate(),
+      note: data['note'] as String?,
     );
   }
 }
 
+class WeeklyOffDayPolicy {
+  final String id;
+  final List<String> days;
+  final DateTime startDate;
+  final DateTime? endDate;
+  final String? note;
+  final DateTime createdAt;
+
+  WeeklyOffDayPolicy({
+    required this.id,
+    required this.days,
+    required this.startDate,
+    this.endDate,
+    this.note,
+    required this.createdAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'days': days,
+    'startDate': Timestamp.fromDate(startDate),
+    'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
+    'note': note,
+    'createdAt': Timestamp.fromDate(createdAt),
+  };
+
+  factory WeeklyOffDayPolicy.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return WeeklyOffDayPolicy(
+      id: doc.id,
+      days: List<String>.from(data['days'] ?? []),
+      startDate: (data['startDate'] as Timestamp).toDate(),
+      endDate: (data['endDate'] as Timestamp?)?.toDate(),
+      note: data['note'] as String?,
+      createdAt: (data['createdAt'] as Timestamp).toDate(),
+    );
+  }
+}
+
+// Keeping OfficeSettings for backward compatibility during migration
 class OfficeSettings {
-  final List<String> weeklyOffDays; // ["Friday", "Saturday"]
+  final List<String> weeklyOffDays;
   final List<SpecialWorkDay> specialWorkDays;
 
   OfficeSettings({required this.weeklyOffDays, required this.specialWorkDays});
@@ -69,9 +111,23 @@ class OfficeSettings {
       weeklyOffDays: List<String>.from(data['weeklyOffDays'] ?? []),
       specialWorkDays:
           (data['specialWorkDays'] as List<dynamic>?)
-              ?.map((d) => SpecialWorkDay.fromMap(d as Map<String, dynamic>))
+              ?.map(
+                (d) => SpecialWorkDayLegacy.fromMap_Legacy(
+                  d as Map<String, dynamic>,
+                ),
+              )
               .toList() ??
           [],
+    );
+  }
+}
+
+extension SpecialWorkDayLegacy on SpecialWorkDay {
+  static SpecialWorkDay fromMap_Legacy(Map<String, dynamic> map) {
+    return SpecialWorkDay(
+      id: '', // Legacy items don't have individual IDs
+      date: (map['date'] as Timestamp).toDate(),
+      note: map['note'] as String?,
     );
   }
 }
