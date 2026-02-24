@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '/core/models/client.dart';
+import '/core/models/invoice_snapshot.dart';
 import '/core/models/session.dart';
 import '/core/models/transaction.dart';
+import '/core/providers/time_slot_providers.dart';
+import '/core/utils/billing_export_helper.dart';
 import '/services/firebase_service.dart';
 
 class SelectedBillingMonthNotifier extends Notifier<DateTime> {
@@ -109,6 +112,7 @@ final clientMonthlySessionsProvider =
     StreamProvider.family<List<Session>, String>((ref, clientId) {
       final firestore = ref.watch(firestoreProvider);
       final monthDate = ref.watch(selectedBillingMonthProvider);
+      final allSlotsAsync = ref.watch(allTimeSlotsProvider);
 
       final firstDay = DateTime(monthDate.year, monthDate.month, 1);
       final lastDay = DateTime(
@@ -126,10 +130,16 @@ final clientMonthlySessionsProvider =
           .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(firstDay))
           .where('date', isLessThanOrEqualTo: Timestamp.fromDate(lastDay))
           .snapshots()
-          .map(
-            (snapshot) =>
-                snapshot.docs.map((doc) => Session.fromFirestore(doc)).toList(),
-          );
+          .map((snapshot) {
+            final allSessions = snapshot.docs
+                .map((doc) => Session.fromFirestore(doc))
+                .toList();
+
+            return BillingExportHelper.filterValidSessions(
+              allSessions,
+              allSlotsAsync.value ?? [],
+            );
+          });
     });
 
 final billingServiceProvider = Provider((ref) => BillingService(ref));
@@ -372,9 +382,41 @@ class BillingService {
 
   Future<void> deleteTransaction(ClientTransaction tx) async {
     final firestore = _ref.read(firestoreProvider);
-    final batch = firestore.batch();
 
+    // 1. Check for linked settlement records (billed_months)
+    // and cleanup ghost snapshots if found.
+    final billedMonths = await firestore
+        .collection('clients')
+        .doc(tx.clientId)
+        .collection('billed_months')
+        .where('transactionId', isEqualTo: tx.id)
+        .get();
+
+    final batch = firestore.batch();
     final clientRef = firestore.collection('clients').doc(tx.clientId);
+
+    if (billedMonths.docs.isNotEmpty) {
+      for (var doc in billedMonths.docs) {
+        final monthKey = doc.id;
+        // Delete the billed_months record
+        batch.delete(doc.reference);
+
+        // Find and delete the linked POST snapshot for this client and month
+        final snapshots = await firestore
+            .collection('clients')
+            .doc(tx.clientId)
+            .collection('invoice_snapshots')
+            .where('monthKey', isEqualTo: monthKey)
+            .where('type', isEqualTo: InvoiceType.post.name)
+            .get();
+
+        for (var snap in snapshots.docs) {
+          batch.delete(snap.reference);
+        }
+      }
+    }
+
+    // 2. Revert the balance updates
     if (tx.type == TransactionType.deposit) {
       batch.update(clientRef, {
         'securityDeposit': FieldValue.increment(-tx.amount),
@@ -385,11 +427,13 @@ class BillingService {
         'walletBalance': FieldValue.increment(-tx.amount),
       });
     } else {
+      // Handles prepaid (payments and settlements) and refunds
       batch.update(clientRef, {
         'walletBalance': FieldValue.increment(-tx.amount),
       });
     }
 
+    // 3. Delete the transaction itself
     batch.delete(firestore.collection('transactions').doc(tx.id));
 
     await batch.commit();

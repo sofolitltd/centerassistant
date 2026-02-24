@@ -19,10 +19,52 @@ import '../models/client.dart';
 import '../models/client_discount.dart';
 import '../models/service_rate.dart';
 import '../models/session.dart';
+import '../models/time_slot.dart';
 
 class BillingExportHelper {
   static final _currencyFormat = NumberFormat('#,###');
   static final _displayDateFormat = DateFormat('dd MMM, yyyy');
+
+  /// Filter sessions that belong to inactive or outdated time slots
+  static List<Session> filterValidSessions(
+    List<Session> sessions,
+    List<TimeSlot> slots,
+  ) {
+    if (slots.isEmpty) return sessions;
+    return sessions.where((session) {
+      // Find the specific slot
+      final slotIndex = slots.indexWhere((s) => s.id == session.timeSlotId);
+      if (slotIndex == -1) return false;
+      final slot = slots[slotIndex];
+
+      if (!slot.isActive) return false;
+
+      final sessionDate = session.date.toDate();
+      final checkDate = DateTime(
+        sessionDate.year,
+        sessionDate.month,
+        sessionDate.day,
+      );
+
+      final effectiveStart = DateTime(
+        slot.effectiveDate.year,
+        slot.effectiveDate.month,
+        slot.effectiveDate.day,
+      );
+      if (checkDate.isBefore(effectiveStart)) return false;
+
+      if (slot.effectiveEndDate != null) {
+        final effectiveEnd = DateTime(
+          slot.effectiveEndDate!.year,
+          slot.effectiveEndDate!.month,
+          slot.effectiveEndDate!.day,
+        );
+        if (checkDate.isAfter(effectiveEnd)) return false;
+      }
+
+      return true;
+    }).toList();
+  }
 
   /// Find applicable global rate for a service on a specific date
   static ServiceRate? getApplicableRate(

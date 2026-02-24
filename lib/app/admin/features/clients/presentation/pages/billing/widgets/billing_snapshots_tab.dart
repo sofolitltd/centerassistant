@@ -13,6 +13,7 @@ import '/core/providers/client_discount_providers.dart';
 import '/core/providers/client_providers.dart';
 import '/core/providers/invoice_snapshot_providers.dart';
 import '/core/providers/service_rate_providers.dart';
+import '/core/providers/time_slot_providers.dart';
 import '/core/utils/billing_export_helper.dart';
 
 class BillingSnapshotsTab extends ConsumerWidget {
@@ -41,6 +42,7 @@ class BillingSnapshotsTab extends ConsumerWidget {
 
     final allServiceRatesAsync = ref.watch(allServiceRatesProvider);
     final allDiscountsAsync = ref.watch(clientDiscountsProvider(clientId));
+    final allSlotsAsync = ref.watch(allTimeSlotsProvider);
     final currencyFormat = NumberFormat('#,###');
 
     return snapshotsAsync.when(
@@ -72,14 +74,21 @@ class BillingSnapshotsTab extends ConsumerWidget {
         return allServiceRatesAsync.when(
           data: (allRates) => allDiscountsAsync.when(
             data: (allDiscounts) {
+              final allSlots = allSlotsAsync.value ?? [];
+
               return ListView.builder(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 itemCount: snapshots.length,
                 itemBuilder: (context, index) {
                   final snapshot = snapshots[index];
-                  final sessions = snapshot.sessionsJson
+                  final List<Session> snapshotSessions = snapshot.sessionsJson
                       .map((j) => Session.fromJson(j))
                       .toList();
+
+                  final sessions = BillingExportHelper.filterValidSessions(
+                    snapshotSessions,
+                    allSlots,
+                  );
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 32),
@@ -519,11 +528,22 @@ class BillingSnapshotsTab extends ConsumerWidget {
         .length;
 
     double totalDiscount = 0;
+    double calculatedTotalAmount = 0;
+    double calculatedTotalHours = 0;
+
     for (var s in sessions) {
       if (s.status == SessionStatus.completed ||
           s.status == SessionStatus.scheduled) {
         final date = s.date.toDate();
         for (var sv in s.services) {
+          calculatedTotalHours += sv.duration;
+          final r =
+              BillingExportHelper.getApplicableRate(
+                allRates,
+                sv.type,
+                date,
+              )?.hourlyRate ??
+              0.0;
           final d =
               BillingExportHelper.getApplicableDiscount(
                 allDiscounts,
@@ -532,12 +552,13 @@ class BillingSnapshotsTab extends ConsumerWidget {
               )?.discountPerHour ??
               0.0;
           totalDiscount += sv.duration * d;
+          calculatedTotalAmount += sv.duration * (r - d);
         }
       }
     }
-    final totalGross = snapshot.totalAmount + totalDiscount;
+    final totalGross = calculatedTotalAmount + totalDiscount;
     final double finalBalance =
-        snapshot.walletBalanceAtTime - snapshot.totalAmount;
+        snapshot.walletBalanceAtTime - calculatedTotalAmount;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -549,7 +570,7 @@ class BillingSnapshotsTab extends ConsumerWidget {
         children: [
           _buildSummaryRow(
             'Total Hours',
-            '${snapshot.totalHours.toStringAsFixed(1)} h',
+            '${calculatedTotalHours.toStringAsFixed(1)} h',
           ),
 
           //
@@ -573,7 +594,7 @@ class BillingSnapshotsTab extends ConsumerWidget {
           const Divider(),
           _buildSummaryRow(
             'Total Monthly Bill',
-            '৳ ${currencyFormat.format(snapshot.totalAmount)}',
+            '৳ ${currencyFormat.format(calculatedTotalAmount)}',
             color: Colors.black,
             isBold: true,
           ),

@@ -655,62 +655,41 @@ class _DataTableWidget extends ConsumerWidget {
                 }
 
                 serviceWidgets.add(
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Text(sv.type, style: const TextStyle(fontSize: 10)),
-                  ),
+                  Text(sv.type, style: const TextStyle(fontSize: 10)),
                 );
 
                 timeWidgets.add(
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Text(
-                      '${AddScheduleUtils.formatTimeToAmPm(sv.startTime)}-${AddScheduleUtils.formatTimeToAmPm(sv.endTime)}',
-                      style: const TextStyle(fontSize: 9),
-                    ),
+                  Text(
+                    '${AddScheduleUtils.formatTimeToAmPm(sv.startTime)}-${AddScheduleUtils.formatTimeToAmPm(sv.endTime)}',
+                    style: const TextStyle(fontSize: 9),
                   ),
                 );
 
                 hourWidgets.add(
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Text(
-                      '${sv.duration}h',
-                      style: const TextStyle(fontSize: 10),
-                    ),
-                  ),
+                  Text('${sv.duration}h', style: const TextStyle(fontSize: 10)),
                 );
 
                 rateWidgets.add(
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Text(
-                      '৳${currencyFormat.format(r)}',
-                      style: const TextStyle(fontSize: 9),
-                    ),
+                  Text(
+                    '৳${currencyFormat.format(r)}',
+                    style: const TextStyle(fontSize: 9),
                   ),
                 );
 
                 discountWidgets.add(
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Text(
-                      '৳${currencyFormat.format(d)}',
-                      style: const TextStyle(
-                        fontSize: 9,
-                        color: Colors.redAccent,
-                      ),
+                  Text(
+                    '৳${currencyFormat.format(d)}',
+                    style: const TextStyle(
+                      fontSize: 9,
+                      color: Colors.redAccent,
                     ),
                   ),
                 );
 
                 typeWidgets.add(
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Text(
-                      sv.sessionType.displayName,
-                      style: const TextStyle(fontSize: 9),
-                    ),
+                  Text(
+                    sv.sessionType.displayName,
+                    style: const TextStyle(fontSize: 9),
                   ),
                 );
 
